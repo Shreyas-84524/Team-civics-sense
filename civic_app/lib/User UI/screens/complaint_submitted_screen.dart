@@ -18,6 +18,7 @@ class ComplaintSubmittedScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isOffline = complaint?.syncStatus == SyncStatus.pending;
     final ticketNumber = complaint?.ticketNumber ?? 'CF-2026-000024';
 
     return Scaffold(
@@ -26,158 +27,200 @@ class ComplaintSubmittedScreen extends StatelessWidget {
         child: ResponsiveContainer(
           maxWidth: 500,
           padding: CivicFixSpacing.pagePadding,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Spacer(),
+          child: Center(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CivicFixSpacing.vSpaceMd,
 
-              // Success Icon Circle
-              Container(
-                width: 88,
-                height: 88,
-                decoration: BoxDecoration(
-                  color: CivicFixColors.secondary.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.check_circle_rounded,
-                  color: CivicFixColors.secondary,
-                  size: 56,
-                ),
-              ),
-              CivicFixSpacing.vSpaceXl,
-
-              Text(
-                'Issue Reported',
-                textAlign: TextAlign.center,
-                style: CivicFixTypography.h1,
-              ),
-              CivicFixSpacing.vSpaceSm,
-              Text(
-                'Your issue has been submitted successfully.',
-                textAlign: TextAlign.center,
-                style: CivicFixTypography.body.copyWith(
-                  color: CivicFixColors.secondaryText,
-                ),
-              ),
-              CivicFixSpacing.vSpaceXl,
-
-              // Ticket Details Card
-              CivicFixCard(
-                padding: const EdgeInsets.all(CivicFixSpacing.lg),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Complaint ID',
-                          style: CivicFixTypography.caption.copyWith(
-                            color: CivicFixColors.secondaryText,
-                          ),
-                        ),
-                        Text(
-                          ticketNumber,
-                          style: CivicFixTypography.bodySmallMedium.copyWith(
-                            color: CivicFixColors.primary,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ],
+                  // Success / Offline Icon Circle
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      color: isOffline
+                          ? CivicFixColors.alert.withValues(alpha: 0.15)
+                          : CivicFixColors.secondary.withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
                     ),
-                    CivicFixSpacing.vSpaceSm,
-                    const Divider(height: 1),
-                    CivicFixSpacing.vSpaceSm,
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Status',
-                          style: CivicFixTypography.caption.copyWith(
-                            color: CivicFixColors.secondaryText,
-                          ),
-                        ),
-                        const StatusBadge(status: ComplaintStatus.submitted),
-                      ],
+                    child: Icon(
+                      isOffline ? Icons.cloud_off_rounded : Icons.check_circle_rounded,
+                      color: isOffline ? CivicFixColors.alertDark : CivicFixColors.secondary,
+                      size: 48,
                     ),
-                    CivicFixSpacing.vSpaceSm,
-                    const Divider(height: 1),
-                    CivicFixSpacing.vSpaceSm,
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  ),
+                  CivicFixSpacing.vSpaceLg,
+
+                  Text(
+                    isOffline ? 'Complaint Saved Offline' : 'Issue Reported',
+                    textAlign: TextAlign.center,
+                    style: CivicFixTypography.h1,
+                  ),
+                  CivicFixSpacing.vSpaceSm,
+                  Text(
+                    isOffline
+                        ? "Complaint saved. It will be submitted when you're back online."
+                        : 'Your issue has been submitted successfully.',
+                    textAlign: TextAlign.center,
+                    style: CivicFixTypography.body.copyWith(
+                      color: CivicFixColors.secondaryText,
+                    ),
+                  ),
+                  CivicFixSpacing.vSpaceLg,
+
+                  // Ticket Details Card
+                  CivicFixCard(
+                    padding: const EdgeInsets.all(CivicFixSpacing.lg),
+                    child: Column(
                       children: [
-                        Text(
-                          'Civic Reward',
-                          style: CivicFixTypography.caption.copyWith(
-                            color: CivicFixColors.secondaryText,
-                          ),
-                        ),
                         Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Icon(
-                              Icons.stars_rounded,
-                              color: CivicFixColors.secondary,
-                              size: 16,
-                            ),
-                            const SizedBox(width: 4),
                             Text(
-                              '+20 Points',
-                              style: CivicFixTypography.captionMedium.copyWith(
-                                color: CivicFixColors.secondaryDark,
-                                fontWeight: FontWeight.w700,
+                              isOffline ? 'Local Reference' : 'Complaint ID',
+                              style: CivicFixTypography.caption.copyWith(
+                                color: CivicFixColors.secondaryText,
                               ),
+                            ),
+                            Text(
+                              ticketNumber,
+                              style: CivicFixTypography.bodySmallMedium.copyWith(
+                                color: isOffline ? CivicFixColors.alertDark : CivicFixColors.primary,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
+                        CivicFixSpacing.vSpaceSm,
+                        const Divider(height: 1),
+                        CivicFixSpacing.vSpaceSm,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Status',
+                              style: CivicFixTypography.caption.copyWith(
+                                color: CivicFixColors.secondaryText,
+                              ),
+                            ),
+                            if (isOffline)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: CivicFixColors.statusInProgressBg,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: CivicFixColors.alertDark.withValues(alpha: 0.3),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.cloud_off_rounded,
+                                      size: 13,
+                                      color: CivicFixColors.alertDark,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'Pending Sync',
+                                      style: CivicFixTypography.captionMedium.copyWith(
+                                        color: CivicFixColors.alertDark,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            else
+                              StatusBadge(status: complaint?.status ?? ComplaintStatus.submitted),
+                          ],
+                        ),
+                        CivicFixSpacing.vSpaceSm,
+                        const Divider(height: 1),
+                        CivicFixSpacing.vSpaceSm,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Civic Reward',
+                              style: CivicFixTypography.caption.copyWith(
+                                color: CivicFixColors.secondaryText,
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.stars_rounded,
+                                  color: CivicFixColors.secondary,
+                                  size: 16,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '+20 Points',
+                                  style: CivicFixTypography.captionMedium.copyWith(
+                                    color: CivicFixColors.secondaryDark,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
                       ],
                     ),
-                  ],
-                ),
-              ),
-              CivicFixSpacing.vSpaceLg,
+                  ),
+                  CivicFixSpacing.vSpaceMd,
 
-              Text(
-                'You can track the progress of this issue from My Complaints.',
-                textAlign: TextAlign.center,
-                style: CivicFixTypography.caption.copyWith(
-                  color: CivicFixColors.secondaryText,
-                ),
-              ),
-              const Spacer(),
+                  Text(
+                    isOffline
+                        ? 'Your complaint is securely stored on this device and will sync once internet is connected.'
+                        : 'You can track the progress of this issue from My Complaints.',
+                    textAlign: TextAlign.center,
+                    style: CivicFixTypography.caption.copyWith(
+                      color: CivicFixColors.secondaryText,
+                    ),
+                  ),
+                  CivicFixSpacing.vSpaceLg,
 
-              // Primary Actions
-              CivicFixButton(
-                text: 'View Complaint',
-                icon: Icons.description_outlined,
-                onPressed: () {
-                  if (complaint != null) {
-                    Navigator.pushReplacementNamed(
-                      context,
-                      AppRoutes.complaintDetails,
-                      arguments: complaint,
-                    );
-                  } else {
-                    Navigator.pushNamedAndRemoveUntil(
-                      context,
-                      AppRoutes.home,
-                      (route) => false,
-                    );
-                  }
-                },
+                  // Primary Actions
+                  CivicFixButton(
+                    text: 'View Complaint',
+                    icon: Icons.description_outlined,
+                    onPressed: () {
+                      if (complaint != null) {
+                        Navigator.pushReplacementNamed(
+                          context,
+                          AppRoutes.complaintDetails,
+                          arguments: complaint,
+                        );
+                      } else {
+                        Navigator.pushNamedAndRemoveUntil(
+                          context,
+                          AppRoutes.home,
+                          (route) => false,
+                        );
+                      }
+                    },
+                  ),
+                  CivicFixSpacing.vSpaceMd,
+                  CivicFixOutlinedButton(
+                    text: 'Back to Home',
+                    onPressed: () {
+                      Navigator.pushNamedAndRemoveUntil(
+                        context,
+                        AppRoutes.home,
+                        (route) => false,
+                      );
+                    },
+                  ),
+                  CivicFixSpacing.vSpaceMd,
+                ],
               ),
-              CivicFixSpacing.vSpaceMd,
-              CivicFixOutlinedButton(
-                text: 'Back to Home',
-                onPressed: () {
-                  Navigator.pushNamedAndRemoveUntil(
-                    context,
-                    AppRoutes.home,
-                    (route) => false,
-                  );
-                },
-              ),
-              CivicFixSpacing.vSpaceLg,
-            ],
+            ),
           ),
         ),
       ),

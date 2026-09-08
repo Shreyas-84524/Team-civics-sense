@@ -4,8 +4,18 @@ import 'core/routing/app_router.dart';
 import 'core/routing/app_routes.dart';
 import 'core/theme/app_theme.dart';
 
-void main() {
+import 'core/local/hive/hive_initializer.dart';
+
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Safe centralized local storage initialization
+  try {
+    await HiveInitializer.initialize();
+  } catch (e) {
+    debugPrint('Local storage initialization warning: $e');
+  }
+
   runApp(const CivicFixApp());
 }
 

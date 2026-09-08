@@ -20,6 +20,7 @@ import '../widgets/complaint_details/evidence_gallery.dart';
 import '../widgets/complaint_details/issue_info_card.dart';
 import '../widgets/complaint_details/location_info_card.dart';
 import '../widgets/complaint_details/status_history_timeline.dart';
+import '../../core/sync/sync_manager.dart';
 
 /// Complete Citizen Complaint Details and 5-Stage Lifecycle Tracker Screen.
 class ComplaintDetailsScreen extends StatefulWidget {
@@ -226,8 +227,11 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // 1. Top Ticket ID & Status Row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 12,
+              runSpacing: 8,
               children: [
                 // Complaint ID with copy action
                 InkWell(
@@ -241,7 +245,9 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
                         Text(
                           complaint.ticketNumber,
                           style: CivicFixTypography.h3.copyWith(
-                            color: CivicFixColors.primary,
+                            color: complaint.syncStatus == SyncStatus.pending
+                                ? CivicFixColors.alertDark
+                                : CivicFixColors.primary,
                             fontSize: 18,
                             fontWeight: FontWeight.w800,
                           ),
@@ -256,7 +262,104 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
                     ),
                   ),
                 ),
-                StatusBadge(status: complaint.status),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    if (complaint.syncStatus == SyncStatus.pending)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: CivicFixColors.statusInProgressBg,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: CivicFixColors.alertDark.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.cloud_off_rounded,
+                              size: 13,
+                              color: CivicFixColors.alertDark,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Pending Sync',
+                              style: CivicFixTypography.captionMedium.copyWith(
+                                color: CivicFixColors.alertDark,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else if (complaint.syncStatus == SyncStatus.syncing)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: CivicFixColors.statusUnderReviewBg,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: CivicFixColors.info.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const SizedBox(
+                              width: 10,
+                              height: 10,
+                              child: CircularProgressIndicator(strokeWidth: 1.5, color: CivicFixColors.info),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Syncing...',
+                              style: CivicFixTypography.captionMedium.copyWith(
+                                color: CivicFixColors.info,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else if (complaint.syncStatus == SyncStatus.failed)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: CivicFixColors.statusRejectedBg,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: CivicFixColors.error.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.sync_problem_rounded,
+                              size: 13,
+                              color: CivicFixColors.error,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Sync Failed',
+                              style: CivicFixTypography.captionMedium.copyWith(
+                                color: CivicFixColors.error,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    StatusBadge(status: complaint.status),
+                  ],
+                ),
               ],
             ),
             CivicFixSpacing.vSpaceSm,
@@ -271,7 +374,184 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
             ),
             CivicFixSpacing.vSpaceMd,
 
-            // 3. Resolved Completion Banner (if status == Resolved)
+            // 3. Sync Notice Banner
+            if (complaint.syncStatus == SyncStatus.pending) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(CivicFixSpacing.md),
+                decoration: BoxDecoration(
+                  color: CivicFixColors.statusInProgressBg,
+                  borderRadius: CivicFixRadius.cardRadius,
+                  border: Border.all(
+                    color: CivicFixColors.alertDark.withValues(alpha: 0.4),
+                  ),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: CivicFixColors.alertDark.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.cloud_off_rounded,
+                        color: CivicFixColors.alertDark,
+                        size: 20,
+                      ),
+                    ),
+                    CivicFixSpacing.hSpaceMd,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Waiting for connection',
+                            style: CivicFixTypography.bodySmallMedium.copyWith(
+                              color: CivicFixColors.alertDark,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          CivicFixSpacing.vSpaceXs,
+                          Text(
+                            'Your complaint is stored securely on this device and will be submitted once internet is available.',
+                            style: CivicFixTypography.caption.copyWith(
+                              color: CivicFixColors.primaryText,
+                              height: 1.3,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              CivicFixSpacing.vSpaceLg,
+            ] else if (complaint.syncStatus == SyncStatus.syncing) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(CivicFixSpacing.md),
+                decoration: BoxDecoration(
+                  color: CivicFixColors.statusUnderReviewBg,
+                  borderRadius: CivicFixRadius.cardRadius,
+                  border: Border.all(
+                    color: CivicFixColors.info.withValues(alpha: 0.4),
+                  ),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: CivicFixColors.info.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: CivicFixColors.info),
+                      ),
+                    ),
+                    CivicFixSpacing.hSpaceMd,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Synchronizing with Cloud',
+                            style: CivicFixTypography.bodySmallMedium.copyWith(
+                              color: CivicFixColors.info,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          CivicFixSpacing.vSpaceXs,
+                          Text(
+                            'Uploading complaint data and evidence to the municipal network...',
+                            style: CivicFixTypography.caption.copyWith(
+                              color: CivicFixColors.primaryText,
+                              height: 1.3,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              CivicFixSpacing.vSpaceLg,
+            ] else if (complaint.syncStatus == SyncStatus.failed) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(CivicFixSpacing.md),
+                decoration: BoxDecoration(
+                  color: CivicFixColors.statusRejectedBg,
+                  borderRadius: CivicFixRadius.cardRadius,
+                  border: Border.all(
+                    color: CivicFixColors.error.withValues(alpha: 0.4),
+                  ),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: CivicFixColors.error.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.sync_problem_rounded,
+                        color: CivicFixColors.error,
+                        size: 20,
+                      ),
+                    ),
+                    CivicFixSpacing.hSpaceMd,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Synchronization Failed',
+                            style: CivicFixTypography.bodySmallMedium.copyWith(
+                              color: CivicFixColors.error,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          CivicFixSpacing.vSpaceXs,
+                          Text(
+                            'Failed to synchronize this report with the cloud backend. Check connection and retry.',
+                            style: CivicFixTypography.caption.copyWith(
+                              color: CivicFixColors.primaryText,
+                              height: 1.3,
+                            ),
+                          ),
+                          CivicFixSpacing.vSpaceSm,
+                          ElevatedButton.icon(
+                            onPressed: () async {
+                              await SyncManager().retryComplaint(complaint.id);
+                              await _loadComplaintById(complaint.id, forceRefresh: true);
+                            },
+                            icon: const Icon(Icons.refresh_rounded, size: 16),
+                            label: const Text('Retry Sync'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: CivicFixColors.error,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              textStyle: CivicFixTypography.captionMedium.copyWith(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              CivicFixSpacing.vSpaceLg,
+            ],
+
+            // 4. Resolved Completion Banner (if status == Resolved)
             if (isResolved) ...[
               Container(
                 width: double.infinity,

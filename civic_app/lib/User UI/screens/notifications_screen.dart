@@ -4,11 +4,13 @@ import '../../core/constants/app_radius.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/constants/app_typography.dart';
 import '../../core/models/notification_model.dart';
+import '../../core/network/connectivity_service.dart';
 import '../../core/repositories/complaint_repository.dart';
 import '../../core/repositories/notification_repository.dart';
 import '../../core/widgets/civic_fix_app_bar.dart';
 import '../../core/widgets/empty_state.dart';
 import '../../core/widgets/error_state.dart';
+import '../../core/widgets/offline_cache_banner.dart';
 import '../../core/widgets/responsive_container.dart';
 import '../widgets/notifications/notification_card.dart';
 import '../widgets/notifications/notification_skeleton.dart';
@@ -19,11 +21,13 @@ enum NotificationFilter { all, unread, read }
 class NotificationsScreen extends StatefulWidget {
   final NotificationRepository? notificationRepository;
   final ComplaintRepository? complaintRepository;
+  final ConnectivityService? connectivityService;
 
   const NotificationsScreen({
     super.key,
     this.notificationRepository,
     this.complaintRepository,
+    this.connectivityService,
   });
 
   @override
@@ -33,6 +37,7 @@ class NotificationsScreen extends StatefulWidget {
 class _NotificationsScreenState extends State<NotificationsScreen> {
   late final NotificationRepository _notificationRepository;
   late final ComplaintRepository _complaintRepository;
+  late final ConnectivityService _connectivityService;
 
   List<NotificationModel> _allNotifications = [];
   bool _isLoading = true;
@@ -44,6 +49,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     super.initState();
     _notificationRepository = widget.notificationRepository ?? MockNotificationRepository();
     _complaintRepository = widget.complaintRepository ?? MockComplaintRepository();
+    _connectivityService = widget.connectivityService ?? AppConnectivityService();
     _loadNotifications();
   }
 
@@ -123,6 +129,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (!_connectivityService.isOnline)
+                OfflineCacheBanner(
+                  onRefresh: _loadNotifications,
+                ),
               // 1. Filter Chips Row: All, Unread, Read
               _buildFilterChips(),
               CivicFixSpacing.vSpaceMd,

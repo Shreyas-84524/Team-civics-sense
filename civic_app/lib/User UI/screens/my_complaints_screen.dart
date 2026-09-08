@@ -1,15 +1,17 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_radius.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/constants/app_typography.dart';
 import '../../core/models/complaint_model.dart';
+import '../../core/network/connectivity_service.dart';
 import '../../core/repositories/complaint_repository.dart';
 import '../../core/routing/app_routes.dart';
 import '../../core/widgets/civic_fix_app_bar.dart';
 import '../../core/widgets/empty_state.dart';
 import '../../core/widgets/error_state.dart';
 import '../../core/widgets/loading_state.dart';
+import '../../core/widgets/offline_cache_banner.dart';
 import '../../core/widgets/responsive_container.dart';
 import '../services/mock_auth_service.dart';
 import '../widgets/complaint_card.dart';
@@ -19,11 +21,13 @@ import '../widgets/complaints/complaint_filter_bottom_sheet.dart';
 class MyComplaintsScreen extends StatefulWidget {
   final ComplaintRepository? repository;
   final AuthService? authService;
+  final ConnectivityService? connectivityService;
 
   const MyComplaintsScreen({
     super.key,
     this.repository,
     this.authService,
+    this.connectivityService,
   });
 
   @override
@@ -33,6 +37,7 @@ class MyComplaintsScreen extends StatefulWidget {
 class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
   late final ComplaintRepository _repository;
   late final AuthService _authService;
+  late final ConnectivityService _connectivityService;
 
   List<ComplaintModel> _allComplaints = [];
   bool _isLoading = true;
@@ -54,6 +59,7 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
     super.initState();
     _repository = widget.repository ?? MockComplaintRepository();
     _authService = widget.authService ?? MockAuthService();
+    _connectivityService = widget.connectivityService ?? AppConnectivityService();
     _loadComplaints();
   }
 
@@ -228,6 +234,10 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (!_connectivityService.isOnline)
+                  OfflineCacheBanner(
+                    onRefresh: () => _loadComplaints(forceRefresh: true),
+                  ),
                 Text(
                   "Track the civic issues you've reported.",
                   style: CivicFixTypography.caption.copyWith(

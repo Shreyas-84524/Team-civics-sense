@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
 import '../../../core/models/complaint_model.dart';
+import '../../../core/network/connectivity_service.dart';
 import '../../../core/routing/app_routes.dart';
 import '../../../core/utils/date_formatter.dart';
+import '../../../core/widgets/offline_cache_banner.dart';
 import '../../../core/widgets/priority_badge.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../services/govt_complaint_repository.dart';
@@ -27,6 +29,7 @@ import '../../widgets/map/govt_map_panel.dart';
 /// - Hazard map preview & quick workflow shortcuts
 class GovtDashboardScreen extends StatefulWidget {
   final GovtComplaintRepository? repository;
+  final ConnectivityService? connectivityService;
   final VoidCallback? onNavigateToComplaints;
   final VoidCallback? onNavigateToMap;
   final VoidCallback? onNavigateToAnalytics;
@@ -34,6 +37,7 @@ class GovtDashboardScreen extends StatefulWidget {
   const GovtDashboardScreen({
     super.key,
     this.repository,
+    this.connectivityService,
     this.onNavigateToComplaints,
     this.onNavigateToMap,
     this.onNavigateToAnalytics,
@@ -45,6 +49,7 @@ class GovtDashboardScreen extends StatefulWidget {
 
 class _GovtDashboardScreenState extends State<GovtDashboardScreen> {
   late final GovtComplaintRepository _repository;
+  late final ConnectivityService _connectivityService;
   GovtDashboardMetrics? _metrics;
   List<CategoryDistributionItem> _categoryDistribution = [];
   List<StatusDistributionItem> _statusDistribution = [];
@@ -57,6 +62,7 @@ class _GovtDashboardScreenState extends State<GovtDashboardScreen> {
   void initState() {
     super.initState();
     _repository = widget.repository ?? MockGovtComplaintRepository();
+    _connectivityService = widget.connectivityService ?? AppConnectivityService();
     _loadDashboardData();
   }
 
@@ -125,6 +131,11 @@ class _GovtDashboardScreenState extends State<GovtDashboardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (!_connectivityService.isOnline)
+                OfflineCacheBanner(
+                  customMessage: 'Offline — Showing cached municipal operational data. Real-time updates paused.',
+                  onRefresh: _loadDashboardData,
+                ),
               // Section 1: Dashboard Header & Overview Title
               _buildDashboardHeader(),
               CivicFixSpacing.vSpaceLg,

@@ -5,7 +5,9 @@ import '../../../core/constants/app_typography.dart';
 import '../../../core/location/location_model.dart';
 import '../../../core/models/complaint_model.dart';
 import '../../../core/models/hazard_model.dart';
+import '../../../core/network/connectivity_service.dart';
 import '../../../core/repositories/hazard_repository.dart';
+import '../../../core/widgets/offline_cache_banner.dart';
 import '../../services/govt_complaint_repository.dart';
 import '../../theme/govt_theme_tokens.dart';
 import '../../widgets/common/govt_filter_chip.dart';
@@ -19,12 +21,14 @@ class GovtHazardMapScreen extends StatefulWidget {
   final HazardRepository? hazardRepository;
   final GovtComplaintRepository? complaintRepository;
   final LocationService? locationService;
+  final ConnectivityService? connectivityService;
 
   const GovtHazardMapScreen({
     super.key,
     this.hazardRepository,
     this.complaintRepository,
     this.locationService,
+    this.connectivityService,
   });
 
   @override
@@ -35,6 +39,7 @@ class _GovtHazardMapScreenState extends State<GovtHazardMapScreen> {
   late final HazardRepository _hazardRepository;
   late final GovtComplaintRepository _complaintRepository;
   late final LocationService _locationService;
+  late final ConnectivityService _connectivityService;
 
   final TextEditingController _searchController = TextEditingController();
   final TransformationController _transformationController = TransformationController();
@@ -73,6 +78,7 @@ class _GovtHazardMapScreenState extends State<GovtHazardMapScreen> {
     _hazardRepository = widget.hazardRepository ?? MockHazardRepository();
     _complaintRepository = widget.complaintRepository ?? MockGovtComplaintRepository();
     _locationService = widget.locationService ?? MockLocationService();
+    _connectivityService = widget.connectivityService ?? AppConnectivityService();
 
     _resetMapTransform();
     _loadHazards();
@@ -251,6 +257,14 @@ class _GovtHazardMapScreenState extends State<GovtHazardMapScreen> {
       color: GovtThemeTokens.background,
       child: Column(
         children: [
+          if (!_connectivityService.isOnline)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(CivicFixSpacing.lg, CivicFixSpacing.sm, CivicFixSpacing.lg, 0),
+              child: OfflineCacheBanner(
+                customMessage: 'Offline — Showing cached hazard GIS markers. Live updates paused.',
+                isCompact: true,
+              ),
+            ),
           // 1. Top Search & Filter Bar
           _buildTopFilterToolbar(),
 

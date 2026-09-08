@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/constants/app_typography.dart';
+import '../../core/network/connectivity_service.dart';
 import '../../core/routing/app_routes.dart';
 import '../../core/widgets/civic_fix_button.dart';
 import '../../core/widgets/civic_fix_card.dart';
 import '../../core/widgets/error_state.dart';
 import '../../core/widgets/loading_state.dart';
+import '../../core/widgets/offline_cache_banner.dart';
 import '../../core/widgets/responsive_container.dart';
 import '../../core/widgets/section_header.dart';
 import '../models/home_data_model.dart';
@@ -21,8 +23,13 @@ import '../widgets/report_issue_cta.dart';
 /// Main Citizen Home Screen (Dashboard).
 class HomeScreen extends StatefulWidget {
   final Function(int)? onTabChange;
+  final ConnectivityService? connectivityService;
 
-  const HomeScreen({super.key, this.onTabChange});
+  const HomeScreen({
+    super.key,
+    this.onTabChange,
+    this.connectivityService,
+  });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -30,6 +37,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final HomeService _homeService = MockHomeService();
+  late final ConnectivityService _connectivityService;
   HomeDataModel? _data;
   bool _isLoading = true;
   String? _errorMessage;
@@ -37,6 +45,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    _connectivityService = widget.connectivityService ?? AppConnectivityService();
     _loadData();
   }
 
@@ -115,6 +124,10 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (!_connectivityService.isOnline)
+              OfflineCacheBanner(
+                onRefresh: () => _loadData(forceRefresh: true),
+              ),
             CivicFixSpacing.vSpaceSm,
 
             // 1. Personalized Greeting & Notification Indicator

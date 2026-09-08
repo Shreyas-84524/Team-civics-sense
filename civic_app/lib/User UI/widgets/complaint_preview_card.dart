@@ -55,9 +55,46 @@ class ComplaintPreviewCard extends StatelessWidget {
                   letterSpacing: 0.4,
                 ),
               ),
-              StatusBadge(
-                status: complaint.status,
-                isCompact: true,
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (complaint.syncStatus == SyncStatus.pending) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: CivicFixColors.statusInProgressBg,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: CivicFixColors.alertDark.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.cloud_off_rounded,
+                            size: 10,
+                            color: CivicFixColors.alertDark,
+                          ),
+                          const SizedBox(width: 3),
+                          Text(
+                            'Pending',
+                            style: CivicFixTypography.captionMedium.copyWith(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                              color: CivicFixColors.alertDark,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                  ],
+                  StatusBadge(
+                    status: complaint.status,
+                    isCompact: true,
+                  ),
+                ],
               ),
             ],
           ),

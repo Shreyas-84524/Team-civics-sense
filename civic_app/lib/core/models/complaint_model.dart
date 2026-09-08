@@ -124,6 +124,73 @@ extension ComplaintPriorityExt on ComplaintPriority {
   }
 }
 
+/// Local synchronization status for offline persistence & synchronization queue.
+enum SyncStatus {
+  pending,
+  syncing,
+  synced,
+  failed;
+}
+
+extension SyncStatusExt on SyncStatus {
+  String get label {
+    switch (this) {
+      case SyncStatus.pending:
+        return 'Pending Sync';
+      case SyncStatus.syncing:
+        return 'Syncing...';
+      case SyncStatus.synced:
+        return 'Synced';
+      case SyncStatus.failed:
+        return 'Sync Failed';
+    }
+  }
+
+  Color get color {
+    switch (this) {
+      case SyncStatus.pending:
+        return CivicFixColors.alertDark;
+      case SyncStatus.syncing:
+        return CivicFixColors.info;
+      case SyncStatus.synced:
+        return CivicFixColors.secondary;
+      case SyncStatus.failed:
+        return CivicFixColors.error;
+    }
+  }
+
+  Color get backgroundColor {
+    switch (this) {
+      case SyncStatus.pending:
+        return CivicFixColors.statusInProgressBg;
+      case SyncStatus.syncing:
+        return CivicFixColors.statusUnderReviewBg;
+      case SyncStatus.synced:
+        return CivicFixColors.statusResolvedBg;
+      case SyncStatus.failed:
+        return CivicFixColors.statusRejectedBg;
+    }
+  }
+
+  IconData get icon {
+    switch (this) {
+      case SyncStatus.pending:
+        return Icons.cloud_off_rounded;
+      case SyncStatus.syncing:
+        return Icons.sync_rounded;
+      case SyncStatus.synced:
+        return Icons.cloud_done_rounded;
+      case SyncStatus.failed:
+        return Icons.sync_problem_rounded;
+    }
+  }
+
+  bool get isPending => this == SyncStatus.pending;
+  bool get isSyncing => this == SyncStatus.syncing;
+  bool get isSynced => this == SyncStatus.synced;
+  bool get isFailed => this == SyncStatus.failed;
+}
+
 class TimelineEvent {
   final String title;
   final String description;
@@ -160,8 +227,13 @@ class ComplaintModel {
   final String? assignedTo;
   final String? departmentName;
   final DateTime? resolvedAt;
+  final SyncStatus syncStatus;
+  final String? localId;
+  final String? serverId;
 
   String get effectiveDepartment => departmentName ?? DepartmentHelper.getDepartmentName(category);
+
+  bool get isOfflineDraft => syncStatus == SyncStatus.pending;
 
   const ComplaintModel({
     required this.id,
@@ -183,6 +255,9 @@ class ComplaintModel {
     this.assignedTo,
     this.departmentName,
     this.resolvedAt,
+    this.syncStatus = SyncStatus.synced,
+    this.localId,
+    this.serverId,
   });
 
   ComplaintModel copyWith({
@@ -205,6 +280,9 @@ class ComplaintModel {
     String? assignedTo,
     String? departmentName,
     DateTime? resolvedAt,
+    SyncStatus? syncStatus,
+    String? localId,
+    String? serverId,
   }) {
     return ComplaintModel(
       id: id ?? this.id,
@@ -226,6 +304,9 @@ class ComplaintModel {
       assignedTo: assignedTo ?? this.assignedTo,
       departmentName: departmentName ?? this.departmentName,
       resolvedAt: resolvedAt ?? this.resolvedAt,
+      syncStatus: syncStatus ?? this.syncStatus,
+      localId: localId ?? this.localId,
+      serverId: serverId ?? this.serverId,
     );
   }
 }

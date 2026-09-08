@@ -3,8 +3,10 @@ import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
 import '../../../core/models/category_model.dart';
 import '../../../core/models/complaint_model.dart';
+import '../../../core/network/connectivity_service.dart';
 import '../../../core/routing/app_routes.dart';
 import '../../../core/utils/date_formatter.dart';
+import '../../../core/widgets/offline_cache_banner.dart';
 import '../../../core/widgets/priority_badge.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../services/govt_complaint_repository.dart';
@@ -16,14 +18,22 @@ import '../../widgets/complaints/govt_complaint_card.dart';
 
 /// Complete screen for Government Complaint & Grievance Management.
 class GovtComplaintListScreen extends StatefulWidget {
-  const GovtComplaintListScreen({super.key});
+  final GovtComplaintRepository? repository;
+  final ConnectivityService? connectivityService;
+
+  const GovtComplaintListScreen({
+    super.key,
+    this.repository,
+    this.connectivityService,
+  });
 
   @override
   State<GovtComplaintListScreen> createState() => _GovtComplaintListScreenState();
 }
 
 class _GovtComplaintListScreenState extends State<GovtComplaintListScreen> {
-  final GovtComplaintRepository _repository = MockGovtComplaintRepository();
+  late final GovtComplaintRepository _repository;
+  late final ConnectivityService _connectivityService;
   final TextEditingController _searchController = TextEditingController();
 
   ComplaintStatus? _selectedStatus;
@@ -47,6 +57,8 @@ class _GovtComplaintListScreenState extends State<GovtComplaintListScreen> {
   @override
   void initState() {
     super.initState();
+    _repository = widget.repository ?? MockGovtComplaintRepository();
+    _connectivityService = widget.connectivityService ?? AppConnectivityService();
     _loadComplaints();
   }
 
@@ -205,6 +217,11 @@ class _GovtComplaintListScreenState extends State<GovtComplaintListScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (!_connectivityService.isOnline)
+            OfflineCacheBanner(
+              customMessage: 'Offline — Showing cached grievances. Synchronization disabled.',
+              onRefresh: _loadComplaints,
+            ),
           // Row 1: Search Field + Clear Filters + Refresh Action
           Row(
             children: [

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
 import '../../../core/models/complaint_model.dart';
+import '../../../core/network/connectivity_service.dart';
+import '../../../core/widgets/offline_cache_banner.dart';
 import '../../models/analytics_model.dart';
 import '../../services/analytics_repository.dart';
 import '../../theme/govt_theme_tokens.dart';
@@ -15,10 +17,12 @@ import '../../widgets/dashboard/stat_card.dart';
 /// Operational & SLA Compliance Analytics Screen for Government Administrators.
 class GovtAnalyticsScreen extends StatefulWidget {
   final AnalyticsRepository? repository;
+  final ConnectivityService? connectivityService;
 
   const GovtAnalyticsScreen({
     super.key,
     this.repository,
+    this.connectivityService,
   });
 
   @override
@@ -27,6 +31,7 @@ class GovtAnalyticsScreen extends StatefulWidget {
 
 class _GovtAnalyticsScreenState extends State<GovtAnalyticsScreen> {
   late final AnalyticsRepository _repository;
+  late final ConnectivityService _connectivityService;
 
   AnalyticsData? _data;
   bool _isLoading = true;
@@ -37,6 +42,7 @@ class _GovtAnalyticsScreenState extends State<GovtAnalyticsScreen> {
   void initState() {
     super.initState();
     _repository = widget.repository ?? MockAnalyticsRepository();
+    _connectivityService = widget.connectivityService ?? AppConnectivityService();
     _loadAnalytics();
   }
 
@@ -89,6 +95,11 @@ class _GovtAnalyticsScreenState extends State<GovtAnalyticsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (!_connectivityService.isOnline)
+                OfflineCacheBanner(
+                  customMessage: 'Offline — Showing cached analytics metrics. Live aggregation paused.',
+                  onRefresh: _loadAnalytics,
+                ),
               // Section 1: Multi-Criteria Filter Bar
               GovtAnalyticsFilterBar(
                 activeFilter: _activeFilter,

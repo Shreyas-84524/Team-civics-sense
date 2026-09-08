@@ -131,7 +131,106 @@ class ComplaintCard extends StatelessWidget {
                   ),
                 ),
                 CivicFixSpacing.hSpaceSm,
-                StatusBadge(status: complaint.status, isCompact: true),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (complaint.syncStatus == SyncStatus.pending) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: CivicFixColors.statusInProgressBg,
+                          borderRadius: CivicFixRadius.chipRadius,
+                          border: Border.all(
+                            color: CivicFixColors.alertDark.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.cloud_off_rounded,
+                              size: 11,
+                              color: CivicFixColors.alertDark,
+                            ),
+                            const SizedBox(width: 3),
+                            Text(
+                              'Pending Sync',
+                              style: CivicFixTypography.captionMedium.copyWith(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: CivicFixColors.alertDark,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                    ] else if (complaint.syncStatus == SyncStatus.syncing) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: CivicFixColors.statusUnderReviewBg,
+                          borderRadius: CivicFixRadius.chipRadius,
+                          border: Border.all(
+                            color: CivicFixColors.info.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const SizedBox(
+                              width: 10,
+                              height: 10,
+                              child: CircularProgressIndicator(strokeWidth: 1.5, color: CivicFixColors.info),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Syncing...',
+                              style: CivicFixTypography.captionMedium.copyWith(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: CivicFixColors.info,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                    ] else if (complaint.syncStatus == SyncStatus.failed) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: CivicFixColors.statusRejectedBg,
+                          borderRadius: CivicFixRadius.chipRadius,
+                          border: Border.all(
+                            color: CivicFixColors.error.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.sync_problem_rounded,
+                              size: 11,
+                              color: CivicFixColors.error,
+                            ),
+                            const SizedBox(width: 3),
+                            Text(
+                              'Sync Failed',
+                              style: CivicFixTypography.captionMedium.copyWith(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: CivicFixColors.error,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                    ],
+                    StatusBadge(status: complaint.status, isCompact: true),
+                  ],
+                ),
               ],
             ),
             CivicFixSpacing.vSpaceMd,

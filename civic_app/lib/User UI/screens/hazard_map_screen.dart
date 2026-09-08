@@ -6,6 +6,7 @@ import '../../core/constants/app_typography.dart';
 import '../../core/location/location_model.dart';
 import '../../core/models/complaint_model.dart';
 import '../../core/models/hazard_model.dart';
+import '../../core/network/connectivity_service.dart';
 import '../../core/repositories/complaint_repository.dart';
 import '../../core/repositories/hazard_repository.dart';
 import '../../core/widgets/civic_fix_app_bar.dart';
@@ -13,6 +14,7 @@ import '../../core/widgets/civic_fix_card.dart';
 import '../../core/widgets/civic_fix_outlined_button.dart';
 import '../../core/widgets/error_state.dart';
 import '../../core/widgets/loading_state.dart';
+import '../../core/widgets/offline_cache_banner.dart';
 import '../../core/widgets/responsive_container.dart';
 import '../services/location_service.dart';
 import '../widgets/hazard_map/hazard_info_card.dart';
@@ -24,12 +26,14 @@ class HazardMapScreen extends StatefulWidget {
   final HazardRepository? hazardRepository;
   final ComplaintRepository? complaintRepository;
   final LocationService? locationService;
+  final ConnectivityService? connectivityService;
 
   const HazardMapScreen({
     super.key,
     this.hazardRepository,
     this.complaintRepository,
     this.locationService,
+    this.connectivityService,
   });
 
   @override
@@ -40,6 +44,7 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
   late final HazardRepository _hazardRepository;
   late final ComplaintRepository _complaintRepository;
   late final LocationService _locationService;
+  late final ConnectivityService _connectivityService;
 
   final TextEditingController _searchController = TextEditingController();
   final TransformationController _transformController = TransformationController();
@@ -68,6 +73,7 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
     _hazardRepository = widget.hazardRepository ?? MockHazardRepository();
     _complaintRepository = widget.complaintRepository ?? MockComplaintRepository();
     _locationService = widget.locationService ?? MockLocationService();
+    _connectivityService = widget.connectivityService ?? AppConnectivityService();
     _loadHazards();
   }
 
@@ -358,6 +364,11 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  if (!_connectivityService.isOnline)
+                    const OfflineCacheBanner(
+                      customMessage: 'Offline — Showing cached hazards. Live updates paused.',
+                      isCompact: true,
+                    ),
                   Row(
                     children: [
                       // Search Input Box

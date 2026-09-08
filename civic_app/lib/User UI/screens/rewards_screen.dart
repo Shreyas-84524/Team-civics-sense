@@ -5,6 +5,7 @@ import '../../core/constants/app_spacing.dart';
 import '../../core/constants/app_typography.dart';
 import '../../core/models/reward_model.dart';
 import '../../core/models/user_model.dart';
+import '../../core/network/connectivity_service.dart';
 import '../../core/repositories/rewards_repository.dart';
 import '../../core/repositories/user_repository.dart';
 import '../../core/widgets/civic_fix_app_bar.dart';
@@ -12,6 +13,7 @@ import '../../core/widgets/civic_fix_card.dart';
 import '../../core/widgets/empty_state.dart';
 import '../../core/widgets/error_state.dart';
 import '../../core/widgets/loading_state.dart';
+import '../../core/widgets/offline_cache_banner.dart';
 import '../../core/widgets/responsive_container.dart';
 import '../../core/widgets/section_header.dart';
 import '../widgets/rewards/achievement_card.dart';
@@ -21,11 +23,13 @@ import '../widgets/rewards/points_progress_card.dart';
 class RewardsScreen extends StatefulWidget {
   final RewardsRepository? rewardsRepository;
   final UserRepository? userRepository;
+  final ConnectivityService? connectivityService;
 
   const RewardsScreen({
     super.key,
     this.rewardsRepository,
     this.userRepository,
+    this.connectivityService,
   });
 
   @override
@@ -35,6 +39,7 @@ class RewardsScreen extends StatefulWidget {
 class _RewardsScreenState extends State<RewardsScreen> {
   late final RewardsRepository _rewardsRepository;
   late final UserRepository _userRepository;
+  late final ConnectivityService _connectivityService;
 
   bool _isLoading = true;
   String? _errorMessage;
@@ -45,6 +50,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
     super.initState();
     _rewardsRepository = widget.rewardsRepository ?? MockRewardsRepository();
     _userRepository = widget.userRepository ?? MockUserRepository();
+    _connectivityService = widget.connectivityService ?? AppConnectivityService();
     _loadData();
   }
 
@@ -148,6 +154,10 @@ class _RewardsScreenState extends State<RewardsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (!_connectivityService.isOnline)
+                  OfflineCacheBanner(
+                    onRefresh: _loadData,
+                  ),
                 // 1. Points Hero Card with Milestone Progress
                 PointsProgressCard(
                   points: user.civicPoints,

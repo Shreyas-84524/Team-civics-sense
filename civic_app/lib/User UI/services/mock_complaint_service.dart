@@ -4,6 +4,9 @@ import '../../core/local/mock_data_source.dart';
 import '../../core/location/location_model.dart';
 import '../../core/models/category_model.dart';
 import '../../core/models/complaint_model.dart';
+import '../../core/network/connectivity_service.dart';
+import '../../core/repositories/complaint_repository.dart';
+import '../../core/repositories/hive_complaint_repository.dart';
 import '../models/complaint_draft.dart';
 
 /// Abstract contract for civic complaint operations.
@@ -18,14 +21,40 @@ abstract class ComplaintService {
   Future<ComplaintModel?> getComplaintById(String id);
 }
 
-/// In-memory Mock Complaint Service for Phase 1 Citizen UI.
+/// In-memory & Hive-backed Mock Complaint Service for Citizen UI with offline draft capability.
 class MockComplaintService implements ComplaintService {
   static final MockComplaintService _instance = MockComplaintService._internal();
-  factory MockComplaintService() => _instance;
-  MockComplaintService._internal();
+  factory MockComplaintService({
+    ConnectivityService? connectivityService,
+    ComplaintRepository? repository,
+  }) {
+    if (connectivityService != null) {
+      _instance._connectivityService = connectivityService;
+    }
+    if (repository != null) {
+      _instance._repository = repository;
+    }
+    return _instance;
+  }
 
+  MockComplaintService._internal()
+      : _connectivityService = AppConnectivityService(),
+        _repository = HiveComplaintRepository();
+
+  ConnectivityService _connectivityService;
+  ComplaintRepository _repository;
   final MockDataSource _dataSource = MockDataSource();
   int _ticketCounter = 24;
+
+  /// Update the connectivity service (useful for test mocks or overrides)
+  void setConnectivityService(ConnectivityService service) {
+    _connectivityService = service;
+  }
+
+  /// Update repository implementation
+  void setRepository(ComplaintRepository repository) {
+    _repository = repository;
+  }
 
   @override
   Future<ComplaintModel> submitComplaint(
@@ -48,8 +77,7 @@ class MockComplaintService implements ComplaintService {
 
     _ticketCounter++;
     final formattedCounter = _ticketCounter.toString().padLeft(6, '0');
-    final ticketNumber = 'CF-2026-$formattedCounter';
-    final complaintId = 'cmp_cf_${DateTime.now().millisecondsSinceEpoch}';
+    final isOnline = _connectivityService.isOnline;
 
     final category = draft.category ?? CivicCategory.defaultCategories.first;
     final location = draft.location ??
@@ -61,7 +89,47 @@ class MockComplaintService implements ComplaintService {
           city: 'Bengaluru',
         );
 
-    final newComplaint = ComplaintModel(
+    if (!isOnline) {
+      // OFFLINE PATH: Assign temporary local identifier & pending sync status
+      final localRef = 'LOCAL-2026-$formattedCounter';
+      final complaintId = 'cmp_local_${DateTime.now().microsecondsSinceEpoch}_$formattedCounter';
+
+      final offlineComplaint = ComplaintModel(
+        id: complaintId,
+        citizenId: _dataSource.currentUser.id,
+        ticketNumber: localRef,
+        localId: localRef,
+        title: draft.title.trim(),
+        description: draft.description.trim(),
+        category: category,
+        status: ComplaintStatus.reported,
+        priority: draft.isHazard ? ComplaintPriority.high : ComplaintPriority.medium,
+        location: location,
+        imageUrls: List.unmodifiable(draft.imageUrls),
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        isHazard: draft.isHazard,
+        upvotes: 1,
+        syncStatus: SyncStatus.pending,
+        timeline: [
+          TimelineEvent(
+            title: 'Saved Locally',
+            description: 'Complaint saved offline. Waiting for connection to submit to ${draft.departmentName}.',
+            timestamp: DateTime.now(),
+            status: ComplaintStatus.reported,
+          ),
+        ],
+      );
+
+      // Persist persistently in Hive complaints box & pending_sync box
+      return await _repository.saveOfflineComplaint(offlineComplaint);
+    }
+
+    // ONLINE PATH: Normal server ticket generation & synced status
+    final ticketNumber = 'CF-2026-$formattedCounter';
+    final complaintId = 'cmp_cf_${DateTime.now().microsecondsSinceEpoch}_$formattedCounter';
+
+    final onlineComplaint = ComplaintModel(
       id: complaintId,
       citizenId: _dataSource.currentUser.id,
       ticketNumber: ticketNumber,
@@ -76,6 +144,7 @@ class MockComplaintService implements ComplaintService {
       updatedAt: DateTime.now(),
       isHazard: draft.isHazard,
       upvotes: 1,
+      syncStatus: SyncStatus.synced,
       timeline: [
         TimelineEvent(
           title: 'Issue Reported',
@@ -86,8 +155,8 @@ class MockComplaintService implements ComplaintService {
       ],
     );
 
-    // Insert at front of complaints list
-    _dataSource.complaints.insert(0, newComplaint);
+    // Insert at front of in-memory complaints list
+    _dataSource.complaints.insert(0, onlineComplaint);
 
     // Increment user contribution metrics
     _dataSource.currentUser = _dataSource.currentUser.copyWith(
@@ -95,20 +164,16 @@ class MockComplaintService implements ComplaintService {
       civicPoints: _dataSource.currentUser.civicPoints + 20,
     );
 
-    return newComplaint;
+    return onlineComplaint;
   }
 
   @override
   Future<List<ComplaintModel>> getComplaints() async {
-    return List.unmodifiable(_dataSource.complaints);
+    return await _repository.getComplaints();
   }
 
   @override
   Future<ComplaintModel?> getComplaintById(String id) async {
-    try {
-      return _dataSource.complaints.firstWhere((c) => c.id == id || c.ticketNumber == id);
-    } catch (_) {
-      return null;
-    }
+    return await _repository.getComplaintById(id);
   }
 }
