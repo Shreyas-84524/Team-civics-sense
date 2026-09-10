@@ -7,6 +7,7 @@ import '../../core/models/notification_model.dart';
 import '../../core/network/connectivity_service.dart';
 import '../../core/repositories/complaint_repository.dart';
 import '../../core/repositories/notification_repository.dart';
+import '../../core/repositories/repository_locator.dart';
 import '../../core/widgets/civic_fix_app_bar.dart';
 import '../../core/widgets/empty_state.dart';
 import '../../core/widgets/error_state.dart';
@@ -17,7 +18,7 @@ import '../widgets/notifications/notification_skeleton.dart';
 
 enum NotificationFilter { all, unread, read }
 
-/// Notifications Screen for citizen updates.
+/// Complete Citizen Notifications Center with filtering and bulk mark-all-read.
 class NotificationsScreen extends StatefulWidget {
   final NotificationRepository? notificationRepository;
   final ComplaintRepository? complaintRepository;
@@ -47,8 +48,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   @override
   void initState() {
     super.initState();
-    _notificationRepository = widget.notificationRepository ?? MockNotificationRepository();
-    _complaintRepository = widget.complaintRepository ?? MockComplaintRepository();
+    _notificationRepository = widget.notificationRepository ?? RepositoryLocator.notificationRepository;
+    _complaintRepository = widget.complaintRepository ?? RepositoryLocator.complaintRepository;
     _connectivityService = widget.connectivityService ?? AppConnectivityService();
     _loadNotifications();
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_spacing.dart';
 import '../../../../core/constants/app_typography.dart';
+import '../../../../core/repositories/repository_locator.dart';
 import '../../models/govt_user_model.dart';
 import '../../services/govt_user_repository.dart';
 import '../../theme/govt_theme_tokens.dart';
@@ -33,7 +34,7 @@ class _GovtEditProfileDialogState extends State<GovtEditProfileDialog> {
   @override
   void initState() {
     super.initState();
-    _userRepo = widget.userRepository ?? MockGovernmentUserRepository();
+    _userRepo = widget.userRepository ?? RepositoryLocator.govtUserRepository;
     _nameController = TextEditingController(text: widget.user.fullName);
     _phoneController = TextEditingController(text: widget.user.phone);
     _designationController = TextEditingController(text: widget.user.designation);

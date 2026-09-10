@@ -9,6 +9,7 @@ import '../../core/models/hazard_model.dart';
 import '../../core/network/connectivity_service.dart';
 import '../../core/repositories/complaint_repository.dart';
 import '../../core/repositories/hazard_repository.dart';
+import '../../core/repositories/repository_locator.dart';
 import '../../core/widgets/civic_fix_app_bar.dart';
 import '../../core/widgets/civic_fix_card.dart';
 import '../../core/widgets/civic_fix_outlined_button.dart';
@@ -70,9 +71,9 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
   @override
   void initState() {
     super.initState();
-    _hazardRepository = widget.hazardRepository ?? MockHazardRepository();
-    _complaintRepository = widget.complaintRepository ?? MockComplaintRepository();
-    _locationService = widget.locationService ?? MockLocationService();
+    _hazardRepository = widget.hazardRepository ?? RepositoryLocator.hazardRepository;
+    _complaintRepository = widget.complaintRepository ?? RepositoryLocator.complaintRepository;
+    _locationService = widget.locationService ?? RepositoryLocator.locationService;
     _connectivityService = widget.connectivityService ?? AppConnectivityService();
     _loadHazards();
   }

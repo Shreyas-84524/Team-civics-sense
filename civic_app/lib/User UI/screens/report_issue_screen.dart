@@ -4,6 +4,7 @@ import '../../core/constants/app_radius.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/constants/app_typography.dart';
 import '../../core/location/location_model.dart';
+import '../../core/repositories/repository_locator.dart';
 import '../../core/routing/app_routes.dart';
 import '../../core/widgets/civic_fix_app_bar.dart';
 import '../../core/widgets/civic_fix_button.dart';
@@ -58,7 +59,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
   @override
   void initState() {
     super.initState();
-    _complaintService = widget.complaintService ?? MockComplaintService();
+    _complaintService = widget.complaintService ?? RepositoryLocator.complaintService;
     _draft = widget.initialDraft ?? ComplaintDraft.empty();
     if (_draft.title.isNotEmpty) {
       _titleController.text = _draft.title;
@@ -183,7 +184,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
       MaterialPageRoute(
         builder: (_) => SelectLocationScreen(
           initialLocation: _draft.location,
-          locationService: widget.locationService,
+          locationService: widget.locationService ?? RepositoryLocator.locationService,
         ),
       ),
     );
@@ -498,7 +499,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
         EvidencePicker(
           images: _draft.imageUrls,
           evidenceItems: _draft.evidence,
-          evidenceService: widget.evidenceService,
+          evidenceService: widget.evidenceService ?? RepositoryLocator.evidenceService,
           onImagesChanged: (updatedImages) {
             setState(() {
               _draft = _draft.copyWith(imageUrls: updatedImages);
@@ -537,7 +538,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
         LocationSelectionCard(
           selectedLocation: _draft.location,
           errorMessage: _locationError,
-          locationService: widget.locationService,
+          locationService: widget.locationService ?? RepositoryLocator.locationService,
           onOpenMapPicker: _openMapPicker,
           onLocationSelected: (loc) {
             setState(() {

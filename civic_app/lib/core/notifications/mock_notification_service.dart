@@ -1,13 +1,163 @@
+import 'dart:async';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_radius.dart';
 import '../constants/app_spacing.dart';
 import '../constants/app_typography.dart';
 import '../models/notification_model.dart';
+import '../routing/app_routes.dart';
+import 'notification_service.dart';
 
-/// In-app banner and notification presenter for Phase 1.
-class MockNotificationService {
-  MockNotificationService._();
+/// In-app banner presenter and mock implementation of [NotificationService].
+class MockNotificationService implements NotificationService {
+  MockNotificationService({GlobalKey<NavigatorState>? navigatorKey})
+      : _navigatorKey = navigatorKey;
+
+  static final MockNotificationService _instance = MockNotificationService._internal();
+  factory MockNotificationService.instance() => _instance;
+  MockNotificationService._internal();
+
+  GlobalKey<NavigatorState>? _navigatorKey;
+  String? _mockToken = 'mock_fcm_token_device_001';
+  final Set<String> _registeredUsers = {};
+
+  final StreamController<String> _tokenRefreshController = StreamController<String>.broadcast();
+  final StreamController<RemoteMessage> _messageController = StreamController<RemoteMessage>.broadcast();
+  final StreamController<RemoteMessage> _messageOpenedAppController = StreamController<RemoteMessage>.broadcast();
+  RemoteMessage? _initialMessage;
+
+  // ===========================================================================
+  // NOTIFICATION SERVICE CONTRACT IMPLEMENTATION
+  // ===========================================================================
+
+  @override
+  Future<void> initialize({
+    GlobalKey<NavigatorState>? navigatorKey,
+    void Function(RemoteMessage)? onNotificationOpened,
+    void Function(RemoteMessage)? onForegroundMessage,
+  }) async {
+    if (navigatorKey != null) {
+      _navigatorKey = navigatorKey;
+    }
+  }
+
+  @override
+  Future<NotificationSettings?> requestPermission() async {
+    // In mock/test environments, grant authorized permission
+    return null;
+  }
+
+  @override
+  Future<String?> getToken() async {
+    return _mockToken;
+  }
+
+  @override
+  Future<void> deleteToken() async {
+    _mockToken = null;
+  }
+
+  @override
+  Future<void> registerDeviceToken(String userId, {String? platform}) async {
+    if (userId.isNotEmpty) {
+      _registeredUsers.add(userId);
+    }
+  }
+
+  @override
+  Future<void> unregisterDeviceToken(String userId) async {
+    _registeredUsers.remove(userId);
+  }
+
+  @override
+  Stream<String> get onTokenRefresh => _tokenRefreshController.stream;
+
+  @override
+  Stream<RemoteMessage> get onMessage => _messageController.stream;
+
+  @override
+  Stream<RemoteMessage> get onMessageOpenedApp => _messageOpenedAppController.stream;
+
+  @override
+  Future<RemoteMessage?> getInitialMessage() async {
+    return _initialMessage;
+  }
+
+  @override
+  void handleNotificationNavigation(
+    RemoteMessage message, {
+    BuildContext? context,
+    GlobalKey<NavigatorState>? navigatorKey,
+  }) {
+    final nav = navigatorKey?.currentState ?? _navigatorKey?.currentState;
+    final navContext = context ?? nav?.context;
+
+    final data = message.data;
+    final complaintId = data['complaintId'] as String?;
+    final targetRoute = data['targetRoute'] as String?;
+    final role = data['role'] as String?;
+    final type = data['type'] as String?;
+
+    if (targetRoute != null && targetRoute.isNotEmpty) {
+      if (nav != null) {
+        nav.pushNamed(targetRoute, arguments: complaintId ?? data);
+      } else if (navContext != null) {
+        Navigator.of(navContext).pushNamed(targetRoute, arguments: complaintId ?? data);
+      }
+      return;
+    }
+
+    if (complaintId != null && complaintId.isNotEmpty) {
+      final isGovt = role == 'government' ||
+          type == 'high_priority_complaint' ||
+          type == 'new_complaint_assigned';
+
+      final destinationRoute = isGovt ? AppRoutes.govtComplaintDetails : AppRoutes.complaintDetails;
+
+      if (nav != null) {
+        nav.pushNamed(destinationRoute, arguments: complaintId);
+      } else if (navContext != null) {
+        Navigator.of(navContext).pushNamed(destinationRoute, arguments: complaintId);
+      }
+      return;
+    }
+
+    if (nav != null) {
+      nav.pushNamed(AppRoutes.notifications);
+    } else if (navContext != null) {
+      Navigator.of(navContext).pushNamed(AppRoutes.notifications);
+    }
+  }
+
+  // ===========================================================================
+  // TEST & SIMULATION HELPERS
+  // ===========================================================================
+
+  bool isUserRegistered(String userId) => _registeredUsers.contains(userId);
+
+  void setMockToken(String? token) {
+    _mockToken = token;
+    if (token != null) {
+      _tokenRefreshController.add(token);
+    }
+  }
+
+  void setInitialMessage(RemoteMessage? message) {
+    _initialMessage = message;
+  }
+
+  void simulateIncomingForegroundMessage(RemoteMessage message) {
+    _messageController.add(message);
+  }
+
+  void simulateNotificationTapFromBackground(RemoteMessage message) {
+    _messageOpenedAppController.add(message);
+  }
+
+  // ===========================================================================
+  // IN-APP UI SNACKBAR BANNER (STATIC UTILITY)
+  // ===========================================================================
 
   static void showInAppAlert(
     BuildContext context, {

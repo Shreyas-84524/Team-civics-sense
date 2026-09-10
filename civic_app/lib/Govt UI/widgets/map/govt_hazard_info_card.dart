@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
 import '../../../core/models/hazard_model.dart';
+import '../../../core/repositories/repository_locator.dart';
 import '../../../core/routing/app_routes.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/widgets/status_badge.dart';
@@ -22,7 +23,7 @@ class GovtHazardInfoCard extends StatelessWidget {
   });
 
   Future<void> _navigateToDetails(BuildContext context) async {
-    final repo = complaintRepository ?? MockGovtComplaintRepository();
+    final repo = complaintRepository ?? RepositoryLocator.govtComplaintRepository;
     final complaintId = hazard.complaintId ?? hazard.id;
 
     var complaint = await repo.getComplaintById(complaintId);

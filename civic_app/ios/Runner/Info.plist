@@ -2,6 +2,12 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSCameraUsageDescription</key>
+	<string>CivicFix uses the camera to let you capture evidence of civic issues.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>CivicFix uses your photos so you can attach existing evidence to a civic issue report.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>CivicFix uses your location to attach the location of the reported civic issue.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

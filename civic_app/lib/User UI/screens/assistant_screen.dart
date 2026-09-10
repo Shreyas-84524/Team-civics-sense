@@ -4,6 +4,7 @@ import '../../core/constants/app_radius.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/constants/app_typography.dart';
 import '../../core/models/assistant_message_model.dart';
+import '../../core/repositories/repository_locator.dart';
 import '../../core/repositories/user_repository.dart';
 import '../../core/widgets/civic_fix_app_bar.dart';
 import '../../core/widgets/responsive_container.dart';
@@ -40,7 +41,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
   void initState() {
     super.initState();
     _assistantService = widget.assistantService ?? CivicAssistantService();
-    _userRepository = widget.userRepository ?? MockUserRepository();
+    _userRepository = widget.userRepository ?? RepositoryLocator.userRepository;
     _initAssistant();
   }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
 import '../../../core/models/complaint_model.dart';
+import '../../../core/repositories/repository_locator.dart';
 import '../../../core/widgets/civic_fix_button.dart';
 import '../../../core/widgets/responsive_container.dart';
 import '../../../core/widgets/status_badge.dart';
@@ -13,11 +14,13 @@ import '../../widgets/common/govt_confirmation_dialog.dart';
 class GovtStatusUpdateScreen extends StatefulWidget {
   final ComplaintModel? complaint;
   final String? complaintId;
+  final GovtComplaintRepository? repository;
 
   const GovtStatusUpdateScreen({
     super.key,
     this.complaint,
     this.complaintId,
+    this.repository,
   });
 
   @override
@@ -25,7 +28,7 @@ class GovtStatusUpdateScreen extends StatefulWidget {
 }
 
 class _GovtStatusUpdateScreenState extends State<GovtStatusUpdateScreen> {
-  final GovtComplaintRepository _repository = MockGovtComplaintRepository();
+  late final GovtComplaintRepository _repository;
   final _messageController = TextEditingController();
   final _internalNotesController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
@@ -38,6 +41,7 @@ class _GovtStatusUpdateScreenState extends State<GovtStatusUpdateScreen> {
   @override
   void initState() {
     super.initState();
+    _repository = widget.repository ?? RepositoryLocator.govtComplaintRepository;
     if (widget.complaint != null) {
       _complaint = widget.complaint;
       _initStatusForComplaint(_complaint!);

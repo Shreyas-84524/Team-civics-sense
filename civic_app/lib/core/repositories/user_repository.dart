@@ -17,6 +17,7 @@ abstract class UserRepository {
   Future<List<CivicRewardItem>> getRewardsCatalog();
   Future<List<CivicAchievement>> getUserBadges();
   Future<bool> redeemReward(String rewardId);
+  Future<void> clearUserCache();
 }
 
 class MockUserRepository implements UserRepository {
@@ -81,5 +82,7 @@ class MockUserRepository implements UserRepository {
     } catch (_) {}
     return false;
   }
-}
 
+  @override
+  Future<void> clearUserCache() async {}
+}

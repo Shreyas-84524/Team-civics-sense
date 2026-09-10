@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_spacing.dart';
 import '../../../../core/constants/app_typography.dart';
+import '../../../../core/repositories/repository_locator.dart';
 import '../../models/govt_settings_model.dart';
 import '../../services/govt_user_repository.dart';
 import '../../theme/govt_theme_tokens.dart';
@@ -25,7 +26,7 @@ class _GovtLanguageSettingsWidgetState extends State<GovtLanguageSettingsWidget>
   @override
   void initState() {
     super.initState();
-    _userRepo = widget.userRepository ?? MockGovernmentUserRepository();
+    _userRepo = widget.userRepository ?? RepositoryLocator.govtUserRepository;
   }
 
   void _selectLanguage(GovtLanguage language) {

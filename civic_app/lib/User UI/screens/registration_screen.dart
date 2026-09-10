@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/auth/auth_service_locator.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_radius.dart';
 import '../../core/constants/app_spacing.dart';
@@ -7,15 +8,17 @@ import '../../core/routing/app_routes.dart';
 import '../../core/widgets/civic_fix_app_bar.dart';
 import '../../core/widgets/civic_fix_button.dart';
 import '../../core/widgets/responsive_container.dart';
-import '../services/mock_auth_service.dart';
+import '../../core/auth/auth_service.dart';
 import '../widgets/auth_error_banner.dart';
 import '../widgets/auth_header.dart';
 import '../widgets/auth_success_banner.dart';
 import '../widgets/auth_text_field.dart';
 
-/// Citizen Registration Screen with form validation, language selection, and mock account creation.
+/// Citizen Registration Screen with form validation, language selection, and mock/Firebase account creation.
 class RegistrationScreen extends StatefulWidget {
-  const RegistrationScreen({super.key});
+  final AuthService? authService;
+
+  const RegistrationScreen({super.key, this.authService});
 
   @override
   State<RegistrationScreen> createState() => _RegistrationScreenState();
@@ -28,7 +31,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  final AuthService _authService = MockAuthService();
+  late final AuthService _authService;
 
   String _selectedLanguage = 'en';
   bool _isPasswordVisible = false;
@@ -36,6 +39,12 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   bool _isLoading = false;
   String? _errorMessage;
   String? _successMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _authService = widget.authService ?? AuthServiceLocator.citizenAuth;
+  }
 
   final Map<String, String> _languages = {
     'en': 'English',

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import '../models/complaint_model.dart';
 import '../network/connectivity_service.dart';
@@ -6,6 +7,7 @@ import '../repositories/complaint_repository.dart';
 import '../repositories/hive_complaint_repository.dart';
 import 'logging/sync_logger.dart';
 import 'models/sync_queue_item.dart';
+import 'providers/firebase_sync_provider.dart';
 import 'providers/mock_sync_provider.dart';
 import 'providers/sync_provider.dart';
 import 'queue/sync_queue.dart';
@@ -49,7 +51,7 @@ class SyncManager {
   static SyncManager? _instance;
 
   final SyncQueue _queue;
-  final SyncProvider _provider;
+  SyncProvider _provider;
   final ConnectivityService _connectivity;
   final ComplaintRepository _repository;
   final RetryPolicy _retryPolicy;
@@ -74,13 +76,21 @@ class SyncManager {
   }) {
     _instance ??= SyncManager._internal(
       queue: queue ?? HiveSyncQueue(),
-      provider: provider ?? MockSyncProvider(),
+      provider: provider ?? (_isFirebaseReady ? FirebaseSyncProvider() : MockSyncProvider()),
       connectivity: connectivity ?? AppConnectivityService(),
       repository: repository ?? HiveComplaintRepository(),
       retryPolicy: retryPolicy ?? RetryPolicy(),
       logger: logger ?? SyncLogger.instance,
     );
     return _instance!;
+  }
+
+  static bool get _isFirebaseReady {
+    try {
+      return Firebase.apps.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
   }
 
   SyncManager._internal({
@@ -134,6 +144,12 @@ class SyncManager {
   SyncManagerState get currentState => _currentState;
   Stream<SyncManagerState> get syncStateStream => _stateController.stream;
   bool get isProcessing => _isProcessingQueue;
+
+  /// Dynamically update or inject the active synchronization provider (e.g. FirebaseSyncProvider).
+  void setProvider(SyncProvider provider) {
+    _provider = provider;
+    _logger.info('SyncManager provider updated to ${provider.runtimeType}.');
+  }
 
   void _initListeners() {
     // Listen to network changes: auto-sync when transitioning from offline -> online
@@ -317,7 +333,7 @@ class SyncManager {
     } else {
       // Failure handling
       final newAttemptCount = item.attemptCount + 1;
-      final willRetry = _retryPolicy.shouldRetry(newAttemptCount);
+      final willRetry = result.isRecoverable && _retryPolicy.shouldRetry(newAttemptCount);
       final delay = willRetry ? _retryPolicy.getDelay(newAttemptCount) : null;
 
       _logger.logFailed(item, result.errorMessage ?? 'Sync failed', willRetry: willRetry, retryDelay: delay);

@@ -1,0 +1,85 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // ==========================================
+    // HELPER FUNCTIONS & ACCESS GUARDS
+    // ==========================================
+
+    // Checks if the incoming request has a verified Firebase Auth session.
+    function isAuthenticated() {
+      return request.auth != null && request.auth.uid != null;
+    }
+
+    // Checks if the authenticated user matches the owner identifier.
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Enforces valid image MIME types (JPEG, PNG, WEBP) and maximum 10MB file size.
+    function isValidEvidenceImage() {
+      return request.resource != null
+        && request.resource.size > 0
+        && request.resource.size <= 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|jpg|png|webp)');
+    }
+
+    // Enforces valid avatar image MIME types and maximum 5MB file size.
+    function isValidAvatarImage() {
+      return request.resource != null
+        && request.resource.size > 0
+        && request.resource.size <= 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|jpg|png|webp)');
+    }
+
+    // ==========================================
+    // COMPLAINT EVIDENCE RULES
+    // Path: complaint_evidence/{complaintId}/{fileName}
+    // ==========================================
+    match /complaint_evidence/{complaintId}/{allPaths=**} {
+      // Authenticated citizens and municipal officers can view complaint evidence.
+      allow read: if isAuthenticated();
+
+      // Authenticated users can upload evidence subject to size and format constraints.
+      allow create, update: if isAuthenticated() && isValidEvidenceImage();
+
+      // Deletion is permitted for authenticated users managing their reports.
+      allow delete: if isAuthenticated();
+    }
+
+    // Alternative structured path: complaints/{complaintId}/images/{fileName}
+    match /complaints/{complaintId}/images/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated() && isValidEvidenceImage();
+      allow delete: if isAuthenticated();
+    }
+
+    // ==========================================
+    // USER & OFFICER AVATARS
+    // ==========================================
+    match /user_avatars/{userId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow create, update: if isOwner(userId) && isValidAvatarImage();
+      allow delete: if isOwner(userId);
+    }
+
+    match /users/{userId}/avatars/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow create, update: if isOwner(userId) && isValidAvatarImage();
+      allow delete: if isOwner(userId);
+    }
+
+    match /govt_avatars/{officerId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow create, update: if isOwner(officerId) && isValidAvatarImage();
+      allow delete: if isOwner(officerId);
+    }
+
+    // ==========================================
+    // DEFAULT DENY-ALL ROOT RULE
+    // ==========================================
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
+import '../../core/auth/auth_service.dart';
+import '../../core/auth/auth_service_locator.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_radius.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/constants/app_typography.dart';
 import '../../core/models/user_model.dart';
+import '../../core/repositories/repository_locator.dart';
 import '../../core/repositories/user_repository.dart';
 import '../../core/routing/app_routes.dart';
 import '../../core/widgets/civic_fix_app_bar.dart';
 import '../../core/widgets/civic_fix_card.dart';
 import '../../core/widgets/responsive_container.dart';
 import '../../core/widgets/section_header.dart';
-import '../services/mock_auth_service.dart';
 import '../widgets/settings/language_selector_sheet.dart';
 
 /// Citizen Settings and Preferences Screen.
@@ -36,8 +38,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-    _userRepository = widget.userRepository ?? MockUserRepository();
-    _authService = widget.authService ?? MockAuthService();
+    _userRepository = widget.userRepository ?? RepositoryLocator.userRepository;
+    _authService = widget.authService ?? AuthServiceLocator.citizenAuth;
   }
 
   void _showLogoutConfirmation() {

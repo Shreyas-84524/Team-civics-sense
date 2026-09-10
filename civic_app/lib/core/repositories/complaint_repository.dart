@@ -1,3 +1,4 @@
+import 'dart:async';
 import '../local/mock_data_source.dart';
 import '../location/location_model.dart';
 import '../models/category_model.dart';
@@ -24,6 +25,13 @@ abstract class ComplaintRepository {
   Future<void> updateSyncStatus(String complaintId, SyncStatus status, {String? serverId});
   Future<void> upvoteComplaint(String id);
   Future<List<ComplaintModel>> getNearbyHazards();
+
+  // Real-time Streams
+  Stream<ComplaintModel?> watchComplaint(String id);
+  Stream<List<TimelineEvent>> watchComplaintTimeline(String complaintId);
+  Stream<List<ComplaintModel>> watchCitizenComplaints(String citizenId);
+  Stream<List<ComplaintModel>> watchComplaints();
+  Stream<List<ComplaintModel>> watchNearbyHazards();
 }
 
 class MockComplaintRepository implements ComplaintRepository {
@@ -32,6 +40,9 @@ class MockComplaintRepository implements ComplaintRepository {
   MockComplaintRepository._internal();
 
   final MockDataSource _dataSource = MockDataSource();
+  final StreamController<List<ComplaintModel>> _complaintsStreamController =
+      StreamController<List<ComplaintModel>>.broadcast();
+
   int _ticketCounter = 24;
 
   @override
@@ -152,16 +163,21 @@ class MockComplaintRepository implements ComplaintRepository {
       civicPoints: _dataSource.currentUser.civicPoints + 20,
     );
     _dataSource.currentUser = updatedUser;
+    _notifyListeners();
 
     return newComplaint;
   }
 
   @override
   Future<ComplaintModel> saveOfflineComplaint(ComplaintModel complaint) async {
+    final targetStatus = complaint.syncStatus == SyncStatus.failed
+        ? SyncStatus.failed
+        : SyncStatus.pending;
     final offlineComplaint = complaint.copyWith(
-      syncStatus: SyncStatus.pending,
+      syncStatus: targetStatus,
       localId: complaint.localId ?? complaint.id,
     );
+
 
     // Replace if existing, or insert at top
     final existingIndex = _dataSource.complaints.indexWhere(
@@ -213,6 +229,7 @@ class MockComplaintRepository implements ComplaintRepository {
       civicPoints: _dataSource.currentUser.civicPoints + 20,
     );
     _dataSource.currentUser = updatedUser;
+    _notifyListeners();
 
     return offlineComplaint;
   }
@@ -240,6 +257,7 @@ class MockComplaintRepository implements ComplaintRepository {
         syncStatus: status,
         serverId: serverId ?? current.serverId,
       );
+      _notifyListeners();
     }
   }
 
@@ -249,8 +267,10 @@ class MockComplaintRepository implements ComplaintRepository {
     if (index != -1) {
       final current = _dataSource.complaints[index];
       _dataSource.complaints[index] = current.copyWith(upvotes: current.upvotes + 1);
+      _notifyListeners();
     }
   }
+
 
   @override
   Future<List<ComplaintModel>> getNearbyHazards() async {
@@ -258,4 +278,66 @@ class MockComplaintRepository implements ComplaintRepository {
         .where((c) => c.isHazard || c.priority == ComplaintPriority.emergency || c.priority == ComplaintPriority.high)
         .toList();
   }
+
+  void _notifyListeners() {
+    if (!_complaintsStreamController.isClosed) {
+      _complaintsStreamController.add(List.unmodifiable(_dataSource.complaints));
+    }
+  }
+
+  @override
+  Stream<ComplaintModel?> watchComplaint(String id) async* {
+    yield await getComplaintById(id);
+    yield* _complaintsStreamController.stream.map((list) {
+      try {
+        return list.firstWhere(
+          (c) => c.id == id || c.ticketNumber == id || c.localId == id,
+        );
+      } catch (_) {
+        return null;
+      }
+    });
+  }
+
+  @override
+  Stream<List<TimelineEvent>> watchComplaintTimeline(String complaintId) async* {
+    final initial = await getComplaintById(complaintId);
+    yield initial?.timeline ?? [];
+    yield* _complaintsStreamController.stream.map((list) {
+      try {
+        final found = list.firstWhere(
+          (c) => c.id == complaintId || c.ticketNumber == complaintId || c.localId == complaintId,
+        );
+        return found.timeline;
+      } catch (_) {
+        return <TimelineEvent>[];
+      }
+    });
+  }
+
+  @override
+  Stream<List<ComplaintModel>> watchCitizenComplaints(String citizenId) async* {
+    yield await getCitizenComplaints(citizenId);
+    yield* _complaintsStreamController.stream.map((list) {
+      return list.where((c) {
+        if (citizenId.isEmpty) return true;
+        return c.citizenId == citizenId || c.citizenId == 'user_citizen_001' || c.citizenId == 'user_001';
+      }).toList();
+    });
+  }
+
+  @override
+  Stream<List<ComplaintModel>> watchComplaints() async* {
+    yield await getComplaints();
+    yield* _complaintsStreamController.stream;
+  }
+
+  @override
+  Stream<List<ComplaintModel>> watchNearbyHazards() async* {
+    yield await getNearbyHazards();
+    yield* _complaintsStreamController.stream.map((list) {
+      return list.where((c) => c.isHazard || c.priority == ComplaintPriority.emergency || c.priority == ComplaintPriority.high).toList();
+    });
+  }
 }
+

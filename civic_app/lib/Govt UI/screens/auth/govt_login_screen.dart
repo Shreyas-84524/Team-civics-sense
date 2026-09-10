@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/auth/auth_service_locator.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
@@ -12,7 +13,9 @@ import '../../theme/govt_theme_tokens.dart';
 
 /// Official Government & Municipal Administration Login Portal.
 class GovtLoginScreen extends StatefulWidget {
-  const GovtLoginScreen({super.key});
+  final GovtAuthService? authService;
+
+  const GovtLoginScreen({super.key, this.authService});
 
   @override
   State<GovtLoginScreen> createState() => _GovtLoginScreenState();
@@ -20,15 +23,21 @@ class GovtLoginScreen extends StatefulWidget {
 
 class _GovtLoginScreenState extends State<GovtLoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController(text: 'government@civicfix.test');
-  final _passwordController = TextEditingController(text: 'CivicFix123');
-  final GovtAuthService _authService = MockGovtAuthService();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  late final GovtAuthService _authService;
 
   String _selectedDepartmentId = 'dept_roads';
   bool _isPasswordVisible = false;
   bool _rememberMe = true;
   bool _isLoading = false;
   String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _authService = widget.authService ?? AuthServiceLocator.govtAuth;
+  }
 
   @override
   void dispose() {
@@ -64,15 +73,6 @@ class _GovtLoginScreenState extends State<GovtLoginScreen> {
         _errorMessage = result.errorMessage ?? 'Authentication failed. Please verify credentials.';
       });
     }
-  }
-
-  void _fillMockCredentials() {
-    setState(() {
-      _emailController.text = 'government@civicfix.test';
-      _passwordController.text = 'CivicFix123';
-      _selectedDepartmentId = 'dept_roads';
-      _errorMessage = null;
-    });
   }
 
   @override
@@ -249,7 +249,7 @@ class _GovtLoginScreenState extends State<GovtLoginScreen> {
                       ),
                       CivicFixSpacing.vSpaceXs,
                       CivicFixTextField(
-                        hintText: 'e.g. government@civicfix.test',
+                        hintText: 'e.g. officer@civicfix.gov.in',
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
                         prefixIcon: const Icon(Icons.badge_outlined, size: 20),
@@ -378,32 +378,19 @@ class _GovtLoginScreenState extends State<GovtLoginScreen> {
                       ),
                       CivicFixSpacing.vSpaceLg,
 
-                      // Quick Fill Test Credentials & Switch Portal
+                      // Switch Portal Link
                       Center(
-                        child: Column(
-                          children: [
-                            TextButton.icon(
-                              onPressed: _isLoading ? null : _fillMockCredentials,
-                              icon: const Icon(Icons.auto_fix_high_rounded, size: 16),
-                              label: const Text('Fill Test Officer Credentials'),
-                              style: TextButton.styleFrom(
-                                foregroundColor: GovtThemeTokens.secondary,
-                              ),
+                        child: TextButton(
+                          onPressed: () {
+                            Navigator.pushReplacementNamed(context, AppRoutes.login);
+                          },
+                          child: Text(
+                            'Switch to Citizen App',
+                            style: CivicFixTypography.captionMedium.copyWith(
+                              color: GovtThemeTokens.textSecondary,
+                              decoration: TextDecoration.underline,
                             ),
-                            CivicFixSpacing.vSpaceSm,
-                            TextButton(
-                              onPressed: () {
-                                Navigator.pushReplacementNamed(context, AppRoutes.login);
-                              },
-                              child: Text(
-                                'Switch to Citizen App',
-                                style: CivicFixTypography.captionMedium.copyWith(
-                                  color: GovtThemeTokens.textSecondary,
-                                  decoration: TextDecoration.underline,
-                                ),
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       ),
                     ],

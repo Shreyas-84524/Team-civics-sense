@@ -4,6 +4,7 @@ import '../../../core/constants/app_radius.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
 import '../../../core/location/location_model.dart';
+import '../../../core/repositories/repository_locator.dart';
 import '../../../core/widgets/civic_fix_card.dart';
 import '../../services/location_service.dart';
 
@@ -41,7 +42,7 @@ class _LocationSelectionCardState extends State<LocationSelectionCard> {
   @override
   void initState() {
     super.initState();
-    _locationService = widget.locationService ?? MockLocationService();
+    _locationService = widget.locationService ?? RepositoryLocator.locationService;
   }
 
   Future<void> _detectCurrentLocation() async {

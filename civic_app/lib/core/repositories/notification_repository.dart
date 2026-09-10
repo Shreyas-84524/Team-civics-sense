@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../local/mock_data_source.dart';
 import '../models/notification_model.dart';
@@ -15,6 +16,15 @@ abstract class NotificationRepository {
   Future<int> getUnreadCount({String? userId});
 
   ValueListenable<int> get unreadCountListenable;
+
+  // Real-time Streams
+  Stream<List<NotificationModel>> watchNotifications({
+    String? userId,
+    bool? unreadOnly,
+    NotificationType? type,
+  });
+
+  Stream<int> watchUnreadCount({String? userId});
 }
 
 /// In-memory mock implementation of [NotificationRepository].
@@ -27,6 +37,7 @@ class MockNotificationRepository implements NotificationRepository {
 
   final MockDataSource _dataSource = MockDataSource();
   final ValueNotifier<int> _unreadCountNotifier = ValueNotifier<int>(0);
+  final StreamController<void> _notificationsNotifier = StreamController<void>.broadcast();
 
   @override
   ValueListenable<int> get unreadCountListenable => _unreadCountNotifier;
@@ -40,6 +51,9 @@ class MockNotificationRepository implements NotificationRepository {
 
   void _syncUnreadCount() {
     _unreadCountNotifier.value = _calculateUnread();
+    if (!_notificationsNotifier.isClosed) {
+      _notificationsNotifier.add(null);
+    }
   }
 
   @override
@@ -99,4 +113,23 @@ class MockNotificationRepository implements NotificationRepository {
     _unreadCountNotifier.value = count;
     return count;
   }
+
+  @override
+  Stream<List<NotificationModel>> watchNotifications({
+    String? userId,
+    bool? unreadOnly,
+    NotificationType? type,
+  }) async* {
+    yield await getNotifications(userId: userId, unreadOnly: unreadOnly, type: type);
+    yield* _notificationsNotifier.stream.asyncMap(
+      (_) => getNotifications(userId: userId, unreadOnly: unreadOnly, type: type),
+    );
+  }
+
+  @override
+  Stream<int> watchUnreadCount({String? userId}) async* {
+    yield await getUnreadCount(userId: userId);
+    yield* _notificationsNotifier.stream.asyncMap((_) => getUnreadCount(userId: userId));
+  }
 }
+

@@ -7,6 +7,7 @@ import '../../core/models/reward_model.dart';
 import '../../core/models/user_model.dart';
 import '../../core/network/connectivity_service.dart';
 import '../../core/repositories/rewards_repository.dart';
+import '../../core/repositories/repository_locator.dart';
 import '../../core/repositories/user_repository.dart';
 import '../../core/widgets/civic_fix_app_bar.dart';
 import '../../core/widgets/civic_fix_card.dart';
@@ -48,8 +49,8 @@ class _RewardsScreenState extends State<RewardsScreen> {
   @override
   void initState() {
     super.initState();
-    _rewardsRepository = widget.rewardsRepository ?? MockRewardsRepository();
-    _userRepository = widget.userRepository ?? MockUserRepository();
+    _rewardsRepository = widget.rewardsRepository ?? RepositoryLocator.rewardsRepository;
+    _userRepository = widget.userRepository ?? RepositoryLocator.userRepository;
     _connectivityService = widget.connectivityService ?? AppConnectivityService();
     _loadData();
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/auth/auth_service_locator.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_radius.dart';
 import '../../core/constants/app_spacing.dart';
@@ -7,7 +8,6 @@ import '../../core/routing/app_routes.dart';
 import '../../core/widgets/civic_fix_button.dart';
 import '../../core/widgets/civic_fix_card.dart';
 import '../../core/widgets/responsive_container.dart';
-import '../services/mock_auth_service.dart';
 
 /// Temporary User Home placeholder strictly to verify post-authentication navigation.
 class HomePlaceholderScreen extends StatelessWidget {
@@ -15,7 +15,7 @@ class HomePlaceholderScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user = MockAuthService().currentUser;
+    final user = AuthServiceLocator.citizenAuth.currentUser;
     final userName = user?.fullName ?? 'Citizen';
     final userEmail = user?.email ?? '';
 
@@ -29,7 +29,7 @@ class HomePlaceholderScreen extends StatelessWidget {
             icon: const Icon(Icons.logout_rounded),
             tooltip: 'Sign Out',
             onPressed: () async {
-              await MockAuthService().logout();
+              await AuthServiceLocator.citizenAuth.logout();
               if (context.mounted) {
                 Navigator.pushNamedAndRemoveUntil(
                   context,
@@ -99,7 +99,7 @@ class HomePlaceholderScreen extends StatelessWidget {
                   icon: Icons.logout_rounded,
                   backgroundColor: CivicFixColors.primary,
                   onPressed: () async {
-                    await MockAuthService().logout();
+                    await AuthServiceLocator.citizenAuth.logout();
                     if (context.mounted) {
                       Navigator.pushNamedAndRemoveUntil(
                         context,

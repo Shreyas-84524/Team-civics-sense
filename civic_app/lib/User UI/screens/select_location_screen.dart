@@ -4,6 +4,7 @@ import '../../core/constants/app_radius.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/constants/app_typography.dart';
 import '../../core/location/location_model.dart';
+import '../../core/repositories/repository_locator.dart';
 import '../../core/widgets/civic_fix_app_bar.dart';
 import '../../core/widgets/civic_fix_button.dart';
 import '../../core/widgets/civic_fix_card.dart';
@@ -40,7 +41,7 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> {
   @override
   void initState() {
     super.initState();
-    _locationService = widget.locationService ?? MockLocationService();
+    _locationService = widget.locationService ?? RepositoryLocator.locationService;
     _currentLocation = widget.initialLocation ??
         const CivicLocation(
           latitude: 12.9716,

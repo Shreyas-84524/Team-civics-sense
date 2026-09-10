@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/repositories/notification_repository.dart';
+import '../../core/repositories/repository_locator.dart';
 import 'hazard_map_screen.dart';
 import 'home_screen.dart';
 import 'my_complaints_screen.dart';
@@ -10,8 +11,13 @@ import 'profile_screen.dart';
 /// Main Shell holding the 5 Citizen Bottom Navigation tabs.
 class MainNavigationScreen extends StatefulWidget {
   final int initialIndex;
+  final NotificationRepository? notificationRepository;
 
-  const MainNavigationScreen({super.key, this.initialIndex = 0});
+  const MainNavigationScreen({
+    super.key,
+    this.initialIndex = 0,
+    this.notificationRepository,
+  });
 
   @override
   State<MainNavigationScreen> createState() => _MainNavigationScreenState();
@@ -19,12 +25,13 @@ class MainNavigationScreen extends StatefulWidget {
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   late int _currentIndex;
-  final NotificationRepository _notificationRepository = MockNotificationRepository();
+  late final NotificationRepository _notificationRepository;
 
   @override
   void initState() {
     super.initState();
     _currentIndex = widget.initialIndex;
+    _notificationRepository = widget.notificationRepository ?? RepositoryLocator.notificationRepository;
     _notificationRepository.getUnreadCount();
   }
 

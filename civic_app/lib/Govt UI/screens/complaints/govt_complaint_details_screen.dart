@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
 import '../../../core/models/complaint_model.dart';
+import '../../../core/repositories/repository_locator.dart';
 import '../../../core/routing/app_routes.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/widgets/priority_badge.dart';
@@ -14,11 +15,13 @@ import '../../widgets/dashboard/dashboard_card.dart';
 class GovtComplaintDetailsScreen extends StatefulWidget {
   final ComplaintModel? complaint;
   final String? complaintId;
+  final GovtComplaintRepository? repository;
 
   const GovtComplaintDetailsScreen({
     super.key,
     this.complaint,
     this.complaintId,
+    this.repository,
   });
 
   @override
@@ -26,13 +29,14 @@ class GovtComplaintDetailsScreen extends StatefulWidget {
 }
 
 class _GovtComplaintDetailsScreenState extends State<GovtComplaintDetailsScreen> {
-  final GovtComplaintRepository _repository = MockGovtComplaintRepository();
+  late final GovtComplaintRepository _repository;
   ComplaintModel? _complaint;
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
+    _repository = widget.repository ?? RepositoryLocator.govtComplaintRepository;
     if (widget.complaint != null) {
       _complaint = widget.complaint;
     } else if (widget.complaintId != null) {

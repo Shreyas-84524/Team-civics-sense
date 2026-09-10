@@ -1,35 +1,49 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../core/auth/auth_service.dart';
+import '../../core/auth/auth_service_locator.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/constants/app_radius.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/constants/app_typography.dart';
 import '../../core/routing/app_routes.dart';
-import '../services/mock_auth_service.dart';
 
-/// Polished Splash Screen checking mock authentication state before routing.
+/// Polished Splash Screen checking authentication state and resolving roles before routing.
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key});
+  final AuthService? authService;
+
+  const SplashScreen({super.key, this.authService});
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-  final AuthService _authService = MockAuthService();
+  late final AuthService _authService;
 
   @override
   void initState() {
     super.initState();
+    _authService = widget.authService ?? AuthServiceLocator.citizenAuth;
     _checkAuthAndNavigate();
   }
 
   Future<void> _checkAuthAndNavigate() async {
     final stopwatch = Stopwatch()..start();
-    final isAuthenticated = await _authService.checkAuthState();
-    final elapsed = stopwatch.elapsedMilliseconds;
 
+    bool isGovt = false;
+
+    // Check active Firebase Auth session and resolve role
+    final hasAuth = await _authService.checkAuthState();
+    if (hasAuth) {
+      final role = _authService.currentUser?.role;
+      if (role == 'government' || role == 'admin') {
+        isGovt = true;
+      }
+    }
+
+    final elapsed = stopwatch.elapsedMilliseconds;
     // Minimum display duration to feel calm and avoid sudden flicker (approx 1200ms)
     final remaining = 1200 - elapsed;
     if (remaining > 0) {
@@ -38,10 +52,10 @@ class _SplashScreenState extends State<SplashScreen> {
 
     if (!mounted) return;
 
-    if (isAuthenticated) {
-      Navigator.pushReplacementNamed(context, AppRoutes.home);
+    if (isGovt) {
+      Navigator.pushReplacementNamed(context, AppRoutes.govtDashboard);
     } else {
-      Navigator.pushReplacementNamed(context, AppRoutes.login);
+      Navigator.pushReplacementNamed(context, AppRoutes.home);
     }
   }
 

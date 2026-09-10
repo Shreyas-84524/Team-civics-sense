@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import '../../../core/auth/auth_service_locator.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
+import '../../../core/repositories/repository_locator.dart';
 import '../../../core/routing/app_routes.dart';
 import '../../models/department_model.dart';
 import '../../models/govt_user_model.dart';
@@ -38,8 +40,8 @@ class _GovtProfileScreenState extends State<GovtProfileScreen> {
   @override
   void initState() {
     super.initState();
-    _authService = widget.authService ?? MockGovtAuthService();
-    _userRepo = widget.userRepository ?? MockGovernmentUserRepository();
+    _authService = widget.authService ?? AuthServiceLocator.govtAuth;
+    _userRepo = widget.userRepository ?? RepositoryLocator.govtUserRepository;
   }
 
   void _openEditProfileDialog(GovtUserModel user) {

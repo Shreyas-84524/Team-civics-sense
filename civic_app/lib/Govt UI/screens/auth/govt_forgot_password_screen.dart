@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/auth/auth_service_locator.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
@@ -11,7 +12,9 @@ import '../../theme/govt_theme_tokens.dart';
 
 /// Government Portal Password Recovery / Reset Screen.
 class GovtForgotPasswordScreen extends StatefulWidget {
-  const GovtForgotPasswordScreen({super.key});
+  final GovtAuthService? authService;
+
+  const GovtForgotPasswordScreen({super.key, this.authService});
 
   @override
   State<GovtForgotPasswordScreen> createState() => _GovtForgotPasswordScreenState();
@@ -19,13 +22,19 @@ class GovtForgotPasswordScreen extends StatefulWidget {
 
 class _GovtForgotPasswordScreenState extends State<GovtForgotPasswordScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController(text: 'government@civicfix.test');
-  final GovtAuthService _authService = MockGovtAuthService();
+  final _emailController = TextEditingController();
+  late final GovtAuthService _authService;
 
   bool _isLoading = false;
   bool _isSuccess = false;
   String? _errorMessage;
   String? _successMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _authService = widget.authService ?? AuthServiceLocator.govtAuth;
+  }
 
   @override
   void dispose() {
@@ -225,7 +234,7 @@ class _GovtForgotPasswordScreenState extends State<GovtForgotPasswordScreen> {
           ),
           CivicFixSpacing.vSpaceXs,
           CivicFixTextField(
-            hintText: 'e.g. government@civicfix.test',
+            hintText: 'e.g. officer@civicfix.gov.in',
             controller: _emailController,
             keyboardType: TextInputType.emailAddress,
             prefixIcon: const Icon(Icons.email_outlined, size: 20),

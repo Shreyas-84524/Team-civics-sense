@@ -28,10 +28,14 @@ class HiveComplaintRepository implements ComplaintRepository {
   @override
   Future<ComplaintModel> saveOfflineComplaint(ComplaintModel complaint) async {
     final localRef = complaint.localId ?? complaint.ticketNumber;
+    final targetStatus = complaint.syncStatus == SyncStatus.failed
+        ? SyncStatus.failed
+        : SyncStatus.pending;
     final offlineComplaint = complaint.copyWith(
-      syncStatus: SyncStatus.pending,
+      syncStatus: targetStatus,
       localId: localRef,
     );
+
 
     // 1-3. Attempt to save persistently to Hive boxes
     if (_storage.isInitialized) {
@@ -534,4 +538,35 @@ class HiveComplaintRepository implements ComplaintRepository {
           .toList();
     }
   }
+
+  // ===========================================================================
+  // REAL-TIME LOCAL WATCH STREAMS (Prompt 8)
+  // ===========================================================================
+
+  @override
+  Stream<ComplaintModel?> watchComplaint(String id) async* {
+    yield await getComplaintById(id);
+  }
+
+  @override
+  Stream<List<TimelineEvent>> watchComplaintTimeline(String complaintId) async* {
+    final complaint = await getComplaintById(complaintId);
+    yield complaint?.timeline ?? [];
+  }
+
+  @override
+  Stream<List<ComplaintModel>> watchCitizenComplaints(String citizenId) async* {
+    yield await getCitizenComplaints(citizenId);
+  }
+
+  @override
+  Stream<List<ComplaintModel>> watchComplaints() async* {
+    yield await getComplaints();
+  }
+
+  @override
+  Stream<List<ComplaintModel>> watchNearbyHazards() async* {
+    yield await getNearbyHazards();
+  }
 }
+

@@ -7,6 +7,7 @@ import '../../../core/models/complaint_model.dart';
 import '../../../core/models/hazard_model.dart';
 import '../../../core/network/connectivity_service.dart';
 import '../../../core/repositories/hazard_repository.dart';
+import '../../../core/repositories/repository_locator.dart';
 import '../../../core/widgets/offline_cache_banner.dart';
 import '../../services/govt_complaint_repository.dart';
 import '../../theme/govt_theme_tokens.dart';
@@ -75,9 +76,9 @@ class _GovtHazardMapScreenState extends State<GovtHazardMapScreen> {
   @override
   void initState() {
     super.initState();
-    _hazardRepository = widget.hazardRepository ?? MockHazardRepository();
-    _complaintRepository = widget.complaintRepository ?? MockGovtComplaintRepository();
-    _locationService = widget.locationService ?? MockLocationService();
+    _hazardRepository = widget.hazardRepository ?? RepositoryLocator.hazardRepository;
+    _complaintRepository = widget.complaintRepository ?? RepositoryLocator.govtComplaintRepository;
+    _locationService = widget.locationService ?? RepositoryLocator.locationService;
     _connectivityService = widget.connectivityService ?? AppConnectivityService();
 
     _resetMapTransform();

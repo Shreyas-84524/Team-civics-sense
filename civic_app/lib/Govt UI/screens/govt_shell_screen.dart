@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/auth/auth_service_locator.dart';
 import '../models/govt_user_model.dart';
 import '../services/govt_auth_service.dart';
 import '../theme/govt_theme_tokens.dart';
@@ -13,10 +14,12 @@ import 'profile/govt_profile_screen.dart';
 /// Responsive Layout Shell Container for all CivicFix Government Portal views.
 class GovtShellScreen extends StatefulWidget {
   final int initialIndex;
+  final GovtAuthService? authService;
 
   const GovtShellScreen({
     super.key,
     this.initialIndex = 0,
+    this.authService,
   });
 
   @override
@@ -26,12 +29,13 @@ class GovtShellScreen extends StatefulWidget {
 class _GovtShellScreenState extends State<GovtShellScreen> {
   late int _currentIndex;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  final GovtAuthService _authService = MockGovtAuthService();
+  late final GovtAuthService _authService;
 
   @override
   void initState() {
     super.initState();
     _currentIndex = widget.initialIndex;
+    _authService = widget.authService ?? AuthServiceLocator.govtAuth;
   }
 
   String get _currentTitle {

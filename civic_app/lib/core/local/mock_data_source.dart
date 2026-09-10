@@ -19,7 +19,7 @@ class MockDataSource {
   static UserModel _createDefaultUser() => const UserModel(
         id: 'user_citizen_001',
         fullName: 'Shreyas Shigwan',
-        email: 'citizen@civicfix.test',
+        email: 'shreyas@example.com',
         phone: '+91 98765 43210',
         civicPoints: 850,
         reportsSubmitted: 12,

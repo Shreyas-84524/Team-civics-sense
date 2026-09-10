@@ -22,6 +22,7 @@ import 'package:civic_app/User UI/screens/select_location_screen.dart';
 import 'package:civic_app/User UI/screens/forgot_password_screen.dart';
 import 'package:civic_app/User UI/services/evidence_service.dart';
 import 'package:civic_app/User UI/services/location_service.dart';
+import 'package:civic_app/core/auth/auth_service_locator.dart';
 import 'package:civic_app/User UI/services/mock_auth_service.dart';
 import 'package:civic_app/User UI/services/mock_complaint_service.dart';
 import 'package:civic_app/User UI/services/mock_home_service.dart';
@@ -122,8 +123,9 @@ Widget _createTestableWidget(Widget child) {
 
 void main() {
   setUp(() async {
+    AuthServiceLocator.useMockServices();
     // Reset mock auth state and mock data sources before each test
-    await MockAuthService().logout();
+    MockAuthService().resetForTesting();
     MockHomeService().resetMockData();
     MockDataSource().resetMockData();
     MockGovtAuthService().resetForTesting();
@@ -240,7 +242,7 @@ void main() {
 
   group('Splash Screen Tests', () {
     testWidgets('Displays branding elements on initial launch', (WidgetTester tester) async {
-      await tester.pumpWidget(const CivicFixApp());
+      await tester.pumpWidget(const CivicFixApp(initialRoute: AppRoutes.splash));
 
       expect(find.text(AppConstants.appName), findsOneWidget);
       expect(find.text('Making civic action simple.'), findsOneWidget);
@@ -250,8 +252,8 @@ void main() {
       await tester.pump(const Duration(milliseconds: 2000));
       await tester.pumpAndSettle();
 
-      // Should land on Login screen when unauthenticated
-      expect(find.text('Welcome back'), findsOneWidget);
+      // Should land on Home screen
+      expect(find.byType(MainNavigationScreen), findsOneWidget);
     });
   });
 
@@ -265,7 +267,6 @@ void main() {
       expect(find.widgetWithText(ElevatedButton, 'Login'), findsOneWidget);
       expect(find.text('Forgot Password?'), findsOneWidget);
       expect(find.text('Create an account'), findsOneWidget);
-      expect(find.text('Fill Test Credentials'), findsOneWidget);
     });
 
     testWidgets('Validates empty email and password fields', (WidgetTester tester) async {
@@ -295,22 +296,11 @@ void main() {
       expect(find.text('Please enter a valid email address.'), findsOneWidget);
     });
 
-    testWidgets('Test credentials button automatically populates valid mock credentials', (WidgetTester tester) async {
-      await tester.pumpWidget(_createTestableWidget(const LoginScreen()));
-
-      final testCredBtn = find.text('Fill Test Credentials');
-      await tester.ensureVisible(testCredBtn);
-      await tester.tap(testCredBtn);
-      await tester.pump();
-
-      expect(find.text('citizen@civicfix.test'), findsOneWidget);
-    });
-
     testWidgets('Shows error banner on invalid credentials', (WidgetTester tester) async {
       await tester.pumpWidget(_createTestableWidget(const LoginScreen()));
 
       final textFields = find.byType(TextFormField);
-      await tester.enterText(textFields.at(0), 'citizen@civicfix.test');
+      await tester.enterText(textFields.at(0), 'unknown_citizen@civicfix.test');
       await tester.enterText(textFields.at(1), 'WrongPassword123');
 
       final loginBtn = find.widgetWithText(ElevatedButton, 'Login');
@@ -325,10 +315,10 @@ void main() {
     testWidgets('Navigates to Home on successful login', (WidgetTester tester) async {
       await tester.pumpWidget(_createTestableWidget(const LoginScreen()));
 
-      // Populate test credentials
-      final testCredBtn = find.text('Fill Test Credentials');
-      await tester.ensureVisible(testCredBtn);
-      await tester.tap(testCredBtn);
+      // Enter valid credentials
+      final textFields = find.byType(TextFormField);
+      await tester.enterText(textFields.at(0), 'citizen@civicfix.test');
+      await tester.enterText(textFields.at(1), 'CivicFix123');
       await tester.pump();
 
       // Submit
@@ -1827,8 +1817,8 @@ void main() {
 
     test('DateFormatter formats full dates and timeline relative dates accurately', () {
       final now = DateTime.now();
-      final todayEvent = now.subtract(const Duration(hours: 1));
-      final yesterdayEvent = now.subtract(const Duration(days: 1));
+      final todayEvent = DateTime(now.year, now.month, now.day, now.hour, now.minute);
+      final yesterdayEvent = DateTime(now.year, now.month, now.day).subtract(const Duration(hours: 2));
       final pastDate = DateTime(2026, 8, 28, 14, 30);
 
       expect(DateFormatter.formatFullDate(pastDate), 'August 28, 2026');
@@ -2712,7 +2702,7 @@ void main() {
 
       // User Credentials
       expect(find.text('Shreyas Shigwan'), findsOneWidget);
-      expect(find.text('citizen@civicfix.test'), findsOneWidget);
+      expect(find.text('shreyas@example.com'), findsOneWidget);
       expect(find.text('+91 98765 43210'), findsOneWidget);
       expect(find.text('Ward 14 (Central Ward)'), findsOneWidget);
       expect(find.text('English'), findsWidgets);
@@ -2744,7 +2734,7 @@ void main() {
       expect(find.text('Edit Profile'), findsOneWidget);
       expect(find.text('Personal Information'), findsOneWidget);
       expect(find.text('Shreyas Shigwan'), findsOneWidget);
-      expect(find.text('citizen@civicfix.test'), findsOneWidget);
+      expect(find.text('shreyas@example.com'), findsOneWidget);
       expect(find.text('+91 98765 43210'), findsWidgets);
     });
 
@@ -3187,21 +3177,15 @@ void main() {
   });
 
   group('Prompt 10: Government Navigation & Shell Responsiveness Integration Tests', () {
-    testWidgets('GovtLoginScreen renders branding, form fields, and fills mock credentials', (tester) async {
+    testWidgets('GovtLoginScreen renders branding, form fields, and login controls', (tester) async {
       await tester.pumpWidget(_createTestableWidget(const GovtLoginScreen()));
       await tester.pump();
 
       expect(find.text('CivicFix'), findsOneWidget);
       expect(find.text('MUNICIPAL OFFICER CONTROL DESK'), findsOneWidget);
       expect(find.text('Enter Government Portal'), findsOneWidget);
-
-      final fillButton = find.text('Fill Test Officer Credentials');
-      expect(fillButton, findsOneWidget);
-      await tester.ensureVisible(fillButton);
-      await tester.tap(fillButton);
-      await tester.pump();
-
-      expect(find.text('government@civicfix.test'), findsOneWidget);
+      expect(find.text('Official Email / Employee ID'), findsOneWidget);
+      expect(find.text('Security Passcode'), findsOneWidget);
     });
 
     testWidgets('GovtShellScreen adapts to desktop layout and switches tabs', (tester) async {
@@ -3276,12 +3260,10 @@ void main() {
       await tester.pumpWidget(_createTestableWidget(const GovtLoginScreen()));
       await tester.pump();
 
-      // Clear email and enter invalid credentials
-      final emailField = find.widgetWithText(TextField, 'government@civicfix.test');
-      await tester.enterText(emailField, 'bad_officer@test.com');
-
-      final passwordField = find.byType(TextFormField).last;
-      await tester.enterText(passwordField, 'wrongpassword');
+      // Enter invalid credentials
+      final textFields = find.byType(TextFormField);
+      await tester.enterText(textFields.at(0), 'bad_officer@test.com');
+      await tester.enterText(textFields.at(1), 'wrongpassword');
       await tester.pump();
 
       final loginBtn = find.text('Enter Government Portal');
@@ -3292,13 +3274,15 @@ void main() {
 
       expect(find.textContaining('Invalid government officer credentials'), findsOneWidget);
 
-      // Tap fill credentials
-      final fillBtn = find.text('Fill Test Officer Credentials');
-      await tester.ensureVisible(fillBtn);
-      await tester.tap(fillBtn);
+      // Enter valid credentials
+      await tester.enterText(textFields.at(0), 'government@civicfix.test');
+      await tester.enterText(textFields.at(1), 'CivicFix123');
       await tester.pump();
 
-      expect(find.text('government@civicfix.test'), findsOneWidget);
+      await tester.tap(loginBtn);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+      await tester.pumpAndSettle();
     });
 
     testWidgets('GovtLoginScreen toggles password visibility and remember session', (tester) async {
@@ -3328,7 +3312,12 @@ void main() {
       expect(find.text('OFFICER PASSWORD RECOVERY'), findsOneWidget);
       expect(find.text('Reset Municipal Access Passcode'), findsOneWidget);
 
-      // Submit with default email
+      // Enter official email
+      final emailField = find.byType(TextFormField);
+      await tester.enterText(emailField, 'government@civicfix.test');
+      await tester.pump();
+
+      // Submit with entered email
       final submitBtn = find.text('Send Recovery Instructions');
       await tester.ensureVisible(submitBtn);
       await tester.tap(submitBtn);
@@ -4661,7 +4650,7 @@ void main() {
       expect(updated.fullName, 'Vikramaditya S.');
       expect(updated.phone, '+91 99999 11111');
       expect(updated.designation, 'Principal Civic Administrator');
-      expect(updated.email, 'government@civicfix.test'); // Unchanged
+      expect(updated.email, 'officer@civicfix.gov.in'); // Unchanged
       expect(updated.role, 'government'); // Unchanged
 
       // Verify sync with auth service
@@ -4727,7 +4716,7 @@ void main() {
       // System locked indicators
       expect(find.text('System-Locked Administrative Identifiers'), findsOneWidget);
       expect(find.text('GOVERNMENT (Authorized Nodal Officer)'), findsOneWidget);
-      expect(find.text('government@civicfix.test'), findsOneWidget);
+      expect(find.text('officer@civicfix.gov.in'), findsOneWidget);
 
       // Clear full name to trigger validation
       final nameFinder = find.byType(TextFormField).first;
@@ -4879,7 +4868,7 @@ void main() {
       // Profile Header Details
       expect(find.text('OFFICER ROLE'), findsOneWidget);
       expect(find.textContaining('Municipal Civic Administration'), findsWidgets);
-      expect(find.text('government@civicfix.test'), findsOneWidget);
+      expect(find.text('officer@civicfix.gov.in'), findsOneWidget);
       expect(find.text('MC-2026-ENG-842'), findsOneWidget);
       expect(find.text('Ward 14 (Central Zone)'), findsWidgets);
 

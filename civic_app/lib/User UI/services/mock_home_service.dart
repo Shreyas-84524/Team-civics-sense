@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../../core/auth/auth_service.dart';
 import '../../core/local/mock_data_source.dart';
 import '../../core/location/location_model.dart';
 import '../../core/models/category_model.dart';

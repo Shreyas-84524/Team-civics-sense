@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
 import '../../../core/models/complaint_model.dart';
+import '../../../core/repositories/repository_locator.dart';
 import '../../../core/widgets/civic_fix_button.dart';
 import '../../../core/widgets/responsive_container.dart';
 import '../../models/department_model.dart';
@@ -13,11 +14,13 @@ import '../../widgets/common/govt_confirmation_dialog.dart';
 class GovtComplaintAssignmentScreen extends StatefulWidget {
   final ComplaintModel? complaint;
   final String? complaintId;
+  final GovtComplaintRepository? repository;
 
   const GovtComplaintAssignmentScreen({
     super.key,
     this.complaint,
     this.complaintId,
+    this.repository,
   });
 
   @override
@@ -25,7 +28,7 @@ class GovtComplaintAssignmentScreen extends StatefulWidget {
 }
 
 class _GovtComplaintAssignmentScreenState extends State<GovtComplaintAssignmentScreen> {
-  final GovtComplaintRepository _repository = MockGovtComplaintRepository();
+  late final GovtComplaintRepository _repository;
   final _noteController = TextEditingController(text: 'Assigned for immediate field inspection and repair.');
 
   ComplaintModel? _complaint;
@@ -37,6 +40,7 @@ class _GovtComplaintAssignmentScreenState extends State<GovtComplaintAssignmentS
   @override
   void initState() {
     super.initState();
+    _repository = widget.repository ?? RepositoryLocator.govtComplaintRepository;
     if (widget.complaint != null) {
       _complaint = widget.complaint;
       _initDepartmentForComplaint(_complaint!);

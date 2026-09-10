@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/auth/auth_service_locator.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/routing/app_routes.dart';
@@ -6,15 +7,17 @@ import '../../core/widgets/civic_fix_app_bar.dart';
 import '../../core/widgets/civic_fix_button.dart';
 import '../../core/widgets/civic_fix_outlined_button.dart';
 import '../../core/widgets/responsive_container.dart';
-import '../services/mock_auth_service.dart';
+import '../../core/auth/auth_service.dart';
 import '../widgets/auth_error_banner.dart';
 import '../widgets/auth_header.dart';
 import '../widgets/auth_success_banner.dart';
 import '../widgets/auth_text_field.dart';
 
-/// Screen for citizen password recovery and reset link simulation.
+/// Screen for citizen password recovery and reset link dispatch.
 class ForgotPasswordScreen extends StatefulWidget {
-  const ForgotPasswordScreen({super.key});
+  final AuthService? authService;
+
+  const ForgotPasswordScreen({super.key, this.authService});
 
   @override
   State<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
@@ -23,11 +26,17 @@ class ForgotPasswordScreen extends StatefulWidget {
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
-  final AuthService _authService = MockAuthService();
+  late final AuthService _authService;
 
   bool _isLoading = false;
   String? _errorMessage;
   String? _successMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _authService = widget.authService ?? AuthServiceLocator.citizenAuth;
+  }
 
   @override
   void dispose() {

@@ -1,3 +1,4 @@
+import 'dart:async';
 import '../local/mock_data_source.dart';
 import '../models/complaint_model.dart';
 import '../models/hazard_model.dart';
@@ -18,6 +19,16 @@ abstract class HazardRepository {
     required double longitude,
     double radiusKm = 5.0,
   });
+
+  // Real-time Streams
+  Stream<List<HazardModel>> watchHazards({
+    String? categoryId,
+    ComplaintStatus? status,
+    HazardSeverity? severity,
+    String? searchQuery,
+  });
+
+  Stream<HazardModel?> watchHazardById(String id);
 }
 
 /// In-memory mock implementation of [HazardRepository] for User UI development.
@@ -27,6 +38,7 @@ class MockHazardRepository implements HazardRepository {
   MockHazardRepository._internal();
 
   final MockDataSource _dataSource = MockDataSource();
+  final StreamController<void> _hazardsNotifier = StreamController<void>.broadcast();
 
   @override
   Future<List<HazardModel>> getHazards({
@@ -96,4 +108,32 @@ class MockHazardRepository implements HazardRepository {
     // For mock UI, return active hazards in ward
     return _dataSource.hazards.where((h) => h.status != ComplaintStatus.resolved).toList();
   }
+
+  @override
+  Stream<List<HazardModel>> watchHazards({
+    String? categoryId,
+    ComplaintStatus? status,
+    HazardSeverity? severity,
+    String? searchQuery,
+  }) async* {
+    yield await getHazards(
+      categoryId: categoryId,
+      status: status,
+      severity: severity,
+      searchQuery: searchQuery,
+    );
+    yield* _hazardsNotifier.stream.asyncMap((_) => getHazards(
+          categoryId: categoryId,
+          status: status,
+          severity: severity,
+          searchQuery: searchQuery,
+        ));
+  }
+
+  @override
+  Stream<HazardModel?> watchHazardById(String id) async* {
+    yield await getHazardById(id);
+    yield* _hazardsNotifier.stream.asyncMap((_) => getHazardById(id));
+  }
 }
+

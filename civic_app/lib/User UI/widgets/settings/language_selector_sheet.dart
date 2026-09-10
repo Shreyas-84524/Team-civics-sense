@@ -3,7 +3,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_radius.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
-import '../../../core/repositories/user_repository.dart';
+import '../../../core/repositories/repository_locator.dart';
 
 class LanguageOption {
   final String code;
@@ -104,7 +104,7 @@ class LanguageSelectorSheet extends StatelessWidget {
                   button: true,
                   child: InkWell(
                     onTap: () {
-                      MockUserRepository().updateUserProfile(languageCode: option.code);
+                      RepositoryLocator.userRepository.updateUserProfile(languageCode: option.code);
                       onLanguageSelected?.call(option.code);
                       Navigator.pop(context, option.code);
                     },

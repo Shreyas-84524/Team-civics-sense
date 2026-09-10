@@ -11,6 +11,7 @@ import '../../core/widgets/loading_state.dart';
 import '../../core/widgets/offline_cache_banner.dart';
 import '../../core/widgets/responsive_container.dart';
 import '../../core/widgets/section_header.dart';
+import '../../core/repositories/repository_locator.dart';
 import '../models/home_data_model.dart';
 import '../services/mock_home_service.dart';
 import '../widgets/civic_progress_card.dart';
@@ -24,11 +25,13 @@ import '../widgets/report_issue_cta.dart';
 class HomeScreen extends StatefulWidget {
   final Function(int)? onTabChange;
   final ConnectivityService? connectivityService;
+  final HomeService? homeService;
 
   const HomeScreen({
     super.key,
     this.onTabChange,
     this.connectivityService,
+    this.homeService,
   });
 
   @override
@@ -36,7 +39,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final HomeService _homeService = MockHomeService();
+  late final HomeService _homeService;
   late final ConnectivityService _connectivityService;
   HomeDataModel? _data;
   bool _isLoading = true;
@@ -45,6 +48,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    _homeService = widget.homeService ?? RepositoryLocator.homeService;
     _connectivityService = widget.connectivityService ?? AppConnectivityService();
     _loadData();
   }

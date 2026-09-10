@@ -1,4 +1,5 @@
 import '../../core/models/user_model.dart';
+import '../../core/repositories/repository_locator.dart';
 import '../../core/repositories/user_repository.dart';
 
 /// User state service for the Citizen UI.
@@ -7,7 +8,7 @@ class MockUserService {
   factory MockUserService() => _instance;
   MockUserService._internal();
 
-  final UserRepository _userRepository = MockUserRepository();
+  UserRepository get _userRepository => RepositoryLocator.userRepository;
   bool isLoggedIn = true;
 
   Future<UserModel> getUser() => _userRepository.getCurrentUser();

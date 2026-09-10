@@ -27,7 +27,7 @@ import '../../Govt UI/screens/complaints/govt_complaint_assignment_screen.dart';
 import '../../Govt UI/screens/complaints/govt_complaint_details_screen.dart';
 import '../../Govt UI/screens/complaints/govt_status_update_screen.dart';
 import '../../Govt UI/screens/govt_shell_screen.dart';
-import '../../Govt UI/services/govt_auth_service.dart';
+import '../auth/auth_service_locator.dart';
 import '../location/location_model.dart';
 import '../models/complaint_model.dart';
 import 'app_routes.dart';
@@ -195,8 +195,12 @@ class AppRouter {
 
   /// Helper to enforce Government authentication on protected routes.
   static Route<dynamic> _protectedGovtRoute(Widget authenticatedScreen) {
-    final isAuth = MockGovtAuthService().isAuthenticated;
-    if (!isAuth) {
+    final govtAuth = AuthServiceLocator.govtAuth;
+    final isAuth = govtAuth.isAuthenticated;
+    final role = govtAuth.currentUser?.role;
+    final isAuthorizedGovt = isAuth && (role == 'government' || role == 'admin');
+
+    if (!isAuthorizedGovt) {
       return MaterialPageRoute(builder: (_) => const GovtLoginScreen());
     }
     return MaterialPageRoute(builder: (_) => authenticatedScreen);

@@ -181,4 +181,23 @@ class HiveNotificationRepository implements NotificationRepository {
     _unreadCountNotifier.value = count;
     return count;
   }
+
+  // ===========================================================================
+  // REAL-TIME LOCAL WATCH STREAMS (Prompt 8)
+  // ===========================================================================
+
+  @override
+  Stream<List<NotificationModel>> watchNotifications({
+    String? userId,
+    bool? unreadOnly,
+    NotificationType? type,
+  }) async* {
+    yield await getNotifications(userId: userId, unreadOnly: unreadOnly, type: type);
+  }
+
+  @override
+  Stream<int> watchUnreadCount({String? userId}) async* {
+    yield await getUnreadCount(userId: userId);
+  }
 }
+

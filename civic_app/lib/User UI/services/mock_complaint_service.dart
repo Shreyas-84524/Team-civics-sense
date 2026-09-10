@@ -109,7 +109,7 @@ class MockComplaintService implements ComplaintService {
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
         isHazard: draft.isHazard,
-        upvotes: 1,
+        upvotes: 0,
         syncStatus: SyncStatus.pending,
         timeline: [
           TimelineEvent(
@@ -143,7 +143,7 @@ class MockComplaintService implements ComplaintService {
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
       isHazard: draft.isHazard,
-      upvotes: 1,
+      upvotes: 0,
       syncStatus: SyncStatus.synced,
       timeline: [
         TimelineEvent(

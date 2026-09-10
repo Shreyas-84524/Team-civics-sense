@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../core/auth/auth_service_locator.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_radius.dart';
 import '../../core/constants/app_spacing.dart';
@@ -6,6 +8,7 @@ import '../../core/constants/app_typography.dart';
 import '../../core/models/complaint_model.dart';
 import '../../core/network/connectivity_service.dart';
 import '../../core/repositories/complaint_repository.dart';
+import '../../core/repositories/repository_locator.dart';
 import '../../core/routing/app_routes.dart';
 import '../../core/widgets/civic_fix_app_bar.dart';
 import '../../core/widgets/empty_state.dart';
@@ -13,7 +16,7 @@ import '../../core/widgets/error_state.dart';
 import '../../core/widgets/loading_state.dart';
 import '../../core/widgets/offline_cache_banner.dart';
 import '../../core/widgets/responsive_container.dart';
-import '../services/mock_auth_service.dart';
+import '../../core/auth/auth_service.dart';
 import '../widgets/complaint_card.dart';
 import '../widgets/complaints/complaint_filter_bottom_sheet.dart';
 
@@ -38,6 +41,7 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
   late final ComplaintRepository _repository;
   late final AuthService _authService;
   late final ConnectivityService _connectivityService;
+  StreamSubscription<List<ComplaintModel>>? _complaintsSubscription;
 
   List<ComplaintModel> _allComplaints = [];
   bool _isLoading = true;
@@ -57,17 +61,35 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
   @override
   void initState() {
     super.initState();
-    _repository = widget.repository ?? MockComplaintRepository();
-    _authService = widget.authService ?? MockAuthService();
+    _repository = widget.repository ?? RepositoryLocator.complaintRepository;
+    _authService = widget.authService ?? AuthServiceLocator.citizenAuth;
     _connectivityService = widget.connectivityService ?? AppConnectivityService();
     _loadComplaints();
+    _subscribeToLiveComplaints();
+  }
+
+  void _subscribeToLiveComplaints() {
+    final citizenId = _authService.currentUser?.id ?? 'user_citizen_001';
+    _complaintsSubscription?.cancel();
+    _complaintsSubscription = _repository.watchCitizenComplaints(citizenId).listen((list) {
+      if (mounted) {
+        setState(() {
+          _allComplaints = List.from(list);
+          _isLoading = false;
+        });
+      }
+    }, onError: (e) {
+      debugPrint('[MyComplaintsScreen] Real-time stream error: $e');
+    });
   }
 
   @override
   void dispose() {
+    _complaintsSubscription?.cancel();
     _searchController.dispose();
     super.dispose();
   }
+
 
   Future<void> _loadComplaints({bool forceRefresh = false}) async {
     setState(() {

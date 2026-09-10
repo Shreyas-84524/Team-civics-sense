@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "594524642298",
+    "project_id": "civicfix-38d53",
+    "storage_bucket": "civicfix-38d53.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:594524642298:android:59ef631696fb5534586243",
+        "android_client_info": {
+          "package_name": "com.example.civic_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "594524642298-3qv72kv0vr99crqqkhv24cthhvouk8k9.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.civic_app",
+            "certificate_hash": "8c290969d8e799a75d6e98c044d5f2d9f7ec24b9"
+          }
+        },
+        {
+          "client_id": "594524642298-sld4i45a2ule5bdvkqhqj56i2l9e2k48.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBF91IjkZROyID70xd0Ug-VE7TI_rLHEaU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "594524642298-sld4i45a2ule5bdvkqhqj56i2l9e2k48.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "594524642298-qt3br3bpfmt8v4viqq1d2cfflqusntbc.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.civicApp"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

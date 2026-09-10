@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
 import '../../../core/models/category_model.dart';
 import '../../../core/models/complaint_model.dart';
 import '../../../core/network/connectivity_service.dart';
+import '../../../core/repositories/repository_locator.dart';
 import '../../../core/routing/app_routes.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/widgets/offline_cache_banner.dart';
@@ -35,6 +37,7 @@ class _GovtComplaintListScreenState extends State<GovtComplaintListScreen> {
   late final GovtComplaintRepository _repository;
   late final ConnectivityService _connectivityService;
   final TextEditingController _searchController = TextEditingController();
+  StreamSubscription<List<ComplaintModel>>? _complaintsSubscription;
 
   ComplaintStatus? _selectedStatus;
   String? _selectedCategoryId;
@@ -57,47 +60,50 @@ class _GovtComplaintListScreenState extends State<GovtComplaintListScreen> {
   @override
   void initState() {
     super.initState();
-    _repository = widget.repository ?? MockGovtComplaintRepository();
+    _repository = widget.repository ?? RepositoryLocator.govtComplaintRepository;
     _connectivityService = widget.connectivityService ?? AppConnectivityService();
     _loadComplaints();
   }
 
   @override
   void dispose() {
+    _complaintsSubscription?.cancel();
     _searchController.dispose();
     super.dispose();
   }
 
   Future<void> _loadComplaints() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final data = await _repository.getComplaints(
-        categoryId: _selectedCategoryId,
-        status: _selectedStatus,
-        priority: _selectedPriority,
-        isAssigned: _selectedAssignment,
-        searchQuery: _searchController.text,
-        sortBy: _selectedSort,
-      );
-      if (mounted) {
-        setState(() {
-          _complaints = data;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = 'Failed to load complaints: $e';
-          _isLoading = false;
-        });
-      }
-    }
+    _complaintsSubscription?.cancel();
+    _complaintsSubscription = _repository
+        .watchComplaints(
+          categoryId: _selectedCategoryId,
+          status: _selectedStatus,
+          priority: _selectedPriority,
+          isAssigned: _selectedAssignment,
+          searchQuery: _searchController.text,
+          sortBy: _selectedSort,
+        )
+        .listen(
+      (data) {
+        if (mounted) {
+          setState(() {
+            _complaints = data;
+            _isLoading = false;
+            _errorMessage = null;
+          });
+        }
+      },
+      onError: (e) {
+        if (mounted) {
+          setState(() {
+            _errorMessage = 'Failed to load complaints: $e';
+            _isLoading = false;
+          });
+        }
+      },
+    );
   }
+
 
   void _resetFilters() {
     setState(() {

@@ -4,6 +4,7 @@ import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
 import '../../../core/models/hazard_model.dart';
 import '../../../core/repositories/complaint_repository.dart';
+import '../../../core/repositories/repository_locator.dart';
 import '../../../core/routing/app_routes.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/widgets/civic_fix_button.dart';
@@ -24,7 +25,7 @@ class HazardInfoCard extends StatelessWidget {
   });
 
   Future<void> _navigateToComplaintDetails(BuildContext context) async {
-    final repo = complaintRepository ?? MockComplaintRepository();
+    final repo = complaintRepository ?? RepositoryLocator.complaintRepository;
     final complaintId = hazard.complaintId ?? hazard.id;
     final ticketNumber = hazard.ticketNumber;
 

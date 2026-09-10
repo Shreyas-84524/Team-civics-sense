@@ -1,72 +1,58 @@
 import 'dart:async';
+import '../../core/auth/auth_service.dart';
 import '../../core/models/user_model.dart';
 
-/// Result object for authentication actions.
-class AuthResult {
-  final bool isSuccess;
-  final String? errorMessage;
-  final String? successMessage;
-  final UserModel? user;
-
-  const AuthResult.success({this.user, this.successMessage})
-      : isSuccess = true,
-        errorMessage = null;
-
-  const AuthResult.failure(this.errorMessage)
-      : isSuccess = false,
-        successMessage = null,
-        user = null;
-}
-
-/// Abstract contract for authentication service.
-abstract class AuthService {
-  Future<bool> checkAuthState();
-  Future<AuthResult> login({required String email, required String password});
-  Future<AuthResult> register({
-    required String fullName,
-    required String email,
-    required String password,
-    String? phone,
-    required String language,
-  });
-  Future<AuthResult> sendPasswordResetEmail({required String email});
-  Future<void> logout();
-  UserModel? get currentUser;
-  bool get isAuthenticated;
-}
-
-/// In-memory Mock Authentication Service for User UI development.
+/// Test-isolated Mock Authentication Service for automated widget and unit tests.
+///
+/// NOTE: This class is NOT used in production runtime. Production strictly uses
+/// [FirebaseAuthService].
 class MockAuthService implements AuthService {
   static final MockAuthService _instance = MockAuthService._internal();
   factory MockAuthService() => _instance;
-  MockAuthService._internal();
+  MockAuthService._internal() {
+    _seedDefaultAccounts();
+  }
 
   UserModel? _currentUser;
   bool _isAuthenticated = false;
 
-  // Development mock user database in memory
-  final Map<String, _MockAccount> _mockAccounts = {
-    'citizen@civicfix.test': _MockAccount(
+  final Map<String, _MockAccount> _mockAccounts = {};
+
+  void _seedDefaultAccounts() {
+    const defaultUser = UserModel(
+      id: 'user_citizen_001',
+      fullName: 'Rahul Sharma',
+      email: 'citizen@civicfix.test',
+      phone: '+91 98765 43210',
+      civicPoints: 850,
+      reportsSubmitted: 12,
+      reportsResolved: 8,
+      wardNumber: 'Ward 14 (Central Ward)',
+      languageCode: 'en',
+      badges: ['First Report', 'Civic Contributor', 'Community Helper'],
+    );
+    _mockAccounts['citizen@civicfix.test'] = const _MockAccount(
       password: 'CivicFix123',
-      user: const UserModel(
-        id: 'user_citizen_001',
-        fullName: 'Rahul Sharma',
-        email: 'citizen@civicfix.test',
-        phone: '+91 98765 43210',
-        civicPoints: 480,
-        reportsSubmitted: 8,
-        reportsResolved: 6,
-        wardNumber: 'Ward 14 (Central Ward)',
-        languageCode: 'en',
-      ),
-    ),
-  };
+      user: defaultUser,
+    );
+  }
+
+  /// Resets mock auth state for testing suites.
+  void resetForTesting() {
+    _currentUser = null;
+    _isAuthenticated = false;
+    _mockAccounts.clear();
+    _seedDefaultAccounts();
+  }
 
   @override
   bool get isAuthenticated => _isAuthenticated;
 
   @override
   UserModel? get currentUser => _currentUser;
+
+  @override
+  String? get currentUid => _currentUser?.id;
 
   /// Synchronously set mock user for tests without simulated delays.
   void setMockUser(UserModel? user) {
@@ -76,8 +62,6 @@ class MockAuthService implements AuthService {
 
   @override
   Future<bool> checkAuthState() async {
-    // Simulate brief asynchronous token check
-    await Future.delayed(const Duration(milliseconds: 300));
     return _isAuthenticated;
   }
 
@@ -86,14 +70,16 @@ class MockAuthService implements AuthService {
     required String email,
     required String password,
   }) async {
-    // Simulate network delay
-    await Future.delayed(const Duration(milliseconds: 600));
-
     final normalizedEmail = email.trim().toLowerCase();
     final account = _mockAccounts[normalizedEmail];
 
     if (account != null && account.password == password) {
       _currentUser = account.user;
+      _isAuthenticated = true;
+      return AuthResult.success(user: _currentUser);
+    }
+
+    if (_currentUser != null && _currentUser!.email.toLowerCase() == normalizedEmail) {
       _isAuthenticated = true;
       return AuthResult.success(user: _currentUser);
     }
@@ -109,8 +95,6 @@ class MockAuthService implements AuthService {
     String? phone,
     required String language,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 700));
-
     final normalizedEmail = email.trim().toLowerCase();
 
     if (_mockAccounts.containsKey(normalizedEmail)) {
@@ -118,11 +102,11 @@ class MockAuthService implements AuthService {
     }
 
     final newUser = UserModel(
-      id: 'user_${DateTime.now().millisecondsSinceEpoch}',
+      id: 'test_user_${DateTime.now().millisecondsSinceEpoch}',
       fullName: fullName.trim(),
       email: normalizedEmail,
       phone: phone?.trim() ?? '',
-      civicPoints: 20, // Welcome bonus
+      civicPoints: 20,
       reportsSubmitted: 0,
       reportsResolved: 0,
       wardNumber: 'Ward 14 (Central Ward)',
@@ -146,11 +130,7 @@ class MockAuthService implements AuthService {
 
   @override
   Future<AuthResult> sendPasswordResetEmail({required String email}) async {
-    await Future.delayed(const Duration(milliseconds: 600));
-
     final normalizedEmail = email.trim().toLowerCase();
-
-    // User-friendly response regardless of whether email exists for privacy
     if (normalizedEmail.isEmpty || !normalizedEmail.contains('@')) {
       return const AuthResult.failure('Please enter a valid email address.');
     }

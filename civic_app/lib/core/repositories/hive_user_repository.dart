@@ -40,9 +40,6 @@ class HiveUserRepository implements UserRepository {
           _userNotifier.value = domainUser;
           _dataSource.currentUser = domainUser;
           _lastCachedAt = DateTime.now();
-        } else {
-          // Prime cache with default user
-          await cacheUser(_dataSource.currentUser);
         }
       } catch (e) {
         debugPrint('Warning: HiveUserRepository failed reading user cache: $e');
@@ -52,7 +49,6 @@ class HiveUserRepository implements UserRepository {
 
   /// Store user profile securely in Hive cache.
   Future<void> cacheUser(UserModel user) async {
-    // Security check: ensure only public/safe profile attributes are cached
     final localModel = UserLocalModel.fromDomain(user);
 
     if (_storage.isInitialized) {
@@ -70,6 +66,18 @@ class HiveUserRepository implements UserRepository {
 
     _dataSource.currentUser = user;
     _userNotifier.value = user;
+  }
+
+  /// Clears active user profile cache upon sign out.
+  @override
+  Future<void> clearUserCache() async {
+    if (_storage.isInitialized) {
+      try {
+        await _storage.delete(HiveBoxes.user, HiveBoxes.currentUserKey);
+      } catch (e) {
+        debugPrint('Warning: HiveUserRepository.clearUserCache: $e');
+      }
+    }
   }
 
   @override

@@ -1,0 +1,51 @@
+{
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
+  "functions": {
+    "source": "functions"
+  },
+  "emulators": {
+    "firestore": {
+      "port": 8080
+    },
+    "auth": {
+      "port": 9099
+    },
+    "storage": {
+      "port": 9199
+    },
+    "ui": {
+      "enabled": true,
+      "port": 4000
+    },
+    "singleProjectMode": true
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "civicfix-38d53",
+          "appId": "1:594524642298:android:59ef631696fb5534586243",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "civicfix-38d53",
+          "configurations": {
+            "android": "1:594524642298:android:59ef631696fb5534586243",
+            "ios": "1:594524642298:ios:1254a29ae5f3aecf586243",
+            "macos": "1:594524642298:ios:1254a29ae5f3aecf586243",
+            "web": "1:594524642298:web:2acb5c969feb9b29586243",
+            "windows": "1:594524642298:web:42e6565ee7810e13586243"
+          }
+        }
+      }
+    }
+  }
+}

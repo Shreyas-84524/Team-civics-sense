@@ -6,6 +6,7 @@ import '../../../core/constants/app_typography.dart';
 import '../../../core/models/notification_model.dart';
 import '../../../core/repositories/complaint_repository.dart';
 import '../../../core/repositories/notification_repository.dart';
+import '../../../core/repositories/repository_locator.dart';
 import '../../../core/routing/app_routes.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/widgets/civic_fix_card.dart';
@@ -26,8 +27,8 @@ class NotificationCard extends StatelessWidget {
   });
 
   Future<void> _handleTap(BuildContext context) async {
-    final notifRepo = notificationRepository ?? MockNotificationRepository();
-    final compRepo = complaintRepository ?? MockComplaintRepository();
+    final notifRepo = notificationRepository ?? RepositoryLocator.notificationRepository;
+    final compRepo = complaintRepository ?? RepositoryLocator.complaintRepository;
 
     if (!notification.isRead) {
       await notifRepo.markAsRead(notification.id);

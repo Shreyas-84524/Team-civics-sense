@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
+import '../../core/auth/auth_service.dart';
+import '../../core/auth/auth_service_locator.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/constants/app_typography.dart';
 import '../../core/routing/app_routes.dart';
 import '../../core/widgets/civic_fix_button.dart';
 import '../../core/widgets/responsive_container.dart';
-import '../services/mock_auth_service.dart';
 import '../widgets/auth_error_banner.dart';
 import '../widgets/auth_header.dart';
 import '../widgets/auth_text_field.dart';
 
-/// Citizen Login Screen with form validation, loading state, and mock authentication.
+/// Citizen Login Screen with form validation, loading state, and Firebase authentication.
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final AuthService? authService;
+
+  const LoginScreen({super.key, this.authService});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -22,11 +25,17 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final AuthService _authService = MockAuthService();
+  late final AuthService _authService;
 
   bool _isPasswordVisible = false;
   bool _isLoading = false;
   String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _authService = widget.authService ?? AuthServiceLocator.citizenAuth;
+  }
 
   @override
   void dispose() {
@@ -81,14 +90,6 @@ class _LoginScreenState extends State<LoginScreen> {
         _errorMessage = result.errorMessage ?? 'Incorrect email or password.';
       });
     }
-  }
-
-  void _fillMockCredentials() {
-    setState(() {
-      _emailController.text = 'citizen@civicfix.test';
-      _passwordController.text = 'CivicFix123';
-      _errorMessage = null;
-    });
   }
 
   @override
@@ -218,16 +219,6 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                         ],
-                      ),
-                    ),
-                    CivicFixSpacing.vSpaceXl,
-
-                    // Dev Test Shortcut
-                    Center(
-                      child: TextButton.icon(
-                        icon: const Icon(Icons.auto_fix_high_rounded, size: 16),
-                        label: const Text('Fill Test Credentials'),
-                        onPressed: _isLoading ? null : _fillMockCredentials,
                       ),
                     ),
                     CivicFixSpacing.vSpaceLg,

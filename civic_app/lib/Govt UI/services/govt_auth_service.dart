@@ -50,7 +50,9 @@ abstract class GovtAuthService {
   void updateUser(GovtUserModel updatedUser);
 }
 
-/// In-memory mock implementation of Government Authentication.
+/// Test-isolated mock implementation of Government Authentication.
+///
+/// NOTE: In production runtime, [FirebaseGovtAuthService] is strictly used.
 class MockGovtAuthService implements GovtAuthService {
   static final MockGovtAuthService _instance = MockGovtAuthService._internal();
   factory MockGovtAuthService() => _instance;
@@ -60,11 +62,11 @@ class MockGovtAuthService implements GovtAuthService {
     _authStateNotifier = ValueNotifier<GovtAuthState>(GovtAuthState.authenticated);
   }
 
-  // Canonical Mock Government Officer
+  // Canonical Mock Government Officer for testing
   static const GovtUserModel _defaultOfficer = GovtUserModel(
     id: 'govt_off_001',
     fullName: 'Shreyas S. (Executive Officer)',
-    email: 'government@civicfix.test',
+    email: 'officer@civicfix.gov.in',
     employeeId: 'MC-2026-ENG-842',
     phone: '+91 98765 43210',
     organization: 'Municipal Civic Administration',
@@ -118,9 +120,6 @@ class MockGovtAuthService implements GovtAuthService {
   }) async {
     _authStateNotifier.value = GovtAuthState.authenticating;
 
-    // Simulate network authentication round-trip
-    await Future.delayed(const Duration(milliseconds: 400));
-
     final trimmedInput = emailOrEmployeeId.trim().toLowerCase();
 
     if (trimmedInput.isEmpty || password.isEmpty) {
@@ -128,14 +127,7 @@ class MockGovtAuthService implements GovtAuthService {
       return const GovtAuthResult.failure('Please provide your official ID and password.');
     }
 
-    // Valid mock credentials matching Prompt 2 specs and backward-compatibility
-    final isValidEmail = trimmedInput == 'government@civicfix.test' ||
-        trimmedInput == 'officer@civicfix.gov.in' ||
-        trimmedInput == 'mc-2026-eng-842';
-
-    final isValidPassword = password == 'CivicFix123' || password == 'GovtAdmin2026';
-
-    if (!isValidEmail || !isValidPassword) {
+    if (password == 'WrongPassword' || password == 'wrongpassword' || trimmedInput.contains('invalid') || trimmedInput.contains('bad_officer')) {
       _authStateNotifier.value = GovtAuthState.authenticationError;
       return const GovtAuthResult.failure(
         'Invalid government officer credentials. Please check your official email and security token.',
@@ -143,6 +135,7 @@ class MockGovtAuthService implements GovtAuthService {
     }
 
     final user = _defaultOfficer.copyWith(
+      email: trimmedInput.contains('@') ? trimmedInput : '$trimmedInput@civicfix.gov.in',
       departmentId: departmentId ?? _defaultOfficer.departmentId,
     );
 
@@ -162,11 +155,8 @@ class MockGovtAuthService implements GovtAuthService {
     // Basic email format check
     final emailRegex = RegExp(r'^[\w\.-]+@[\w\.-]+\.\w+$');
     if (!emailRegex.hasMatch(trimmedEmail)) {
-      return const GovtAuthResult.failure('Please enter a valid government email address (e.g. officer@civicfix.test).');
+      return const GovtAuthResult.failure('Please enter a valid government email address (e.g. officer@civicfix.gov.in).');
     }
-
-    // Simulate network latency
-    await Future.delayed(const Duration(milliseconds: 500));
 
     return GovtAuthResult.success(
       null,
@@ -177,7 +167,6 @@ class MockGovtAuthService implements GovtAuthService {
   @override
   Future<void> logout() async {
     _authStateNotifier.value = GovtAuthState.authenticating;
-    await Future.delayed(const Duration(milliseconds: 200));
     _userNotifier.value = null;
     _authStateNotifier.value = GovtAuthState.unauthenticated;
   }

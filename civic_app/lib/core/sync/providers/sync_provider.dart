@@ -9,6 +9,7 @@ class SyncResult {
   final List<String> uploadedImageUrls;
   final List<String> failedImageUrls;
   final Map<String, dynamic>? responseData;
+  final bool isRecoverable;
 
   const SyncResult({
     required this.isSuccess,
@@ -18,6 +19,7 @@ class SyncResult {
     this.uploadedImageUrls = const [],
     this.failedImageUrls = const [],
     this.responseData,
+    this.isRecoverable = true,
   });
 
   factory SyncResult.success({
@@ -30,6 +32,7 @@ class SyncResult {
       serverId: serverId,
       uploadedImageUrls: uploadedImageUrls,
       responseData: responseData,
+      isRecoverable: false,
     );
   }
 
@@ -38,6 +41,8 @@ class SyncResult {
     bool isPartialFailure = false,
     List<String> uploadedImageUrls = const [],
     List<String> failedImageUrls = const [],
+    bool isRecoverable = true,
+    Map<String, dynamic>? responseData,
   }) {
     return SyncResult(
       isSuccess: false,
@@ -45,6 +50,8 @@ class SyncResult {
       isPartialFailure: isPartialFailure,
       uploadedImageUrls: uploadedImageUrls,
       failedImageUrls: failedImageUrls,
+      isRecoverable: isRecoverable,
+      responseData: responseData,
     );
   }
 
@@ -61,6 +68,7 @@ class SyncResult {
       uploadedImageUrls: uploadedImageUrls,
       failedImageUrls: failedImageUrls,
       errorMessage: errorMessage ?? 'Complaint synced but some evidence images failed to upload',
+      isRecoverable: true,
     );
   }
 }

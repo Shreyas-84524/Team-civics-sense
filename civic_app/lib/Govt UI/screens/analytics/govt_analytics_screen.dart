@@ -3,6 +3,7 @@ import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
 import '../../../core/models/complaint_model.dart';
 import '../../../core/network/connectivity_service.dart';
+import '../../../core/repositories/repository_locator.dart';
 import '../../../core/widgets/offline_cache_banner.dart';
 import '../../models/analytics_model.dart';
 import '../../services/analytics_repository.dart';
@@ -41,7 +42,7 @@ class _GovtAnalyticsScreenState extends State<GovtAnalyticsScreen> {
   @override
   void initState() {
     super.initState();
-    _repository = widget.repository ?? MockAnalyticsRepository();
+    _repository = widget.repository ?? RepositoryLocator.analyticsRepository;
     _connectivityService = widget.connectivityService ?? AppConnectivityService();
     _loadAnalytics();
   }

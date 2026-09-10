@@ -1,3 +1,4 @@
+import 'dart:async';
 import '../../core/local/mock_data_source.dart';
 import '../../core/models/category_model.dart';
 import '../../core/models/complaint_model.dart';
@@ -127,6 +128,21 @@ abstract class GovtComplaintRepository {
 
   Future<List<GovtDepartmentModel>> getDepartments();
   Future<List<GovtOfficerModel>> getOfficers({String? departmentId});
+
+  // Real-time Streams
+  Stream<List<ComplaintModel>> watchComplaints({
+    String? departmentId,
+    String? categoryId,
+    ComplaintStatus? status,
+    ComplaintPriority? priority,
+    bool? isAssigned,
+    String? searchQuery,
+    GovtComplaintSort sortBy = GovtComplaintSort.newest,
+  });
+
+  Stream<ComplaintModel?> watchComplaint(String id);
+
+  Stream<GovtDashboardMetrics> watchDashboardMetrics({String? departmentId});
 }
 
 /// In-memory mock implementation of GovtComplaintRepository.
@@ -136,6 +152,8 @@ class MockGovtComplaintRepository implements GovtComplaintRepository {
   MockGovtComplaintRepository._internal();
 
   final MockDataSource _dataSource = MockDataSource();
+  final StreamController<void> _changeNotifier = StreamController<void>.broadcast();
+
 
   @override
   Future<List<ComplaintModel>> getComplaints({
@@ -277,8 +295,10 @@ class MockGovtComplaintRepository implements GovtComplaintRepository {
     );
 
     _dataSource.complaints[index] = updated;
+    _notify();
     return true;
   }
+
 
   @override
   Future<bool> rejectComplaint({
@@ -510,6 +530,7 @@ class MockGovtComplaintRepository implements GovtComplaintRepository {
       );
     }
 
+    _notify();
     return true;
   }
 
@@ -567,8 +588,10 @@ class MockGovtComplaintRepository implements GovtComplaintRepository {
       );
     }
 
+    _notify();
     return true;
   }
+
 
   @override
   Future<List<GovtDepartmentModel>> getDepartments() async {
@@ -584,4 +607,53 @@ class MockGovtComplaintRepository implements GovtComplaintRepository {
         .where((o) => o.departmentId == departmentId)
         .toList();
   }
+
+  void _notify() {
+    if (!_changeNotifier.isClosed) {
+      _changeNotifier.add(null);
+    }
+  }
+
+  @override
+  Stream<List<ComplaintModel>> watchComplaints({
+    String? departmentId,
+    String? categoryId,
+    ComplaintStatus? status,
+    ComplaintPriority? priority,
+    bool? isAssigned,
+    String? searchQuery,
+    GovtComplaintSort sortBy = GovtComplaintSort.newest,
+  }) async* {
+    yield await getComplaints(
+      departmentId: departmentId,
+      categoryId: categoryId,
+      status: status,
+      priority: priority,
+      isAssigned: isAssigned,
+      searchQuery: searchQuery,
+      sortBy: sortBy,
+    );
+    yield* _changeNotifier.stream.asyncMap((_) => getComplaints(
+          departmentId: departmentId,
+          categoryId: categoryId,
+          status: status,
+          priority: priority,
+          isAssigned: isAssigned,
+          searchQuery: searchQuery,
+          sortBy: sortBy,
+        ));
+  }
+
+  @override
+  Stream<ComplaintModel?> watchComplaint(String id) async* {
+    yield await getComplaintById(id);
+    yield* _changeNotifier.stream.asyncMap((_) => getComplaintById(id));
+  }
+
+  @override
+  Stream<GovtDashboardMetrics> watchDashboardMetrics({String? departmentId}) async* {
+    yield await getDashboardMetrics(departmentId: departmentId);
+    yield* _changeNotifier.stream.asyncMap((_) => getDashboardMetrics(departmentId: departmentId));
+  }
 }
+

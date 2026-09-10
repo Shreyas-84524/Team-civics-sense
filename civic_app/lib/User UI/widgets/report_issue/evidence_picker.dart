@@ -5,6 +5,7 @@ import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
 import '../../../core/location/location_model.dart';
 import '../../../core/models/evidence_model.dart';
+import '../../../core/repositories/repository_locator.dart';
 import '../../../core/widgets/civic_fix_card.dart';
 import '../../services/evidence_service.dart';
 
@@ -46,7 +47,7 @@ class _EvidencePickerState extends State<EvidencePicker> {
   @override
   void initState() {
     super.initState();
-    _service = widget.evidenceService ?? MockEvidenceService();
+    _service = widget.evidenceService ?? RepositoryLocator.evidenceService;
   }
 
   int get _count => widget.evidenceItems?.length ?? widget.images.length;

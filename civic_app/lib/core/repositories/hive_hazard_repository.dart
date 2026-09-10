@@ -198,4 +198,29 @@ class HiveHazardRepository implements HazardRepository {
         cos(lat1 * p) * cos(lat2 * p) * (1 - cos((lon2 - lon1) * p)) / 2;
     return 12742 * asin(sqrt(a)); // 2 * R; R = 6371 km
   }
+
+  // ===========================================================================
+  // REAL-TIME LOCAL WATCH STREAMS (Prompt 8)
+  // ===========================================================================
+
+  @override
+  Stream<List<HazardModel>> watchHazards({
+    String? categoryId,
+    ComplaintStatus? status,
+    HazardSeverity? severity,
+    String? searchQuery,
+  }) async* {
+    yield await getHazards(
+      categoryId: categoryId,
+      status: status,
+      severity: severity,
+      searchQuery: searchQuery,
+    );
+  }
+
+  @override
+  Stream<HazardModel?> watchHazardById(String id) async* {
+    yield await getHazardById(id);
+  }
 }
+

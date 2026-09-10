@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
+import '../../../core/auth/auth_service_locator.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
 import '../../models/govt_user_model.dart';
-import '../../services/govt_auth_service.dart';
 import '../../theme/govt_theme_tokens.dart';
 import 'govt_confirmation_dialog.dart';
 
@@ -83,6 +83,10 @@ class GovtSidebar extends StatelessWidget {
   ];
 
   void _confirmLogout(BuildContext context) {
+    if (onLogout != null) {
+      onLogout!();
+      return;
+    }
     showDialog(
       context: context,
       builder: (ctx) => GovtConfirmationDialog(
@@ -91,7 +95,7 @@ class GovtSidebar extends StatelessWidget {
         confirmLabel: 'Sign Out',
         isDestructive: true,
         onConfirm: () async {
-          final auth = MockGovtAuthService();
+          final auth = AuthServiceLocator.govtAuth;
           await auth.logout();
           if (context.mounted) {
             Navigator.of(context, rootNavigator: true).pushReplacementNamed('/govt/login');

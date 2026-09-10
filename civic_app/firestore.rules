@@ -1,0 +1,291 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =========================================================================
+    // AUTHENTICATION & ROLE HELPER FUNCTIONS
+    // =========================================================================
+
+    /// Checks if the request is from an authenticated user.
+    function isSignedIn() {
+      return request.auth != null && request.auth.uid != null;
+    }
+
+    /// Checks if the authenticated user matches the specified user ID.
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /// Resolves the user's role from auth token custom claims first, falling back to the user document.
+    function userRole() {
+      return request.auth.token.role != null
+        ? request.auth.token.role
+        : (exists(/databases/$(database)/documents/users/$(request.auth.uid))
+            ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
+            : 'citizen');
+    }
+
+    /// Checks if the user has the citizen role.
+    function isCitizen() {
+      return isSignedIn() && userRole() == 'citizen';
+    }
+
+    /// Checks if the user is an authorized government officer or administrator.
+    function isGovernment() {
+      return isSignedIn() && (
+        request.auth.token.role == 'government' ||
+        request.auth.token.role == 'admin' ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'government')
+      );
+    }
+
+    // =========================================================================
+    // VALIDATION HELPER FUNCTIONS
+    // =========================================================================
+
+    /// Validates allowed complaint status values.
+    function isValidStatus(status) {
+      return status in ['reported', 'verified', 'assigned', 'inProgress', 'resolved', 'rejected'];
+    }
+
+    /// Validates allowed complaint priority values.
+    function isValidPriority(priority) {
+      return priority in ['low', 'medium', 'high', 'emergency'];
+    }
+
+    /// Validates allowed hazard severity values.
+    function isValidSeverity(severity) {
+      return severity in ['low', 'medium', 'high', 'critical'];
+    }
+
+    /// Validates structured geographic location map.
+    function isValidLocation(loc) {
+      return loc is map &&
+        loc.latitude is number &&
+        loc.longitude is number &&
+        loc.address is string &&
+        loc.latitude >= -90.0 && loc.latitude <= 90.0 &&
+        loc.longitude >= -180.0 && loc.longitude <= 180.0;
+    }
+
+    // =========================================================================
+    // 1. USERS COLLECTION (users/{userId})
+    // =========================================================================
+    match /users/{userId} {
+      // A user can read their own profile; government personnel can read for routing/audit
+      allow read: if isSignedIn() && (isOwner(userId) || isGovernment());
+
+      // Citizen registration: cannot self-assign government role, points initialized safely
+      allow create: if isOwner(userId) &&
+        request.resource.data.role == 'citizen' &&
+        request.resource.data.fullName is string &&
+        request.resource.data.fullName.size() > 0 &&
+        request.resource.data.fullName.size() <= 100 &&
+        request.resource.data.email is string &&
+        request.resource.data.civicPoints in [0, 20] &&
+        request.resource.data.reportsSubmitted == 0 &&
+        request.resource.data.reportsResolved == 0;
+
+      // Profile updates: strictly prevents privilege escalation and modifying authoritative counters
+      allow update: if isOwner(userId) &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'role',
+          'civicPoints',
+          'reportsSubmitted',
+          'reportsResolved',
+          'badges',
+          'employeeId',
+          'departmentId',
+          'permissions',
+          'organization',
+          'createdAt'
+        ]);
+
+      // Users cannot be hard-deleted from client apps
+      allow delete: if false;
+
+      // =======================================================================
+      // 1.1 USER DEVICES SUBCOLLECTION (users/{userId}/devices/{deviceId})
+      // =======================================================================
+      match /devices/{deviceId} {
+        // Authenticated user can read, create, update, and delete their own FCM device tokens
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // =========================================================================
+    // 2. COMPLAINTS COLLECTION (complaints/{complaintId})
+    // =========================================================================
+    match /complaints/{complaintId} {
+      // Citizen can read their own; government can read all; public can read active hazard complaints
+      allow read: if isSignedIn() && (
+        resource.data.citizenId == request.auth.uid ||
+        isGovernment() ||
+        resource.data.isHazard == true
+      );
+
+      // Citizen complaint filing
+      allow create: if isSignedIn() &&
+        request.resource.data.citizenId == request.auth.uid &&
+        request.resource.data.title is string &&
+        request.resource.data.title.size() > 0 &&
+        request.resource.data.title.size() <= 200 &&
+        request.resource.data.description is string &&
+        request.resource.data.description.size() <= 2000 &&
+        isValidStatus(request.resource.data.status) &&
+        request.resource.data.status == 'reported' &&
+        isValidPriority(request.resource.data.priority) &&
+        isValidLocation(request.resource.data.location) &&
+        request.resource.data.upvotes == 0 &&
+        request.resource.data.assignedTo == null &&
+        request.resource.data.departmentId == null &&
+        request.resource.data.resolvedAt == null;
+
+      // Complaint modifications
+      allow update: if isSignedIn() && (
+        // Case A: Citizen upvoting
+        (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['upvotes', 'updatedAt']) &&
+          request.resource.data.upvotes == resource.data.upvotes + 1
+        ) ||
+        // Case B: Citizen author editing details before work begins
+        (
+          isOwner(resource.data.citizenId) &&
+          resource.data.status in ['reported', 'verified'] &&
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+            'citizenId',
+            'ticketNumber',
+            'status',
+            'assignedTo',
+            'departmentId',
+            'departmentName',
+            'resolvedAt',
+            'officerNotes',
+            'createdAt'
+          ])
+        ) ||
+        // Case C: Government officer updating workflow, status, assignment, and notes
+        (
+          isGovernment() &&
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+            'citizenId',
+            'ticketNumber',
+            'createdAt'
+          ])
+        )
+      );
+
+      // Complaints cannot be deleted by standard citizens
+      allow delete: if isGovernment();
+
+      // =======================================================================
+      // 3. COMPLAINT UPDATES (complaints/{complaintId}/updates/{updateId})
+      // =======================================================================
+      match /updates/{updateId} {
+        // Read timeline: complaint owner or government personnel
+        allow read: if isSignedIn() && (
+          get(/databases/$(database)/documents/complaints/$(complaintId)).data.citizenId == request.auth.uid ||
+          isGovernment()
+        );
+
+        // Timeline entry creation:
+        // - Initial report update created by citizen upon submission
+        // - Subsequent status updates created strictly by authorized government officers
+        allow create: if isSignedIn() && (
+          (
+            isOwner(get(/databases/$(database)/documents/complaints/$(complaintId)).data.citizenId) &&
+            request.resource.data.status == 'reported' &&
+            request.resource.data.updatedBy == request.auth.uid
+          ) ||
+          (
+            isGovernment() &&
+            request.resource.data.updatedBy is string &&
+            isValidStatus(request.resource.data.status)
+          )
+        );
+
+        // Timeline events are immutable audit entries
+        allow update: if false;
+        allow delete: if false;
+      }
+    }
+
+    // =========================================================================
+    // 4. DEPARTMENTS COLLECTION (departments/{departmentId})
+    // =========================================================================
+    match /departments/{departmentId} {
+      // Authenticated users (citizens & govt) can read department metadata
+      allow read: if isSignedIn();
+
+      // Department configuration is server/admin managed
+      allow write: if false;
+    }
+
+    // =========================================================================
+    // 5. NOTIFICATIONS COLLECTION (notifications/{notificationId})
+    // =========================================================================
+    match /notifications/{notificationId} {
+      // Users can only access their own notifications
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+
+      // Notifications are created server-side via trusted Cloud Functions
+      allow create: if false;
+
+      // Users can only update the read status (isRead) of their own notifications
+      allow update: if isSignedIn() &&
+        resource.data.userId == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']) &&
+        request.resource.data.isRead is bool;
+
+      // Users can dismiss/delete their own notifications
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // =========================================================================
+    // 6. REWARDS COLLECTION (rewards/{userId})
+    // =========================================================================
+    match /rewards/{userId} {
+      // Citizens can only view their own rewards and achievements
+      allow read: if isOwner(userId);
+
+      // Rewards and gamification points are strictly server-authoritative
+      allow write: if false;
+    }
+
+    // =========================================================================
+    // 7. HAZARDS COLLECTION (hazards/{hazardId})
+    // =========================================================================
+    match /hazards/{hazardId} {
+      // Live Hazard Map: all authenticated users can read sanitized hazard points (no citizen PII)
+      allow read: if isSignedIn();
+
+      // Creation: linked to an existing valid complaint created by the user or government
+      allow create: if isSignedIn() &&
+        request.resource.data.complaintId is string &&
+        request.resource.data.title is string &&
+        request.resource.data.latitude is number &&
+        request.resource.data.longitude is number &&
+        isValidSeverity(request.resource.data.severity) &&
+        request.resource.data.upvotes == 0 &&
+        (
+          (exists(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)) &&
+           get(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.citizenId == request.auth.uid) ||
+          isGovernment()
+        );
+
+      // Upvoting hazard on map or government status update
+      allow update: if isSignedIn() && (
+        (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['upvotes', 'updatedAt']) &&
+          request.resource.data.upvotes == resource.data.upvotes + 1
+        ) ||
+        isGovernment()
+      );
+
+      // Deletion: government personnel only
+      allow delete: if isGovernment();
+    }
+  }
+}

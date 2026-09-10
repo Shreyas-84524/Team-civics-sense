@@ -4,6 +4,7 @@ import '../../core/constants/app_radius.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/constants/app_typography.dart';
 import '../../core/models/user_model.dart';
+import '../../core/repositories/repository_locator.dart';
 import '../../core/repositories/user_repository.dart';
 import '../../core/widgets/civic_fix_app_bar.dart';
 import '../../core/widgets/civic_fix_button.dart';
@@ -36,7 +37,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   void initState() {
     super.initState();
-    _userRepository = widget.repository ?? MockUserRepository();
+    _userRepository = widget.repository ?? RepositoryLocator.userRepository;
     _nameController = TextEditingController();
     _phoneController = TextEditingController();
     _loadCurrentProfile();

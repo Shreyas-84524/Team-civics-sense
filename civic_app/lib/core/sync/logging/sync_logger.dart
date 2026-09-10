@@ -37,9 +37,16 @@ class SyncLogger {
 
   List<SyncLogEntry> get history => List.unmodifiable(_history);
 
+  void debug(String message, {String? itemId, String? operation, Map<String, dynamic>? metadata}) {
+    _log('DEBUG', message, itemId: itemId, operation: operation, metadata: metadata);
+  }
+
   void info(String message, {String? itemId, String? operation, Map<String, dynamic>? metadata}) {
     _log('INFO', message, itemId: itemId, operation: operation, metadata: metadata);
   }
+
+
+
 
   void warning(String message, {String? itemId, String? operation, Map<String, dynamic>? metadata}) {
     _log('WARN', message, itemId: itemId, operation: operation, metadata: metadata);

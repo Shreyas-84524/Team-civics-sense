@@ -1,11 +1,14 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../core/auth/auth_service_locator.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_radius.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/constants/app_typography.dart';
 import '../../core/models/complaint_model.dart';
 import '../../core/repositories/complaint_repository.dart';
+import '../../core/repositories/repository_locator.dart';
 import '../../core/routing/app_routes.dart';
 import '../../core/utils/date_formatter.dart';
 import '../../core/widgets/civic_fix_app_bar.dart';
@@ -13,7 +16,7 @@ import '../../core/widgets/empty_state.dart';
 import '../../core/widgets/error_state.dart';
 import '../../core/widgets/responsive_container.dart';
 import '../../core/widgets/status_badge.dart';
-import '../services/mock_auth_service.dart';
+import '../../core/auth/auth_service.dart';
 import '../widgets/complaint_details/complaint_details_skeleton.dart';
 import '../widgets/complaint_details/complaint_tracker.dart';
 import '../widgets/complaint_details/evidence_gallery.dart';
@@ -44,6 +47,7 @@ class ComplaintDetailsScreen extends StatefulWidget {
 class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
   late final ComplaintRepository _repository;
   late final AuthService _authService;
+  StreamSubscription<ComplaintModel?>? _complaintSubscription;
 
   ComplaintModel? _complaint;
   bool _isLoading = true;
@@ -53,17 +57,36 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
   @override
   void initState() {
     super.initState();
-    _repository = widget.repository ?? MockComplaintRepository();
-    _authService = widget.authService ?? MockAuthService();
+    _repository = widget.repository ?? RepositoryLocator.complaintRepository;
+    _authService = widget.authService ?? AuthServiceLocator.citizenAuth;
 
     if (widget.complaint != null) {
       _verifyAndSetComplaint(widget.complaint!);
+      _subscribeToRealtimeUpdates(widget.complaint!.id);
     } else if (widget.complaintId != null) {
       _loadComplaintById(widget.complaintId!);
+      _subscribeToRealtimeUpdates(widget.complaintId!);
     } else {
       _isLoading = false;
       _errorMessage = 'No complaint specified.';
     }
+  }
+
+  @override
+  void dispose() {
+    _complaintSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _subscribeToRealtimeUpdates(String id) {
+    _complaintSubscription?.cancel();
+    _complaintSubscription = _repository.watchComplaint(id).listen((updated) {
+      if (mounted && updated != null) {
+        _verifyAndSetComplaint(updated);
+      }
+    }, onError: (e) {
+      debugPrint('[ComplaintDetailsScreen] Real-time stream error: $e');
+    });
   }
 
   void _verifyAndSetComplaint(ComplaintModel complaint) {
@@ -111,6 +134,7 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
 
       if (mounted) {
         _verifyAndSetComplaint(fetched);
+        _subscribeToRealtimeUpdates(fetched.id);
       }
     } catch (e) {
       if (mounted) {
@@ -121,6 +145,7 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
       }
     }
   }
+
 
   void _copyTicketNumber(String ticketNumber) {
     Clipboard.setData(ClipboardData(text: ticketNumber));

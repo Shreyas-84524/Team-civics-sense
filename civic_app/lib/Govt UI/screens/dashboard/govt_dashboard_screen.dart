@@ -3,6 +3,7 @@ import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
 import '../../../core/models/complaint_model.dart';
 import '../../../core/network/connectivity_service.dart';
+import '../../../core/repositories/repository_locator.dart';
 import '../../../core/routing/app_routes.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/widgets/offline_cache_banner.dart';
@@ -61,7 +62,7 @@ class _GovtDashboardScreenState extends State<GovtDashboardScreen> {
   @override
   void initState() {
     super.initState();
-    _repository = widget.repository ?? MockGovtComplaintRepository();
+    _repository = widget.repository ?? RepositoryLocator.govtComplaintRepository;
     _connectivityService = widget.connectivityService ?? AppConnectivityService();
     _loadDashboardData();
   }
