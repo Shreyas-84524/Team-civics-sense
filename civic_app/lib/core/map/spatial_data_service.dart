@@ -40,9 +40,10 @@ extension SpatialTimeFilterExt on SpatialTimeFilter {
   bool isWithin(DateTime createdAt, {DateTime? referenceTime}) {
     final dur = duration;
     if (dur == null) return true;
-    final now = referenceTime ?? DateTime.now();
-    final cutoff = now.subtract(dur);
-    return createdAt.isAfter(cutoff) || createdAt.isAtSameMomentAs(cutoff);
+    final nowUtc = (referenceTime ?? DateTime.now()).toUtc();
+    final createdUtc = createdAt.toUtc();
+    final cutoff = nowUtc.subtract(dur);
+    return createdUtc.isAfter(cutoff) || createdUtc.isAtSameMomentAs(cutoff);
   }
 }
 

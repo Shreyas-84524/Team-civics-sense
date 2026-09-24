@@ -82,12 +82,44 @@ class CivicMapCanvasState extends State<CivicMapCanvas> {
       oldWidget.transformationController?.removeListener(_handleTransformChanged);
       widget.transformationController?.addListener(_handleTransformChanged);
     }
-    if (oldWidget.hazards != widget.hazards ||
+    if (oldWidget.showHeatmap != widget.showHeatmap ||
+        oldWidget.enableClustering != widget.enableClustering ||
+        oldWidget.showPointsLayer != widget.showPointsLayer) {
+      _rebuildLayers();
+    } else if (oldWidget.hazards != widget.hazards ||
         oldWidget.complaints != widget.complaints ||
-        oldWidget.timeFilter != widget.timeFilter ||
-        oldWidget.showHeatmap != widget.showHeatmap) {
+        oldWidget.timeFilter != widget.timeFilter) {
       syncSpatialGeoJsonSource();
     }
+  }
+
+  /// Re-registers spatial layers to reflect updated visibility or clustering configurations.
+  Future<void> _rebuildLayers() async {
+    if (_mapController == null) return;
+    try {
+      await _removeSpatialLayers();
+      await _registerSpatialLayers();
+    } catch (e) {
+      debugPrint('[CivicMapCanvas] Layer rebuild notice: $e');
+    }
+  }
+
+  /// Removes existing spatial layers safely from MapLibre.
+  Future<void> _removeSpatialLayers() async {
+    if (_mapController == null) return;
+    try {
+      await _mapController!.removeLayer(MapConstants.unclusteredPointsLayerId);
+    } catch (_) {}
+    try {
+      await _mapController!.removeLayer(MapConstants.clusterCountLayerId);
+    } catch (_) {}
+    try {
+      await _mapController!.removeLayer(MapConstants.clusterPointsLayerId);
+    } catch (_) {}
+    try {
+      await _mapController!.removeLayer(MapConstants.heatmapLayerId);
+    } catch (_) {}
+    _hasRegisteredLayers = false;
   }
 
   /// Synchronizes the current complaints/hazards spatial dataset with MapLibre's GeoJSON source.
@@ -98,7 +130,24 @@ class CivicMapCanvasState extends State<CivicMapCanvas> {
 
     try {
       if (_hasAddedSpatialSource) {
-        await _mapController!.setGeoJsonSource(MapConstants.spatialSourceId, geoJson);
+        try {
+          await _mapController!.setGeoJsonSource(MapConstants.spatialSourceId, geoJson);
+        } catch (_) {
+          // If source was lost (e.g. style reload), reset flags and re-add source
+          _hasAddedSpatialSource = false;
+          _hasRegisteredLayers = false;
+          await _mapController!.addSource(
+            MapConstants.spatialSourceId,
+            GeojsonSourceProperties(
+              data: geoJson,
+              cluster: widget.enableClustering,
+              clusterMaxZoom: 14,
+              clusterRadius: 50,
+            ),
+          );
+          _hasAddedSpatialSource = true;
+          await _registerSpatialLayers();
+        }
       } else {
         await _mapController!.addSource(
           MapConstants.spatialSourceId,
@@ -428,6 +477,8 @@ class CivicMapCanvasState extends State<CivicMapCanvas> {
         widget.onMapCreated?.call(controller);
       },
       onStyleLoadedCallback: () {
+        _hasAddedSpatialSource = false;
+        _hasRegisteredLayers = false;
         syncSpatialGeoJsonSource();
       },
       onCameraMove: (position) {

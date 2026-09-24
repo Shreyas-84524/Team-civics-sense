@@ -326,6 +326,101 @@ void main() {
         expect(stopwatch.elapsedMilliseconds, lessThan( count > 2000 ? 500 : 150 ));
       }
     });
+
+    test('Boundary & Timezone Edge Cases: Exact cutoffs and UTC representations', () {
+      final nowUtc = DateTime.utc(2026, 9, 24, 12, 0, 0);
+
+      final exact24hAgo = nowUtc.subtract(const Duration(hours: 24));
+      final past24h1sAgo = nowUtc.subtract(const Duration(hours: 24, seconds: 1));
+      final future10mAgo = nowUtc.add(const Duration(minutes: 10));
+
+      final testCases = [
+        ComplaintModel(
+          id: 'cmp_exact_24h',
+          ticketNumber: 'CF-2026-900001',
+          title: 'Exact 24h boundary',
+          description: 'Boundary test',
+          category: CivicCategory.defaultCategories[0],
+          status: ComplaintStatus.reported,
+          priority: ComplaintPriority.medium,
+          location: const CivicLocation(latitude: 19.0760, longitude: 72.8777, address: 'Mumbai'),
+          createdAt: exact24hAgo,
+          updatedAt: exact24hAgo,
+        ),
+        ComplaintModel(
+          id: 'cmp_past_24h',
+          ticketNumber: 'CF-2026-900002',
+          title: 'Past 24h boundary',
+          description: 'Boundary test',
+          category: CivicCategory.defaultCategories[0],
+          status: ComplaintStatus.reported,
+          priority: ComplaintPriority.medium,
+          location: const CivicLocation(latitude: 19.0760, longitude: 72.8777, address: 'Mumbai'),
+          createdAt: past24h1sAgo,
+          updatedAt: past24h1sAgo,
+        ),
+        ComplaintModel(
+          id: 'cmp_future_drift',
+          ticketNumber: 'CF-2026-900003',
+          title: 'Clock drift future timestamp',
+          description: 'Boundary test',
+          category: CivicCategory.defaultCategories[0],
+          status: ComplaintStatus.reported,
+          priority: ComplaintPriority.medium,
+          location: const CivicLocation(latitude: 19.0760, longitude: 72.8777, address: 'Mumbai'),
+          createdAt: future10mAgo,
+          updatedAt: future10mAgo,
+        ),
+      ];
+
+      final filtered24h = service.extractComplaintFeatures(
+        testCases,
+        timeFilter: SpatialTimeFilter.last24Hours,
+        referenceTime: nowUtc,
+      );
+
+      // Exact 24h and future clock drift are included, 24h + 1s is excluded
+      expect(filtered24h.map((f) => f.id), containsAll(['cmp_exact_24h', 'cmp_future_drift']));
+      expect(filtered24h.map((f) => f.id), isNot(contains('cmp_past_24h')));
+    });
+
+    test('Duplicate Coordinates: Multiple reports at same coordinate preserved without deduplication', () {
+      final duplicateList = List.generate(5, (i) {
+        return ComplaintModel(
+          id: 'cmp_dup_$i',
+          ticketNumber: 'CF-2026-00000$i',
+          title: 'Duplicate Location Report #$i',
+          description: 'Multiple citizens reporting same spot',
+          category: CivicCategory.defaultCategories[0],
+          status: ComplaintStatus.reported,
+          priority: ComplaintPriority.high,
+          location: const CivicLocation(
+            latitude: 19.0760,
+            longitude: 72.8777,
+            address: 'Dharavi Junction',
+          ),
+          createdAt: DateTime(2026, 9, 24),
+          updatedAt: DateTime(2026, 9, 24),
+        );
+      });
+
+      final collection = service.buildFeatureCollection(complaints: duplicateList);
+      final features = collection['features'] as List;
+
+      // All 5 features must exist to accumulate natural heatmap density
+      expect(features.length, equals(5));
+      for (final f in features) {
+        final coords = (f['geometry'] as Map)['coordinates'] as List;
+        expect(coords[0], equals(72.8777));
+        expect(coords[1], equals(19.0760));
+      }
+    });
+
+    test('Empty Dataset: Returns valid GeoJSON with 0 features without error', () {
+      final collection = service.buildFeatureCollection(complaints: [], hazards: []);
+      expect(collection['type'], equals('FeatureCollection'));
+      expect((collection['features'] as List).isEmpty, isTrue);
+    });
   });
 }
 

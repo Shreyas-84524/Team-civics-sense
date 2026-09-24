@@ -185,6 +185,51 @@ void main() {
       final geoJson = state!.currentGeoJson;
       expect(geoJson['type'], equals('FeatureCollection'));
     });
+
+    testWidgets('CivicMapCanvas handles rapid property updates cleanly', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: CivicMapCanvas(
+              hazards: sampleHazards,
+              showHeatmap: true,
+              enableClustering: true,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Rapidly toggle heatmap off, clustering off
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: CivicMapCanvas(
+              hazards: sampleHazards,
+              showHeatmap: false,
+              enableClustering: false,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Update hazards dataset
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: CivicMapCanvas(
+              hazards: [sampleHazards.first],
+              showHeatmap: true,
+              enableClustering: true,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CivicMapCanvas), findsOneWidget);
+    });
   });
 
   group('GovtMapCanvas Widget Tests', () {
