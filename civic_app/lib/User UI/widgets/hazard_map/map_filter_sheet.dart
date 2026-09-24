@@ -3,6 +3,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_radius.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
+import '../../../core/map/spatial_data_service.dart';
 import '../../../core/models/complaint_model.dart';
 import '../../../core/widgets/civic_fix_button.dart';
 import '../../../core/widgets/civic_fix_outlined_button.dart';
@@ -11,12 +12,14 @@ import '../../../core/widgets/civic_fix_outlined_button.dart';
 class MapFilterSheet extends StatefulWidget {
   final String? selectedCategoryId;
   final ComplaintStatus? selectedStatus;
-  final Function(String? categoryId, ComplaintStatus? status) onApply;
+  final SpatialTimeFilter? selectedTimeFilter;
+  final Function onApply;
 
   const MapFilterSheet({
     super.key,
     this.selectedCategoryId,
     this.selectedStatus,
+    this.selectedTimeFilter,
     required this.onApply,
   });
 
@@ -24,7 +27,8 @@ class MapFilterSheet extends StatefulWidget {
     BuildContext context, {
     required String? selectedCategoryId,
     required ComplaintStatus? selectedStatus,
-    required Function(String? categoryId, ComplaintStatus? status) onApply,
+    SpatialTimeFilter? selectedTimeFilter,
+    required Function onApply,
   }) {
     return showModalBottomSheet(
       context: context,
@@ -33,6 +37,7 @@ class MapFilterSheet extends StatefulWidget {
       builder: (context) => MapFilterSheet(
         selectedCategoryId: selectedCategoryId,
         selectedStatus: selectedStatus,
+        selectedTimeFilter: selectedTimeFilter,
         onApply: onApply,
       ),
     );
@@ -45,6 +50,7 @@ class MapFilterSheet extends StatefulWidget {
 class _MapFilterSheetState extends State<MapFilterSheet> {
   late String? _selectedCategoryId;
   late ComplaintStatus? _selectedStatus;
+  late SpatialTimeFilter? _selectedTimeFilter;
 
   final List<Map<String, dynamic>> _mapCategories = [
     {'id': 'all', 'name': 'All Categories', 'icon': Icons.apps_rounded},
@@ -71,20 +77,30 @@ class _MapFilterSheetState extends State<MapFilterSheet> {
     super.initState();
     _selectedCategoryId = widget.selectedCategoryId;
     _selectedStatus = widget.selectedStatus;
+    _selectedTimeFilter = widget.selectedTimeFilter;
   }
 
   void _clearFilters() {
     setState(() {
       _selectedCategoryId = null;
       _selectedStatus = null;
+      _selectedTimeFilter = null;
     });
   }
 
   void _applyFilters() {
-    widget.onApply(
-      _selectedCategoryId == 'all' ? null : _selectedCategoryId,
-      _selectedStatus,
-    );
+    try {
+      widget.onApply(
+        _selectedCategoryId == 'all' ? null : _selectedCategoryId,
+        _selectedStatus,
+        _selectedTimeFilter,
+      );
+    } catch (_) {
+      widget.onApply(
+        _selectedCategoryId == 'all' ? null : _selectedCategoryId,
+        _selectedStatus,
+      );
+    }
     Navigator.pop(context);
   }
 
@@ -220,6 +236,48 @@ class _MapFilterSheetState extends State<MapFilterSheet> {
                 onSelected: (_) {
                   setState(() {
                     _selectedStatus = status;
+                  });
+                },
+              );
+            }).toList(),
+          ),
+          CivicFixSpacing.vSpaceLg,
+
+          // 3. Time Window Section
+          Text(
+            'Report Timeframe',
+            style: CivicFixTypography.bodySmallMedium.copyWith(
+              fontWeight: FontWeight.w700,
+              color: CivicFixColors.primaryText,
+            ),
+          ),
+          CivicFixSpacing.vSpaceSm,
+          Wrap(
+            spacing: CivicFixSpacing.sm,
+            runSpacing: CivicFixSpacing.sm,
+            children: SpatialTimeFilter.values.map((tf) {
+              final isSelected = (_selectedTimeFilter == null && tf == SpatialTimeFilter.allTime) ||
+                  _selectedTimeFilter == tf;
+
+              return FilterChip(
+                label: Text(tf.label),
+                selected: isSelected,
+                selectedColor: CivicFixColors.accent,
+                backgroundColor: CivicFixColors.surfaceMuted,
+                labelStyle: CivicFixTypography.captionMedium.copyWith(
+                  color: isSelected ? Colors.white : CivicFixColors.primaryText,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: CivicFixRadius.chipRadius,
+                  side: BorderSide(
+                    color: isSelected ? CivicFixColors.accent : CivicFixColors.border,
+                  ),
+                ),
+                showCheckmark: false,
+                onSelected: (_) {
+                  setState(() {
+                    _selectedTimeFilter = tf == SpatialTimeFilter.allTime ? null : tf;
                   });
                 },
               );

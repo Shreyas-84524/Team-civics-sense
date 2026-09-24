@@ -1,11 +1,13 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_radius.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/constants/app_typography.dart';
 import '../../core/location/location_model.dart';
 import '../../core/map/civic_map_canvas.dart';
+import '../../core/map/heatmap_legend.dart';
 import '../../core/map/map_constants.dart';
+import '../../core/map/spatial_data_service.dart';
 import '../../core/models/complaint_model.dart';
 import '../../core/models/hazard_model.dart';
 import '../../core/network/connectivity_service.dart';
@@ -66,7 +68,9 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
   // Active filters
   String? _selectedCategoryId;
   ComplaintStatus? _selectedStatus;
+  SpatialTimeFilter? _selectedTimeFilter;
   bool _showLegend = false;
+  bool _showHeatmap = true;
 
   @override
   void initState() {
@@ -125,7 +129,12 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
       list = list.where((h) => h.status == _selectedStatus).toList();
     }
 
-    // 3. Search query
+    // 3. Filter Time Horizon
+    if (_selectedTimeFilter != null && _selectedTimeFilter != SpatialTimeFilter.allTime) {
+      list = list.where((h) => _selectedTimeFilter!.isWithin(h.createdAt)).toList();
+    }
+
+    // 4. Search query
     final query = _searchController.text.trim().toLowerCase();
     if (query.isNotEmpty) {
       list = list.where((h) {
@@ -162,10 +171,14 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
       context,
       selectedCategoryId: _selectedCategoryId,
       selectedStatus: _selectedStatus,
-      onApply: (categoryId, status) {
+      selectedTimeFilter: _selectedTimeFilter,
+      onApply: (categoryId, status, [timeFilter]) {
         setState(() {
           _selectedCategoryId = categoryId;
           _selectedStatus = status;
+          if (timeFilter is SpatialTimeFilter?) {
+            _selectedTimeFilter = timeFilter;
+          }
         });
         _applyCurrentFilters();
       },
@@ -176,6 +189,7 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
     setState(() {
       _selectedCategoryId = null;
       _selectedStatus = null;
+      _selectedTimeFilter = null;
       _searchController.clear();
     });
     _applyCurrentFilters();
@@ -271,6 +285,7 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
     int count = 0;
     if (_selectedCategoryId != null && _selectedCategoryId != 'all') count++;
     if (_selectedStatus != null) count++;
+    if (_selectedTimeFilter != null && _selectedTimeFilter != SpatialTimeFilter.allTime) count++;
     return count;
   }
 
@@ -284,7 +299,19 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
         actions: [
           IconButton(
             icon: Icon(
-              _showLegend ? Icons.info_rounded : Icons.info_outline_rounded,
+              _showHeatmap ? Icons.local_fire_department_rounded : Icons.local_fire_department_outlined,
+              color: _showHeatmap ? const Color(0xFFEF4444) : CivicFixColors.secondaryText,
+            ),
+            tooltip: _showHeatmap ? 'Hide Heatmap Layer' : 'Show Heatmap Layer',
+            onPressed: () {
+              setState(() {
+                _showHeatmap = !_showHeatmap;
+              });
+            },
+          ),
+          IconButton(
+            icon: Icon(
+              _showLegend ? Icons.layers_rounded : Icons.layers_outlined,
               color: _showLegend ? CivicFixColors.primary : CivicFixColors.secondaryText,
             ),
             tooltip: 'Toggle Map Legend',
@@ -304,7 +331,7 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
             : _errorMessage != null
                 ? Center(
                     child: ErrorState(
-                      title: "Couldn't load civic issues.",
+                       title: "Couldn't load civic issues.",
                       message: 'Please check your connection and try again.',
                       onRetry: _loadHazards,
                     ),
@@ -324,6 +351,8 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
               key: _mapCanvasKey,
               hazards: _filteredHazards,
               selectedHazard: _selectedHazard,
+              showHeatmap: _showHeatmap,
+              timeFilter: _selectedTimeFilter,
               onHazardSelected: (hazard) {
                 setState(() {
                   _selectedHazard = hazard;
@@ -494,54 +523,66 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
               ),
             ),
 
-            // 4. Status Legend Floating Sheet
+            // 4. Map Legends Floating Sheet (Heatmap Density + Hazard Status)
             if (_showLegend)
               Positioned(
                 top: 80,
                 right: CivicFixSpacing.md,
-                child: Semantics(
-                  label: 'Hazard Status Legend',
-                  child: CivicFixCard(
-                    padding: const EdgeInsets.all(CivicFixSpacing.md),
-                    elevation: 4,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'Status Legend',
-                          style: CivicFixTypography.captionMedium.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: CivicFixColors.primaryText,
-                          ),
-                        ),
-                        CivicFixSpacing.vSpaceSm,
-                        ...ComplaintStatus.values.where((s) => s != ComplaintStatus.rejected).map((status) {
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 6.0),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 10,
-                                  height: 10,
-                                  decoration: BoxDecoration(
-                                    color: status.badgeColor,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                                CivicFixSpacing.hSpaceSm,
-                                Text(
-                                  status.label,
-                                  style: CivicFixTypography.caption,
-                                ),
-                              ],
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_showHeatmap) ...[
+                      HeatmapLegend(
+                        onClose: () => setState(() => _showLegend = false),
+                      ),
+                      CivicFixSpacing.vSpaceSm,
+                    ],
+                    Semantics(
+                      label: 'Hazard Status Legend',
+                      child: CivicFixCard(
+                        padding: const EdgeInsets.all(CivicFixSpacing.md),
+                        elevation: 4,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Status Legend',
+                              style: CivicFixTypography.captionMedium.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: CivicFixColors.primaryText,
+                              ),
                             ),
-                          );
-                        }),
-                      ],
+                            CivicFixSpacing.vSpaceSm,
+                            ...ComplaintStatus.values.where((s) => s != ComplaintStatus.rejected).map((status) {
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 6.0),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      width: 10,
+                                      height: 10,
+                                      decoration: BoxDecoration(
+                                        color: status.badgeColor,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                    CivicFixSpacing.hSpaceSm,
+                                    Text(
+                                      status.label,
+                                      style: CivicFixTypography.caption,
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ),
 

@@ -3,6 +3,7 @@ import '../../../User UI/services/location_service.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
 import '../../../core/location/location_model.dart';
+import '../../../core/map/spatial_data_service.dart';
 import '../../../core/models/complaint_model.dart';
 import '../../../core/models/hazard_model.dart';
 import '../../../core/network/connectivity_service.dart';
@@ -58,7 +59,9 @@ class _GovtHazardMapScreenState extends State<GovtHazardMapScreen> {
   ComplaintStatus? _selectedStatus;
   String _selectedCategory = 'all';
   HazardSeverity? _selectedSeverity;
+  SpatialTimeFilter? _selectedTimeFilter;
   bool _showLegend = false;
+  bool _showHeatmap = true;
 
   CivicLocation? _currentUserLocation;
 
@@ -158,7 +161,12 @@ class _GovtHazardMapScreenState extends State<GovtHazardMapScreen> {
       results = results.where((h) => h.severity == _selectedSeverity).toList();
     }
 
-    // 4. Search Filter
+    // 4. Time Horizon Filter
+    if (_selectedTimeFilter != null && _selectedTimeFilter != SpatialTimeFilter.allTime) {
+      results = results.where((h) => _selectedTimeFilter!.isWithin(h.createdAt)).toList();
+    }
+
+    // 5. Search Filter
     final query = _searchController.text.trim().toLowerCase();
     if (query.isNotEmpty) {
       results = results.where((h) {
@@ -185,6 +193,7 @@ class _GovtHazardMapScreenState extends State<GovtHazardMapScreen> {
       _selectedStatus = null;
       _selectedCategory = 'all';
       _selectedSeverity = null;
+      _selectedTimeFilter = null;
       _selectedHazard = null;
     });
     _applyFilters();
@@ -194,6 +203,7 @@ class _GovtHazardMapScreenState extends State<GovtHazardMapScreen> {
       _selectedStatus != null ||
       _selectedCategory != 'all' ||
       _selectedSeverity != null ||
+      _selectedTimeFilter != null ||
       _searchController.text.trim().isNotEmpty;
 
   void _onHazardSelected(HazardModel hazard) {
@@ -317,6 +327,8 @@ class _GovtHazardMapScreenState extends State<GovtHazardMapScreen> {
                   onHazardSelected: _onHazardSelected,
                   transformationController: _transformationController,
                   userLocation: _currentUserLocation,
+                  showHeatmap: _showHeatmap,
+                  timeFilter: _selectedTimeFilter,
                   onMapTap: () {
                     if (_selectedHazard != null) {
                       setState(() => _selectedHazard = null);
@@ -416,6 +428,15 @@ class _GovtHazardMapScreenState extends State<GovtHazardMapScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // Toggle Heatmap Layer
+                    _buildFloatingButton(
+                      icon: Icons.local_fire_department_rounded,
+                      tooltip: _showHeatmap ? 'Hide Heatmap Density' : 'Show Heatmap Density',
+                      isActive: _showHeatmap,
+                      onPressed: () => setState(() => _showHeatmap = !_showHeatmap),
+                    ),
+                    CivicFixSpacing.vSpaceSm,
+
                     // Toggle Legend
                     _buildFloatingButton(
                       icon: Icons.layers_outlined,
@@ -459,11 +480,11 @@ class _GovtHazardMapScreenState extends State<GovtHazardMapScreen> {
                 ),
               ),
 
-              // GIS Map Legend Overlay (Top-Right)
+              // GIS Map Legend Overlay (Top-Right, adjacent to floating controls)
               if (_showLegend)
                 Positioned(
                   top: CivicFixSpacing.md,
-                  right: CivicFixSpacing.lg,
+                  right: 72,
                   child: GovtMapLegend(
                     onClose: () => setState(() => _showLegend = false),
                   ),

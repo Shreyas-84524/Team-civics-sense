@@ -1,8 +1,9 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../../theme/govt_theme_tokens.dart';
 import '../../../core/location/location_model.dart';
 import '../../../core/map/civic_map_canvas.dart';
 import '../../../core/map/map_constants.dart';
+import '../../../core/map/spatial_data_service.dart';
 import '../../../core/models/hazard_model.dart';
 import 'govt_hazard_marker.dart';
 
@@ -16,6 +17,9 @@ class GovtMapCanvas extends StatelessWidget {
   final CivicLocation? userLocation;
   final VoidCallback? onMapTap;
   final GlobalKey<CivicMapCanvasState>? mapCanvasKey;
+  final bool showHeatmap;
+  final bool enableClustering;
+  final SpatialTimeFilter? timeFilter;
 
   const GovtMapCanvas({
     super.key,
@@ -26,6 +30,9 @@ class GovtMapCanvas extends StatelessWidget {
     this.userLocation,
     this.onMapTap,
     this.mapCanvasKey,
+    this.showHeatmap = true,
+    this.enableClustering = true,
+    this.timeFilter,
   });
 
   /// Reference Mumbai municipal GIS center coordinates.
@@ -45,6 +52,9 @@ class GovtMapCanvas extends StatelessWidget {
       initialLatitude: centerLat,
       initialLongitude: centerLng,
       initialZoom: MapConstants.defaultInitialZoom,
+      showHeatmap: showHeatmap,
+      enableClustering: enableClustering,
+      timeFilter: timeFilter,
       markerBuilder: (hazard, isSelected, onTap) {
         return GovtHazardMarker(
           hazard: hazard,

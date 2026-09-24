@@ -2,6 +2,50 @@ import '../models/complaint_model.dart';
 import '../models/hazard_model.dart';
 import 'spatial_feature.dart';
 
+/// Preset time-based filtering ranges for spatial and heatmap queries.
+enum SpatialTimeFilter {
+  allTime,
+  last24Hours,
+  last7Days,
+  last30Days,
+}
+
+extension SpatialTimeFilterExt on SpatialTimeFilter {
+  String get label {
+    switch (this) {
+      case SpatialTimeFilter.allTime:
+        return 'All Time';
+      case SpatialTimeFilter.last24Hours:
+        return 'Last 24 Hours';
+      case SpatialTimeFilter.last7Days:
+        return 'Last 7 Days';
+      case SpatialTimeFilter.last30Days:
+        return 'Last 30 Days';
+    }
+  }
+
+  Duration? get duration {
+    switch (this) {
+      case SpatialTimeFilter.allTime:
+        return null;
+      case SpatialTimeFilter.last24Hours:
+        return const Duration(hours: 24);
+      case SpatialTimeFilter.last7Days:
+        return const Duration(days: 7);
+      case SpatialTimeFilter.last30Days:
+        return const Duration(days: 30);
+    }
+  }
+
+  bool isWithin(DateTime createdAt, {DateTime? referenceTime}) {
+    final dur = duration;
+    if (dur == null) return true;
+    final now = referenceTime ?? DateTime.now();
+    final cutoff = now.subtract(dur);
+    return createdAt.isAfter(cutoff) || createdAt.isAtSameMomentAs(cutoff);
+  }
+}
+
 /// Single source of truth for converting CivicFix domain models (complaints and hazards)
 /// into map-ready GeoJSON feature collections with filtering and spatial validation.
 class SpatialDataService {
@@ -14,6 +58,8 @@ class SpatialDataService {
     ComplaintStatus? status,
     String? department,
     String? ward,
+    SpatialTimeFilter? timeFilter,
+    DateTime? referenceTime,
     String? searchQuery,
   }) {
     var list = complaints;
@@ -39,6 +85,10 @@ class SpatialDataService {
     if (ward != null && ward.isNotEmpty && ward.toLowerCase() != 'all') {
       final w = ward.toLowerCase();
       list = list.where((c) => (c.location.ward ?? '').toLowerCase().contains(w)).toList();
+    }
+
+    if (timeFilter != null && timeFilter != SpatialTimeFilter.allTime) {
+      list = list.where((c) => timeFilter.isWithin(c.createdAt, referenceTime: referenceTime)).toList();
     }
 
     if (searchQuery != null && searchQuery.trim().isNotEmpty) {
@@ -72,6 +122,8 @@ class SpatialDataService {
     ComplaintStatus? status,
     HazardSeverity? severity,
     String? ward,
+    SpatialTimeFilter? timeFilter,
+    DateTime? referenceTime,
     String? searchQuery,
   }) {
     var list = hazards;
@@ -96,6 +148,10 @@ class SpatialDataService {
     if (ward != null && ward.isNotEmpty && ward.toLowerCase() != 'all') {
       final w = ward.toLowerCase();
       list = list.where((h) => (h.ward ?? '').toLowerCase().contains(w)).toList();
+    }
+
+    if (timeFilter != null && timeFilter != SpatialTimeFilter.allTime) {
+      list = list.where((h) => timeFilter.isWithin(h.createdAt, referenceTime: referenceTime)).toList();
     }
 
     if (searchQuery != null && searchQuery.trim().isNotEmpty) {
@@ -131,6 +187,8 @@ class SpatialDataService {
     String? department,
     String? ward,
     HazardSeverity? severity,
+    SpatialTimeFilter? timeFilter,
+    DateTime? referenceTime,
     String? searchQuery,
   }) {
     final List<SpatialFeature> allFeatures = [];
@@ -142,6 +200,8 @@ class SpatialDataService {
         status: status,
         department: department,
         ward: ward,
+        timeFilter: timeFilter,
+        referenceTime: referenceTime,
         searchQuery: searchQuery,
       ));
     }
@@ -153,6 +213,8 @@ class SpatialDataService {
         status: status,
         severity: severity,
         ward: ward,
+        timeFilter: timeFilter,
+        referenceTime: referenceTime,
         searchQuery: searchQuery,
       ));
     }
@@ -168,3 +230,4 @@ class SpatialDataService {
     };
   }
 }
+

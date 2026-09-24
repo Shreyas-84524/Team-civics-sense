@@ -27,6 +27,9 @@ class CivicMapCanvas extends StatefulWidget {
   final TransformationController? transformationController;
   final SpatialDataService spatialDataService;
   final bool enableClustering;
+  final bool showHeatmap;
+  final bool showPointsLayer;
+  final SpatialTimeFilter? timeFilter;
 
   const CivicMapCanvas({
     super.key,
@@ -45,6 +48,9 @@ class CivicMapCanvas extends StatefulWidget {
     this.transformationController,
     this.spatialDataService = const SpatialDataService(),
     this.enableClustering = true,
+    this.showHeatmap = true,
+    this.showPointsLayer = true,
+    this.timeFilter,
   });
 
   @override
@@ -57,6 +63,7 @@ class CivicMapCanvasState extends State<CivicMapCanvas> {
   late double _currentLng;
   late double _currentZoom;
   bool _hasAddedSpatialSource = false;
+  bool _hasRegisteredLayers = false;
 
   @override
   void initState() {
@@ -75,7 +82,10 @@ class CivicMapCanvasState extends State<CivicMapCanvas> {
       oldWidget.transformationController?.removeListener(_handleTransformChanged);
       widget.transformationController?.addListener(_handleTransformChanged);
     }
-    if (oldWidget.hazards != widget.hazards || oldWidget.complaints != widget.complaints) {
+    if (oldWidget.hazards != widget.hazards ||
+        oldWidget.complaints != widget.complaints ||
+        oldWidget.timeFilter != widget.timeFilter ||
+        oldWidget.showHeatmap != widget.showHeatmap) {
       syncSpatialGeoJsonSource();
     }
   }
@@ -101,8 +111,165 @@ class CivicMapCanvasState extends State<CivicMapCanvas> {
         );
         _hasAddedSpatialSource = true;
       }
+
+      if (_hasAddedSpatialSource && !_hasRegisteredLayers) {
+        await _registerSpatialLayers();
+      }
     } catch (e) {
       debugPrint('[CivicMapCanvas] GeoJSON spatial sync note: $e');
+    }
+  }
+
+  /// Registers GPU-accelerated heatmap, cluster, and point layers on the active MapLibre source.
+  Future<void> _registerSpatialLayers() async {
+    if (_mapController == null || _hasRegisteredLayers) return;
+
+    try {
+      // 1. Native Heatmap Density Layer
+      if (widget.showHeatmap) {
+        await _mapController!.addHeatmapLayer(
+          MapConstants.spatialSourceId,
+          MapConstants.heatmapLayerId,
+          const HeatmapLayerProperties(
+            heatmapWeight: 1.0,
+            heatmapIntensity: [
+              'interpolate',
+              ['linear'],
+              ['zoom'],
+              0,
+              1.0,
+              9,
+              1.5,
+              15,
+              3.0,
+            ],
+            heatmapColor: [
+              'interpolate',
+              ['linear'],
+              ['heatmap-density'],
+              0,
+              'rgba(0, 0, 0, 0)',
+              0.2,
+              'rgba(37, 99, 235, 0.5)',
+              0.4,
+              'rgba(16, 185, 129, 0.7)',
+              0.7,
+              'rgba(245, 158, 11, 0.85)',
+              1.0,
+              'rgba(239, 68, 68, 0.95)',
+            ],
+            heatmapRadius: [
+              'interpolate',
+              ['linear'],
+              ['zoom'],
+              0,
+              4,
+              9,
+              16,
+              14,
+              28,
+              18,
+              45,
+            ],
+            heatmapOpacity: [
+              'interpolate',
+              ['linear'],
+              ['zoom'],
+              7,
+              0.85,
+              13,
+              0.75,
+              16,
+              0.35,
+              18,
+              0.1,
+            ],
+          ),
+          maxzoom: 18.0,
+        );
+      }
+
+      // 2. Clustered Points Layer (grouped circle badges)
+      if (widget.enableClustering) {
+        await _mapController!.addCircleLayer(
+          MapConstants.spatialSourceId,
+          MapConstants.clusterPointsLayerId,
+          const CircleLayerProperties(
+            circleColor: [
+              'step',
+              ['get', 'point_count'],
+              '#38BDF8',
+              10,
+              '#F59E0B',
+              30,
+              '#EF4444',
+            ],
+            circleRadius: [
+              'step',
+              ['get', 'point_count'],
+              16,
+              10,
+              22,
+              30,
+              28,
+            ],
+            circleOpacity: 0.85,
+            circleStrokeWidth: 2.0,
+            circleStrokeColor: '#FFFFFF',
+          ),
+          filter: ['has', 'point_count'],
+          maxzoom: 14.5,
+        );
+
+        // 3. Cluster Count Text Label Layer
+        await _mapController!.addSymbolLayer(
+          MapConstants.spatialSourceId,
+          MapConstants.clusterCountLayerId,
+          const SymbolLayerProperties(
+            textField: '{point_count_abbreviated}',
+            textSize: 12,
+            textColor: '#FFFFFF',
+          ),
+          filter: ['has', 'point_count'],
+          maxzoom: 14.5,
+        );
+      }
+
+      // 4. Unclustered Point Markers (detailed street zoom)
+      if (widget.showPointsLayer) {
+        await _mapController!.addCircleLayer(
+          MapConstants.spatialSourceId,
+          MapConstants.unclusteredPointsLayerId,
+          const CircleLayerProperties(
+            circleColor: [
+              'match',
+              ['get', 'severity'],
+              'critical',
+              '#DC2626',
+              'high',
+              '#EA580C',
+              'medium',
+              '#D97706',
+              'low',
+              '#2563EB',
+              '#2563EB',
+            ],
+            circleRadius: 6.0,
+            circleOpacity: 0.9,
+            circleStrokeWidth: 1.5,
+            circleStrokeColor: '#FFFFFF',
+          ),
+          filter: [
+            '!',
+            ['has', 'point_count'],
+          ],
+          minzoom: 12.0,
+        );
+      }
+
+      _hasRegisteredLayers = true;
+    } catch (e) {
+      debugPrint('[CivicMapCanvas] Layer registration note: $e');
     }
   }
 
@@ -110,6 +277,7 @@ class CivicMapCanvasState extends State<CivicMapCanvas> {
   Map<String, dynamic> get currentGeoJson => widget.spatialDataService.buildFeatureCollection(
         complaints: widget.complaints,
         hazards: widget.hazards,
+        timeFilter: widget.timeFilter,
       );
 
   @override
@@ -293,7 +461,13 @@ class CivicMapCanvasState extends State<CivicMapCanvas> {
       color: const Color(0xFFE8ECE9),
       child: CustomPaint(
         size: size,
-        painter: _MumbaiBasemapPainter(),
+        painter: _MumbaiBasemapPainter(
+          hazards: widget.hazards,
+          centerLat: _currentLat,
+          centerLng: _currentLng,
+          zoom: _currentZoom,
+          showHeatmap: widget.showHeatmap,
+        ),
       ),
     );
   }
@@ -501,6 +675,20 @@ class _DefaultHazardMarker extends StatelessWidget {
 
 /// Geometric basemap painter for Mumbai geographic orientation during offline/testing fallback.
 class _MumbaiBasemapPainter extends CustomPainter {
+  final List<HazardModel> hazards;
+  final double centerLat;
+  final double centerLng;
+  final double zoom;
+  final bool showHeatmap;
+
+  _MumbaiBasemapPainter({
+    this.hazards = const [],
+    this.centerLat = MapConstants.mumbaiLatitude,
+    this.centerLng = MapConstants.mumbaiLongitude,
+    this.zoom = MapConstants.defaultInitialZoom,
+    this.showHeatmap = true,
+  });
+
   @override
   void paint(Canvas canvas, Size size) {
     // 1. Arabian Sea / Coastline / Thane Creek Waterways
@@ -595,8 +783,50 @@ class _MumbaiBasemapPainter extends CustomPainter {
         size.width * 0.26, size.height * 0.82,
       );
     canvas.drawPath(seaLink, seaLinkPaint);
+
+    // 5. Fallback Soft Heatmap Density Halos (when showHeatmap is enabled in offline/test fallback)
+    if (showHeatmap && hazards.isNotEmpty) {
+      for (final h in hazards) {
+        final screenOffset = GeoProjection.latLngToScreenOffset(
+          latitude: h.latitude,
+          longitude: h.longitude,
+          centerLatitude: centerLat,
+          centerLongitude: centerLng,
+          zoom: zoom,
+          screenSize: size,
+        );
+
+        if (screenOffset.dx >= -50 &&
+            screenOffset.dx <= size.width + 50 &&
+            screenOffset.dy >= -50 &&
+            screenOffset.dy <= size.height + 50) {
+          final haloRadius = (35.0 + (zoom - 10) * 4).clamp(20.0, 70.0);
+          final haloPaint = Paint()
+            ..shader = RadialGradient(
+              colors: [
+                const Color(0xFFEF4444).withValues(alpha: 0.35),
+                const Color(0xFFF59E0B).withValues(alpha: 0.20),
+                const Color(0xFF10B981).withValues(alpha: 0.08),
+                Colors.transparent,
+              ],
+              stops: const [0.0, 0.45, 0.75, 1.0],
+            ).createShader(Rect.fromCircle(center: screenOffset, radius: haloRadius));
+
+          canvas.drawCircle(screenOffset, haloRadius, haloPaint);
+        }
+      }
+    }
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _MumbaiBasemapPainter oldDelegate) {
+    return oldDelegate.hazards != hazards ||
+        oldDelegate.centerLat != centerLat ||
+        oldDelegate.centerLng != centerLng ||
+        oldDelegate.zoom != zoom ||
+        oldDelegate.showHeatmap != showHeatmap;
+  }
 }
+
+
+

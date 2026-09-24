@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:civic_app/core/location/location_model.dart';
 import 'package:civic_app/core/map/civic_map_canvas.dart';
 import 'package:civic_app/core/map/map_config.dart';
+import 'package:civic_app/core/map/spatial_data_service.dart';
 import 'package:civic_app/core/models/category_model.dart';
 import 'package:civic_app/core/models/complaint_model.dart';
 import 'package:civic_app/core/models/hazard_model.dart';
@@ -160,6 +161,29 @@ void main() {
       // Trigger sync
       await state.syncSpatialGeoJsonSource();
       await tester.pumpAndSettle();
+    });
+
+    testWidgets('CivicMapCanvas respects showHeatmap and timeFilter in GeoJSON state', (tester) async {
+      final canvasKey = GlobalKey<CivicMapCanvasState>();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: CivicMapCanvas(
+              key: canvasKey,
+              hazards: sampleHazards,
+              showHeatmap: true,
+              timeFilter: SpatialTimeFilter.last30Days,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final state = canvasKey.currentState;
+      expect(state, isNotNull);
+      final geoJson = state!.currentGeoJson;
+      expect(geoJson['type'], equals('FeatureCollection'));
     });
   });
 

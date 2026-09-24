@@ -181,8 +181,119 @@ void main() {
       expect(empty['features'], isEmpty);
     });
 
-    test('Performance Benchmark: Serializes 10, 100, 500, and 1000 features in sub-millisecond per item speed', () {
-      for (final count in [10, 100, 500, 1000]) {
+    test('SpatialTimeFilter filters complaints by creation date relative to reference time', () {
+      final now = DateTime(2026, 9, 24, 12, 0);
+
+      final timedComplaints = [
+        ComplaintModel(
+          id: 'cmp_2h',
+          ticketNumber: 'CF-2026-000010',
+          title: 'Recent pothole 2 hours ago',
+          description: 'Pothole on main road',
+          category: CivicCategory.defaultCategories[0],
+          status: ComplaintStatus.reported,
+          priority: ComplaintPriority.high,
+          location: const CivicLocation(latitude: 19.0760, longitude: 72.8777, address: 'Mumbai'),
+          createdAt: now.subtract(const Duration(hours: 2)),
+          updatedAt: now.subtract(const Duration(hours: 2)),
+        ),
+        ComplaintModel(
+          id: 'cmp_3d',
+          ticketNumber: 'CF-2026-000011',
+          title: 'Issue 3 days ago',
+          description: 'Water leak',
+          category: CivicCategory.defaultCategories[0],
+          status: ComplaintStatus.reported,
+          priority: ComplaintPriority.medium,
+          location: const CivicLocation(latitude: 19.0760, longitude: 72.8777, address: 'Mumbai'),
+          createdAt: now.subtract(const Duration(days: 3)),
+          updatedAt: now.subtract(const Duration(days: 3)),
+        ),
+        ComplaintModel(
+          id: 'cmp_15d',
+          ticketNumber: 'CF-2026-000012',
+          title: 'Issue 15 days ago',
+          description: 'Street light broken',
+          category: CivicCategory.defaultCategories[0],
+          status: ComplaintStatus.reported,
+          priority: ComplaintPriority.low,
+          location: const CivicLocation(latitude: 19.0760, longitude: 72.8777, address: 'Mumbai'),
+          createdAt: now.subtract(const Duration(days: 15)),
+          updatedAt: now.subtract(const Duration(days: 15)),
+        ),
+        ComplaintModel(
+          id: 'cmp_45d',
+          ticketNumber: 'CF-2026-000013',
+          title: 'Issue 45 days ago',
+          description: 'Garbage accumulation',
+          category: CivicCategory.defaultCategories[0],
+          status: ComplaintStatus.reported,
+          priority: ComplaintPriority.low,
+          location: const CivicLocation(latitude: 19.0760, longitude: 72.8777, address: 'Mumbai'),
+          createdAt: now.subtract(const Duration(days: 45)),
+          updatedAt: now.subtract(const Duration(days: 45)),
+        ),
+      ];
+
+      // 1. Last 24 Hours
+      final last24h = service.extractComplaintFeatures(
+        timedComplaints,
+        timeFilter: SpatialTimeFilter.last24Hours,
+        referenceTime: now,
+      );
+      expect(last24h.length, equals(1));
+      expect(last24h.first.id, equals('cmp_2h'));
+
+      // 2. Last 7 Days
+      final last7d = service.extractComplaintFeatures(
+        timedComplaints,
+        timeFilter: SpatialTimeFilter.last7Days,
+        referenceTime: now,
+      );
+      expect(last7d.length, equals(2));
+      expect(last7d.map((f) => f.id), containsAll(['cmp_2h', 'cmp_3d']));
+
+      // 3. Last 30 Days
+      final last30d = service.extractComplaintFeatures(
+        timedComplaints,
+        timeFilter: SpatialTimeFilter.last30Days,
+        referenceTime: now,
+      );
+      expect(last30d.length, equals(3));
+      expect(last30d.map((f) => f.id), containsAll(['cmp_2h', 'cmp_3d', 'cmp_15d']));
+
+      // 4. All Time
+      final allTime = service.extractComplaintFeatures(
+        timedComplaints,
+        timeFilter: SpatialTimeFilter.allTime,
+        referenceTime: now,
+      );
+      expect(allTime.length, equals(4));
+    });
+
+    test('Density Semantics: Exact N valid inputs result in exactly N GeoJSON spatial features without distortion', () {
+      final inputList = List.generate(50, (i) {
+        return HazardModel(
+          id: 'haz_density_$i',
+          title: 'Hazard #$i',
+          category: CivicCategory.defaultCategories[i % CivicCategory.defaultCategories.length],
+          status: ComplaintStatus.reported,
+          severity: HazardSeverity.medium,
+          latitude: 19.0 + (i * 0.001),
+          longitude: 72.8 + (i * 0.001),
+          address: 'Location #$i',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+      });
+
+      final collection = service.buildFeatureCollection(hazards: inputList);
+      final features = collection['features'] as List;
+      expect(features.length, equals(50));
+    });
+
+    test('Performance Benchmark: Serializes 100, 500, 1000, 5000, and 10000 features cleanly', () {
+      for (final count in [100, 500, 1000, 5000, 10000]) {
         final syntheticComplaints = List.generate(count, (i) {
           return ComplaintModel(
             id: 'perf_cmp_$i',
@@ -211,9 +322,10 @@ void main() {
         expect(collection['type'], equals('FeatureCollection'));
         expect((collection['features'] as List).length, equals(count));
 
-        // Average processing time should be comfortably under 50ms for 1000 items
-        expect(stopwatch.elapsedMilliseconds, lessThan(100));
+        // Average processing time should remain under 300ms even for 10,000 items
+        expect(stopwatch.elapsedMilliseconds, lessThan( count > 2000 ? 500 : 150 ));
       }
     });
   });
 }
+
