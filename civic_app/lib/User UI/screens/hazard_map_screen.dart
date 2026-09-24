@@ -4,6 +4,10 @@ import '../../core/constants/app_radius.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/constants/app_typography.dart';
 import '../../core/location/location_model.dart';
+import '../../core/map/civic_map_canvas.dart';
+import '../../core/map/heatmap_legend.dart';
+import '../../core/map/map_constants.dart';
+import '../../core/map/spatial_data_service.dart';
 import '../../core/models/complaint_model.dart';
 import '../../core/models/hazard_model.dart';
 import '../../core/network/connectivity_service.dart';
@@ -22,7 +26,7 @@ import '../widgets/hazard_map/hazard_info_card.dart';
 import '../widgets/hazard_map/hazard_marker.dart';
 import '../widgets/hazard_map/map_filter_sheet.dart';
 
-/// Full interactive Citizen Hazard Map screen.
+/// Full interactive Citizen Hazard Map screen powered by MapTiler and MapLibre.
 class HazardMapScreen extends StatefulWidget {
   final HazardRepository? hazardRepository;
   final ComplaintRepository? complaintRepository;
@@ -49,10 +53,12 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
 
   final TextEditingController _searchController = TextEditingController();
   final TransformationController _transformController = TransformationController();
+  final GlobalKey<CivicMapCanvasState> _mapCanvasKey = GlobalKey<CivicMapCanvasState>();
 
   List<HazardModel> _allHazards = [];
   List<HazardModel> _filteredHazards = [];
   HazardModel? _selectedHazard;
+  CivicLocation? _userLocation;
 
   bool _isLoading = true;
   String? _errorMessage;
@@ -62,11 +68,9 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
   // Active filters
   String? _selectedCategoryId;
   ComplaintStatus? _selectedStatus;
+  SpatialTimeFilter? _selectedTimeFilter;
   bool _showLegend = false;
-
-  // Center user GPS coordinate for relative marker offset
-  static const double _centerLat = 12.9730;
-  static const double _centerLng = 77.5960;
+  bool _showHeatmap = true;
 
   @override
   void initState() {
@@ -125,7 +129,12 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
       list = list.where((h) => h.status == _selectedStatus).toList();
     }
 
-    // 3. Search query
+    // 3. Filter Time Horizon
+    if (_selectedTimeFilter != null && _selectedTimeFilter != SpatialTimeFilter.allTime) {
+      list = list.where((h) => _selectedTimeFilter!.isWithin(h.createdAt)).toList();
+    }
+
+    // 4. Search query
     final query = _searchController.text.trim().toLowerCase();
     if (query.isNotEmpty) {
       list = list.where((h) {
@@ -162,10 +171,14 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
       context,
       selectedCategoryId: _selectedCategoryId,
       selectedStatus: _selectedStatus,
-      onApply: (categoryId, status) {
+      selectedTimeFilter: _selectedTimeFilter,
+      onApply: (categoryId, status, [timeFilter]) {
         setState(() {
           _selectedCategoryId = categoryId;
           _selectedStatus = status;
+          if (timeFilter is SpatialTimeFilter?) {
+            _selectedTimeFilter = timeFilter;
+          }
         });
         _applyCurrentFilters();
       },
@@ -176,6 +189,7 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
     setState(() {
       _selectedCategoryId = null;
       _selectedStatus = null;
+      _selectedTimeFilter = null;
       _searchController.clear();
     });
     _applyCurrentFilters();
@@ -214,7 +228,18 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
       final pos = await _locationService.getCurrentLocation();
       if (!mounted) return;
 
-      // Animate/reset map transform to center
+      if (pos != null) {
+        setState(() {
+          _userLocation = pos;
+        });
+        await _mapCanvasKey.currentState?.animateTo(
+          latitude: pos.latitude,
+          longitude: pos.longitude,
+          zoom: MapConstants.focusedZoom,
+        );
+      }
+
+      // Reset map transform to center
       _transformController.value = Matrix4.identity();
 
       setState(() {
@@ -222,7 +247,7 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
         _locationWarningMessage = null;
       });
 
-      if (pos != null) {
+      if (pos != null && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Centered on your location in ${pos.ward ?? "Ward 14"}'),
@@ -241,6 +266,7 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
   }
 
   void _zoomIn() {
+    _mapCanvasKey.currentState?.zoomIn();
     final currentScale = _transformController.value.getMaxScaleOnAxis();
     if (currentScale < 3.0) {
       _transformController.value = _transformController.value.clone()..scaleByDouble(1.25, 1.25, 1.0, 1.0);
@@ -248,6 +274,7 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
   }
 
   void _zoomOut() {
+    _mapCanvasKey.currentState?.zoomOut();
     final currentScale = _transformController.value.getMaxScaleOnAxis();
     if (currentScale > 0.8) {
       _transformController.value = _transformController.value.clone()..scaleByDouble(0.8, 0.8, 1.0, 1.0);
@@ -258,6 +285,7 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
     int count = 0;
     if (_selectedCategoryId != null && _selectedCategoryId != 'all') count++;
     if (_selectedStatus != null) count++;
+    if (_selectedTimeFilter != null && _selectedTimeFilter != SpatialTimeFilter.allTime) count++;
     return count;
   }
 
@@ -271,7 +299,19 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
         actions: [
           IconButton(
             icon: Icon(
-              _showLegend ? Icons.info_rounded : Icons.info_outline_rounded,
+              _showHeatmap ? Icons.local_fire_department_rounded : Icons.local_fire_department_outlined,
+              color: _showHeatmap ? const Color(0xFFEF4444) : CivicFixColors.secondaryText,
+            ),
+            tooltip: _showHeatmap ? 'Hide Heatmap Layer' : 'Show Heatmap Layer',
+            onPressed: () {
+              setState(() {
+                _showHeatmap = !_showHeatmap;
+              });
+            },
+          ),
+          IconButton(
+            icon: Icon(
+              _showLegend ? Icons.layers_rounded : Icons.layers_outlined,
               color: _showLegend ? CivicFixColors.primary : CivicFixColors.secondaryText,
             ),
             tooltip: 'Toggle Map Legend',
@@ -291,7 +331,7 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
             : _errorMessage != null
                 ? Center(
                     child: ErrorState(
-                      title: "Couldn't load civic issues.",
+                       title: "Couldn't load civic issues.",
                       message: 'Please check your connection and try again.',
                       onRetry: _loadHazards,
                     ),
@@ -306,54 +346,45 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
       builder: (context, constraints) {
         return Stack(
           children: [
-            // 1. Interactive Vector Map Canvas & Markers
-            Positioned.fill(
-              child: _buildInteractiveMapCanvas(constraints.biggest),
+            // 1. Base Real MapLibre + MapTiler Canvas
+            CivicMapCanvas(
+              key: _mapCanvasKey,
+              hazards: _filteredHazards,
+              selectedHazard: _selectedHazard,
+              showHeatmap: _showHeatmap,
+              timeFilter: _selectedTimeFilter,
+              onHazardSelected: (hazard) {
+                setState(() {
+                  _selectedHazard = hazard;
+                });
+              },
+              userLocation: _userLocation,
+              onMapTap: () {
+                if (_selectedHazard != null) {
+                  setState(() {
+                    _selectedHazard = null;
+                  });
+                }
+              },
+              transformationController: _transformController,
+              markerBuilder: (hazard, isSelected, onTap) {
+                return HazardMarker(
+                  hazard: hazard,
+                  isSelected: isSelected,
+                  onTap: onTap,
+                );
+              },
             ),
 
-            // 2. Non-blocking Location Warning Banner (if permission/service issue)
-            if (_locationWarningMessage != null)
-              Positioned(
-                top: 72,
+            // 2. Offline Mode Banner (if offline)
+            if (!_connectivityService.isOnline)
+              const Positioned(
+                top: CivicFixSpacing.sm,
                 left: CivicFixSpacing.md,
                 right: CivicFixSpacing.md,
-                child: Material(
-                  elevation: 3,
-                  borderRadius: CivicFixRadius.cardRadius,
-                  color: CivicFixColors.alertLight,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: CivicFixSpacing.md,
-                      vertical: CivicFixSpacing.sm,
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.location_off_rounded,
-                          color: CivicFixColors.alertDark,
-                          size: 20,
-                        ),
-                        CivicFixSpacing.hSpaceSm,
-                        Expanded(
-                          child: Text(
-                            _locationWarningMessage!,
-                            style: CivicFixTypography.captionMedium.copyWith(
-                              color: CivicFixColors.primaryText,
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close_rounded, size: 18),
-                          color: CivicFixColors.secondaryText,
-                          onPressed: () {
-                            setState(() {
-                              _locationWarningMessage = null;
-                            });
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
+                child: OfflineCacheBanner(
+                  customMessage: 'Offline — Showing cached hazards. Basemap tiles require network.',
+                  isCompact: true,
                 ),
               ),
 
@@ -365,11 +396,6 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (!_connectivityService.isOnline)
-                    const OfflineCacheBanner(
-                      customMessage: 'Offline — Showing cached hazards. Live updates paused.',
-                      isCompact: true,
-                    ),
                   Row(
                     children: [
                       // Search Input Box
@@ -448,8 +474,8 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
                                         '$_activeFiltersCount',
                                         style: const TextStyle(
                                           fontSize: 9,
+                                          color: Colors.white,
                                           fontWeight: FontWeight.bold,
-                                          color: CivicFixColors.primary,
                                         ),
                                       ),
                                     ),
@@ -462,75 +488,33 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
                     ],
                   ),
 
-                  // Active Filter Summary Chips Row
-                  if (_activeFiltersCount > 0) ...[
-                    CivicFixSpacing.vSpaceXs,
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
+                  // Location warning banner if permission denied
+                  if (_locationWarningMessage != null) ...[
+                    CivicFixSpacing.vSpaceSm,
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: CivicFixSpacing.md, vertical: CivicFixSpacing.sm),
+                      decoration: BoxDecoration(
+                        color: CivicFixColors.alertLight,
+                        borderRadius: CivicFixRadius.cardRadius,
+                        border: Border.all(color: CivicFixColors.alertDark.withValues(alpha: 0.3)),
+                      ),
                       child: Row(
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: CivicFixColors.primary.withValues(alpha: 0.9),
-                              borderRadius: CivicFixRadius.chipRadius,
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  '$_activeFiltersCount active',
-                                  style: CivicFixTypography.caption.copyWith(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                CivicFixSpacing.hSpaceXs,
-                                GestureDetector(
-                                  onTap: _clearAllFilters,
-                                  child: const Icon(
-                                    Icons.close_rounded,
-                                    size: 14,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ],
+                          const Icon(Icons.location_off_rounded, color: CivicFixColors.alertDark, size: 18),
+                          CivicFixSpacing.hSpaceSm,
+                          Expanded(
+                            child: Text(
+                              _locationWarningMessage!,
+                              style: CivicFixTypography.caption.copyWith(color: CivicFixColors.alertDark),
                             ),
                           ),
-                          if (_selectedCategoryId != null) ...[
-                            CivicFixSpacing.hSpaceXs,
-                            Chip(
-                              backgroundColor: Colors.white,
-                              label: Text(_selectedCategoryId!.replaceAll('cat_', '').toUpperCase()),
-                              labelStyle: CivicFixTypography.caption.copyWith(fontWeight: FontWeight.w600),
-                              padding: EdgeInsets.zero,
-                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              deleteIcon: const Icon(Icons.close_rounded, size: 14),
-                              onDeleted: () {
-                                setState(() {
-                                  _selectedCategoryId = null;
-                                });
-                                _applyCurrentFilters();
-                              },
-                            ),
-                          ],
-                          if (_selectedStatus != null) ...[
-                            CivicFixSpacing.hSpaceXs,
-                            Chip(
-                              backgroundColor: Colors.white,
-                              label: Text(_selectedStatus!.label),
-                              labelStyle: CivicFixTypography.caption.copyWith(fontWeight: FontWeight.w600),
-                              padding: EdgeInsets.zero,
-                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              deleteIcon: const Icon(Icons.close_rounded, size: 14),
-                              onDeleted: () {
-                                setState(() {
-                                  _selectedStatus = null;
-                                });
-                                _applyCurrentFilters();
-                              },
-                            ),
-                          ],
+                          IconButton(
+                            icon: const Icon(Icons.close_rounded, size: 16),
+                            color: CivicFixColors.alertDark,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            onPressed: () => setState(() => _locationWarningMessage = null),
+                          ),
                         ],
                       ),
                     ),
@@ -539,23 +523,150 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
               ),
             ),
 
-            // 4. "Nearby Issues" Pill (Top center under search)
-            Positioned(
-              top: _activeFiltersCount > 0 ? 115 : 74,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: CivicFixRadius.largeContainerRadius,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.08),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
+            // 4. Map Legends Floating Sheet (Heatmap Density + Hazard Status)
+            if (_showLegend)
+              Positioned(
+                top: 80,
+                right: CivicFixSpacing.md,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_showHeatmap) ...[
+                      HeatmapLegend(
+                        onClose: () => setState(() => _showLegend = false),
                       ),
+                      CivicFixSpacing.vSpaceSm,
+                    ],
+                    Semantics(
+                      label: 'Hazard Status Legend',
+                      child: CivicFixCard(
+                        padding: const EdgeInsets.all(CivicFixSpacing.md),
+                        elevation: 4,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Status Legend',
+                              style: CivicFixTypography.captionMedium.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: CivicFixColors.primaryText,
+                              ),
+                            ),
+                            CivicFixSpacing.vSpaceSm,
+                            ...ComplaintStatus.values.where((s) => s != ComplaintStatus.rejected).map((status) {
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 6.0),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      width: 10,
+                                      height: 10,
+                                      decoration: BoxDecoration(
+                                        color: status.badgeColor,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                    CivicFixSpacing.hSpaceSm,
+                                    Text(
+                                      status.label,
+                                      style: CivicFixTypography.caption,
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            // 5. Floating Quick Location Re-center Button
+            Positioned(
+              right: CivicFixSpacing.md,
+              bottom: _selectedHazard != null ? 220 : 130,
+              child: FloatingActionButton.small(
+                heroTag: 'my_location_btn',
+                tooltip: 'Use My Location',
+                backgroundColor: Colors.white,
+                foregroundColor: CivicFixColors.primary,
+                elevation: 3,
+                onPressed: _isLocatingGps ? null : _centerOnMyLocation,
+                child: _isLocatingGps
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.my_location_rounded, size: 20),
+              ),
+            ),
+
+            // 6. Floating Zoom In / Zoom Out Controls
+            Positioned(
+              right: CivicFixSpacing.md,
+              bottom: _selectedHazard != null ? 275 : 185,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Material(
+                    color: Colors.white,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                    elevation: 3,
+                    child: InkWell(
+                      onTap: _zoomIn,
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                      child: Tooltip(
+                        message: 'Zoom In',
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          alignment: Alignment.center,
+                          child: const Icon(Icons.add_rounded, size: 20, color: CivicFixColors.primaryText),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Container(height: 1, width: 40, color: CivicFixColors.border),
+                  Material(
+                    color: Colors.white,
+                    borderRadius: const BorderRadius.vertical(bottom: Radius.circular(8)),
+                    elevation: 3,
+                    child: InkWell(
+                      onTap: _zoomOut,
+                      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(8)),
+                      child: Tooltip(
+                        message: 'Zoom Out',
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          alignment: Alignment.center,
+                          child: const Icon(Icons.remove_rounded, size: 20, color: CivicFixColors.primaryText),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // 7. Results Count Pill
+            if (_filteredHazards.isNotEmpty && _selectedHazard == null)
+              Positioned(
+                left: CivicFixSpacing.md,
+                bottom: CivicFixSpacing.md,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: CivicFixSpacing.md, vertical: CivicFixSpacing.xs),
+                  decoration: BoxDecoration(
+                    color: CivicFixColors.primaryDark.withValues(alpha: 0.88),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: const [
+                      BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2)),
                     ],
                   ),
                   child: Row(
@@ -565,136 +676,32 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
                         width: 8,
                         height: 8,
                         decoration: const BoxDecoration(
-                          color: CivicFixColors.secondary,
+                          color: CivicFixColors.alert,
                           shape: BoxShape.circle,
                         ),
                       ),
                       CivicFixSpacing.hSpaceSm,
                       Text(
-                        '${_filteredHazards.length} civic ${_filteredHazards.length == 1 ? "issue" : "issues"} near you',
-                        style: CivicFixTypography.captionMedium.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: CivicFixColors.primaryText,
+                        '${_filteredHazards.length} ${_filteredHazards.length == 1 ? "civic issue" : "civic issues"} near you',
+                        style: CivicFixTypography.caption.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
                   ),
                 ),
               ),
-            ),
 
-            // 5. Map Legend Overlay (if toggled)
-            if (_showLegend)
-              Positioned(
-                top: 110,
-                right: CivicFixSpacing.md,
-                child: Material(
-                  elevation: 4,
-                  borderRadius: CivicFixRadius.cardRadius,
-                  color: Colors.white,
-                  child: Container(
-                    width: 170,
-                    padding: const EdgeInsets.all(CivicFixSpacing.md),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'Status Legend',
-                          style: CivicFixTypography.captionMedium.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        CivicFixSpacing.vSpaceSm,
-                        ...ComplaintStatus.values.map((status) {
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 2.0),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 10,
-                                  height: 10,
-                                  decoration: BoxDecoration(
-                                    color: status.badgeColor,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                                CivicFixSpacing.hSpaceSm,
-                                Text(
-                                  status.label,
-                                  style: CivicFixTypography.caption.copyWith(
-                                    fontSize: 11,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-
-            // 6. Floating Controls: Zoom In, Zoom Out, Use My Location
-            Positioned(
-              right: CivicFixSpacing.md,
-              bottom: _selectedHazard != null ? 240 : CivicFixSpacing.xl,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Zoom In
-                  FloatingActionButton.small(
-                    heroTag: 'map_zoom_in_btn',
-                    backgroundColor: Colors.white,
-                    foregroundColor: CivicFixColors.primary,
-                    elevation: 2,
-                    tooltip: 'Zoom In',
-                    onPressed: _zoomIn,
-                    child: const Icon(Icons.add_rounded),
-                  ),
-                  CivicFixSpacing.vSpaceSm,
-
-                  // Zoom Out
-                  FloatingActionButton.small(
-                    heroTag: 'map_zoom_out_btn',
-                    backgroundColor: Colors.white,
-                    foregroundColor: CivicFixColors.primary,
-                    elevation: 2,
-                    tooltip: 'Zoom Out',
-                    onPressed: _zoomOut,
-                    child: const Icon(Icons.remove_rounded),
-                  ),
-                  CivicFixSpacing.vSpaceSm,
-
-                  // Center on GPS Location
-                  FloatingActionButton.small(
-                    heroTag: 'map_my_location_btn',
-                    backgroundColor: Colors.white,
-                    foregroundColor: CivicFixColors.secondaryDark,
-                    elevation: 3,
-                    tooltip: 'Use My Location',
-                    onPressed: _isLocatingGps ? null : _centerOnMyLocation,
-                    child: _isLocatingGps
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.my_location_rounded),
-                  ),
-                ],
-              ),
-            ),
-
-            // 7. Empty State Overlay (When search/filters return 0 hazards)
+            // Empty Search State Overlay
             if (_filteredHazards.isEmpty)
               Positioned.fill(
-                child: Container(
-                  color: Colors.white.withValues(alpha: 0.88),
-                  child: Center(
-                    child: Padding(
-                      padding: CivicFixSpacing.pagePadding,
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(CivicFixSpacing.lg),
+                    child: CivicFixCard(
+                      padding: const EdgeInsets.all(CivicFixSpacing.lg),
+                      elevation: 4,
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -751,169 +758,4 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
       },
     );
   }
-
-  Widget _buildInteractiveMapCanvas(Size size) {
-    return Container(
-      color: const Color(0xFFE8ECE9),
-      child: InteractiveViewer(
-        transformationController: _transformController,
-        minScale: 0.6,
-        maxScale: 3.5,
-        boundaryMargin: const EdgeInsets.all(500),
-        child: SizedBox(
-          width: size.width,
-          height: size.height,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              // Vector Map Surface (Parks, Waterways, Roads)
-              CustomPaint(
-                size: size,
-                painter: _HazardMapCanvasPainter(),
-              ),
-
-              // User Current Location Marker (Center)
-              Positioned(
-                left: (size.width / 2) - 16,
-                top: (size.height / 2) - 16,
-                child: Semantics(
-                  label: 'Your Current GPS Location',
-                  child: Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: CivicFixColors.info.withValues(alpha: 0.25),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: Container(
-                        width: 14,
-                        height: 14,
-                        decoration: BoxDecoration(
-                          color: CivicFixColors.info,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2.5),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-
-              // Geotagged Hazard Markers
-              ..._filteredHazards.map((hazard) {
-                // Calculate relative position based on lat/lng offset
-                final latDiff = hazard.latitude - _centerLat;
-                final lngDiff = hazard.longitude - _centerLng;
-
-                // Scale factor for map representation
-                final double markerX = (size.width / 2) + (lngDiff * 18000);
-                final double markerY = (size.height / 2) - (latDiff * 18000);
-
-                // Clamp within bounds
-                final clampedX = markerX.clamp(20.0, size.width - 60.0);
-                final clampedY = markerY.clamp(60.0, size.height - 100.0);
-
-                final isSelected = _selectedHazard?.id == hazard.id;
-
-                return Positioned(
-                  left: clampedX,
-                  top: clampedY,
-                  child: HazardMarker(
-                    hazard: hazard,
-                    isSelected: isSelected,
-                    onTap: () {
-                      setState(() {
-                        _selectedHazard = hazard;
-                      });
-                    },
-                  ),
-                );
-              }),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Custom Vector Painter to render a realistic map texture with roads, parks, and waterways.
-class _HazardMapCanvasPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    // 1. Parks / Greenery Zones
-    final parkPaint = Paint()
-      ..color = const Color(0xFFD4E8D8)
-      ..style = PaintingStyle.fill;
-
-    final parkPath1 = Path()
-      ..addRRect(RRect.fromRectAndRadius(
-        Rect.fromLTWH(size.width * 0.05, size.height * 0.15, size.width * 0.28, size.height * 0.22),
-        const Radius.circular(20),
-      ));
-    canvas.drawPath(parkPath1, parkPaint);
-
-    final parkPath2 = Path()
-      ..addRRect(RRect.fromRectAndRadius(
-        Rect.fromLTWH(size.width * 0.65, size.height * 0.55, size.width * 0.3, size.height * 0.3),
-        const Radius.circular(24),
-      ));
-    canvas.drawPath(parkPath2, parkPaint);
-
-    // 2. Waterways / Lakes
-    final waterPaint = Paint()
-      ..color = const Color(0xFFCCE2EE)
-      ..style = PaintingStyle.fill;
-
-    final waterPath = Path()
-      ..moveTo(0, size.height * 0.75)
-      ..quadraticBezierTo(size.width * 0.3, size.height * 0.82, size.width * 0.5, size.height * 0.70)
-      ..quadraticBezierTo(size.width * 0.7, size.height * 0.58, size.width, size.height * 0.65)
-      ..lineTo(size.width, size.height)
-      ..lineTo(0, size.height)
-      ..close();
-    canvas.drawPath(waterPath, waterPaint);
-
-    // 3. Primary Highways & Arterials
-    final arterialRoadPaint = Paint()
-      ..color = Colors.white
-      ..strokeWidth = 9.0
-      ..strokeCap = StrokeCap.round;
-
-    final arterialBorderPaint = Paint()
-      ..color = const Color(0xFFD0D7D2)
-      ..strokeWidth = 11.0
-      ..strokeCap = StrokeCap.round;
-
-    // Draw main arterial roads
-    final mainRoad1 = Path()
-      ..moveTo(0, size.height * 0.38)
-      ..lineTo(size.width, size.height * 0.42);
-
-    final mainRoad2 = Path()
-      ..moveTo(size.width * 0.45, 0)
-      ..lineTo(size.width * 0.48, size.height);
-
-    canvas.drawPath(mainRoad1, arterialBorderPaint);
-    canvas.drawPath(mainRoad1, arterialRoadPaint);
-
-    canvas.drawPath(mainRoad2, arterialBorderPaint);
-    canvas.drawPath(mainRoad2, arterialRoadPaint);
-
-    // 4. Secondary Urban Streets
-    final secondaryRoadPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.85)
-      ..strokeWidth = 4.5
-      ..strokeCap = StrokeCap.round;
-
-    canvas.drawLine(Offset(0, size.height * 0.2), Offset(size.width, size.height * 0.22), secondaryRoadPaint);
-    canvas.drawLine(Offset(0, size.height * 0.58), Offset(size.width, size.height * 0.54), secondaryRoadPaint);
-    canvas.drawLine(Offset(size.width * 0.2, 0), Offset(size.width * 0.22, size.height), secondaryRoadPaint);
-    canvas.drawLine(Offset(size.width * 0.75, 0), Offset(size.width * 0.72, size.height), secondaryRoadPaint);
-    canvas.drawLine(Offset(size.width * 0.1, size.height * 0.6), Offset(size.width * 0.9, size.height * 0.3), secondaryRoadPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

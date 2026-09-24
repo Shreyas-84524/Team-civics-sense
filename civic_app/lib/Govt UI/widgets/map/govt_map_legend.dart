@@ -79,6 +79,45 @@ class GovtMapLegend extends StatelessWidget {
           const Divider(color: GovtThemeTokens.border, height: 1),
           CivicFixSpacing.vSpaceSm,
 
+          // Heatmap Density Gradient
+          Text(
+            'SPATIAL ISSUE DENSITY',
+            style: CivicFixTypography.caption.copyWith(
+              fontSize: 9,
+              fontWeight: FontWeight.w800,
+              color: GovtThemeTokens.textSecondary,
+              letterSpacing: 0.5,
+            ),
+          ),
+          CivicFixSpacing.vSpaceXs,
+          Container(
+            height: 8,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(4),
+              gradient: const LinearGradient(
+                colors: [
+                  Color(0xFF2563EB),
+                  Color(0xFF10B981),
+                  Color(0xFFF59E0B),
+                  Color(0xFFEF4444),
+                ],
+                stops: [0.0, 0.35, 0.70, 1.0],
+              ),
+            ),
+          ),
+          CivicFixSpacing.vSpaceXs,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Low', style: TextStyle(fontSize: 9, color: GovtThemeTokens.textSecondary)),
+              Text('Medium', style: TextStyle(fontSize: 9, color: GovtThemeTokens.textSecondary)),
+              Text('Critical', style: TextStyle(fontSize: 9, color: GovtThemeTokens.textSecondary)),
+            ],
+          ),
+          CivicFixSpacing.vSpaceSm,
+          const Divider(color: GovtThemeTokens.border, height: 1),
+          CivicFixSpacing.vSpaceSm,
+
           // Categories
           Text(
             'HAZARD CATEGORIES',
