@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import '../../auth/auth_service_locator.dart';
 import '../../firebase/errors/firestore_exception.dart';
 import '../../firebase/firebase_constants.dart';
 import '../../firebase/firestore/firebase_complaint_data_source.dart';
@@ -12,6 +13,7 @@ import '../../firebase/storage/storage_error_handler.dart';
 import '../../firebase/mappers/firestore_mapper_helpers.dart';
 import '../../location/location_model.dart';
 import '../../models/complaint_model.dart';
+import '../../services/supabase_notification_service.dart';
 import '../models/sync_queue_item.dart';
 import 'sync_provider.dart';
 
@@ -20,14 +22,17 @@ import 'sync_provider.dart';
 class FirebaseSyncProvider implements SyncProvider {
   final FirebaseComplaintDataSource _complaintDataSource;
   final EvidenceStorageService _evidenceStorageService;
+  final SupabaseNotificationService _notificationService;
   final FirebaseFirestore? _firestore;
 
   FirebaseSyncProvider({
     FirebaseComplaintDataSource? complaintDataSource,
     EvidenceStorageService? evidenceStorageService,
+    SupabaseNotificationService? notificationService,
     FirebaseFirestore? firestore,
   })  : _complaintDataSource = complaintDataSource ?? FirebaseComplaintDataSource(),
         _evidenceStorageService = evidenceStorageService ?? FirebaseEvidenceStorageService(),
+        _notificationService = notificationService ?? HttpSupabaseNotificationService(),
         _firestore = firestore;
 
   FirebaseFirestore get _db => _firestore ?? FirebaseFirestore.instance;
@@ -156,7 +161,10 @@ class FirebaseSyncProvider implements SyncProvider {
 
     final complaintToCreate = ComplaintModel(
       id: complaintId,
-      citizenId: payload['citizenId'] as String? ?? 'user_citizen_001',
+      citizenId: payload['citizenId'] as String? ??
+          AuthServiceLocator.citizenAuth.currentUid ??
+          AuthServiceLocator.citizenAuth.currentUser?.id ??
+          '',
       ticketNumber: payload['ticketNumber'] as String? ?? 'CF-2026-PENDING',
       title: payload['title'] as String? ?? 'Untitled Grievance',
       description: payload['description'] as String? ?? '',
@@ -271,6 +279,58 @@ class FirebaseSyncProvider implements SyncProvider {
   Future<SyncResult> _handleUpdateComplaint(SyncQueueItem item) async {
     final targetId = item.payload['serverId'] as String? ?? item.entityId;
     final payload = item.payload;
+
+    // Check if this is a government administrative workflow update
+    if (payload.containsKey('status') || payload.containsKey('assignedTo')) {
+      final statusStr = payload['status'] as String?;
+      ComplaintStatus? status;
+      if (statusStr != null) {
+        status = ComplaintStatus.values.firstWhere(
+          (s) => s.name == statusStr,
+          orElse: () => ComplaintStatus.inProgress,
+        );
+      }
+
+      await _complaintDataSource.updateGovernmentWorkflow(
+        targetId,
+        status: status,
+        assignedTo: payload['assignedTo'] as String?,
+        departmentName: payload['departmentName'] as String?,
+        officerNotes: payload['officerNotes'] as String?,
+        resolvedAt: status == ComplaintStatus.resolved ? DateTime.now() : null,
+      );
+
+      // Trigger secondary serverless notification asynchronously after Firestore synchronization
+      final citizenId = payload['citizenId'] as String?;
+      final oldStatus = payload['oldStatus'] as String? ?? 'reported';
+      final newStatus = status?.name ?? statusStr ?? 'inProgress';
+
+      if (citizenId != null && citizenId.isNotEmpty) {
+        unawaited(
+          _notificationService
+              .triggerStatusNotification(
+                complaintId: targetId,
+                citizenId: citizenId,
+                oldStatus: oldStatus,
+                newStatus: newStatus,
+                ticketNumber: payload['ticketNumber'] as String?,
+                title: payload['title'] as String?,
+                departmentName: payload['departmentName'] as String?,
+                officerNotes: payload['officerNotes'] as String?,
+                eventId: item.id, // Idempotency key from sync queue item ID
+              )
+              .catchError((e) {
+                debugPrint('[FirebaseSyncProvider] Notification non-fatal error on sync: $e');
+                return NotificationDispatchResult.failure(message: e.toString());
+              }),
+        );
+      }
+
+      return SyncResult.success(
+        serverId: targetId,
+        responseData: {'updated': true, 'complaintId': targetId, 'status': newStatus},
+      );
+    }
 
     final String? title = payload['title'] as String?;
     final String? description = payload['description'] as String?;

@@ -380,23 +380,45 @@ class ComplaintCard extends StatelessWidget {
                       ],
                     ),
                   )
-                else if (complaint.upvotes > 0)
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.thumb_up_alt_outlined,
-                        size: 13,
-                        color: CivicFixColors.secondaryText,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${complaint.upvotes} supports',
-                        style: CivicFixTypography.caption.copyWith(
-                          color: CivicFixColors.secondaryText,
-                          fontSize: 11,
+                else
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: onUpvote,
+                      borderRadius: CivicFixRadius.chipRadius,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              complaint.upvotes > 0
+                                  ? Icons.thumb_up_alt_rounded
+                                  : Icons.thumb_up_alt_outlined,
+                              size: 13,
+                              color: complaint.upvotes > 0
+                                  ? CivicFixColors.primary
+                                  : CivicFixColors.secondaryText,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              complaint.upvotes > 0
+                                  ? '${complaint.upvotes} supports'
+                                  : 'Support',
+                              style: CivicFixTypography.caption.copyWith(
+                                color: complaint.upvotes > 0
+                                    ? CivicFixColors.primary
+                                    : CivicFixColors.secondaryText,
+                                fontSize: 11,
+                                fontWeight: complaint.upvotes > 0
+                                    ? FontWeight.w600
+                                    : FontWeight.normal,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
+                    ),
                   ),
               ],
             ),

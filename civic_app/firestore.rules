@@ -210,6 +210,18 @@ service cloud.firestore {
         allow update: if false;
         allow delete: if false;
       }
+
+      // =======================================================================
+      // 3.1 COMPLAINT UPVOTES (complaints/{complaintId}/upvotes/{userId})
+      // =======================================================================
+      match /upvotes/{userId} {
+        // Authenticated users can read upvotes
+        allow read: if isSignedIn();
+        // A citizen can only create or delete their own upvote record
+        allow create: if isOwner(userId);
+        allow delete: if isOwner(userId);
+        allow update: if false;
+      }
     }
 
     // =========================================================================

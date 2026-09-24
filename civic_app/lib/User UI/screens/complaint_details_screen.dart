@@ -90,13 +90,13 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
   }
 
   void _verifyAndSetComplaint(ComplaintModel complaint) {
-    final currentUserId = _authService.currentUser?.id ?? 'user_citizen_001';
-    final isOwner = complaint.citizenId.isEmpty ||
-        complaint.citizenId == currentUserId ||
-        complaint.citizenId == 'user_citizen_001' ||
-        complaint.citizenId == 'user_001';
+    final currentUserId = _authService.currentUser?.id ?? _authService.currentUid ?? 'user_citizen_001';
+    final isUnauthorized = currentUserId.isNotEmpty &&
+        complaint.citizenId.isNotEmpty &&
+        complaint.citizenId != currentUserId &&
+        !complaint.isHazard;
 
-    if (!isOwner) {
+    if (isUnauthorized) {
       setState(() {
         _complaint = null;
         _isUnauthorized = true;
@@ -389,13 +389,89 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
             ),
             CivicFixSpacing.vSpaceSm,
 
-            // 2. Full Issue Title
-            Text(
-              complaint.title,
-              style: CivicFixTypography.h2.copyWith(
-                color: CivicFixColors.primaryText,
-                height: 1.25,
-              ),
+            // 2. Full Issue Title & Support Action
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    complaint.title,
+                    style: CivicFixTypography.h2.copyWith(
+                      color: CivicFixColors.primaryText,
+                      height: 1.25,
+                    ),
+                  ),
+                ),
+                CivicFixSpacing.hSpaceSm,
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () async {
+                      final messenger = ScaffoldMessenger.of(context);
+                      try {
+                        await _repository.upvoteComplaint(complaint.id);
+                        if (!mounted) return;
+                        setState(() {
+                          _complaint = complaint.copyWith(upvotes: complaint.upvotes + 1);
+                        });
+                        messenger.hideCurrentSnackBar();
+                        messenger.showSnackBar(
+                          const SnackBar(
+                            content: Text('Supported this complaint!'),
+                            duration: Duration(seconds: 1),
+                          ),
+                        );
+                      } catch (e) {
+                        if (!mounted) return;
+                        messenger.showSnackBar(
+                          SnackBar(content: Text('Failed to upvote: $e')),
+                        );
+                      }
+                    },
+                    borderRadius: CivicFixRadius.chipRadius,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: complaint.upvotes > 0
+                            ? CivicFixColors.primary.withValues(alpha: 0.1)
+                            : CivicFixColors.surfaceMuted,
+                        borderRadius: CivicFixRadius.chipRadius,
+                        border: Border.all(
+                          color: complaint.upvotes > 0
+                              ? CivicFixColors.primary.withValues(alpha: 0.3)
+                              : CivicFixColors.border,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            complaint.upvotes > 0
+                                ? Icons.thumb_up_alt_rounded
+                                : Icons.thumb_up_alt_outlined,
+                            size: 16,
+                            color: complaint.upvotes > 0
+                                ? CivicFixColors.primary
+                                : CivicFixColors.secondaryText,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            complaint.upvotes > 0
+                                ? '${complaint.upvotes}'
+                                : 'Support',
+                            style: CivicFixTypography.captionMedium.copyWith(
+                              color: complaint.upvotes > 0
+                                  ? CivicFixColors.primary
+                                  : CivicFixColors.secondaryText,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
             CivicFixSpacing.vSpaceMd,
 

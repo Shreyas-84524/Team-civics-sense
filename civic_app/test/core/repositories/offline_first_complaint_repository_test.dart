@@ -108,7 +108,7 @@ class FakeRemoteComplaintDataSource extends FirebaseComplaintDataSource {
   }
 
   @override
-  Future<void> upvoteComplaint(String complaintId) async {
+  Future<void> upvoteComplaint(String complaintId, {String? userId}) async {
     upvotedIds.add(complaintId);
   }
 }

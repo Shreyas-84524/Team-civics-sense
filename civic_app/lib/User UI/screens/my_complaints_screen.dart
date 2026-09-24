@@ -69,7 +69,7 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
   }
 
   void _subscribeToLiveComplaints() {
-    final citizenId = _authService.currentUser?.id ?? 'user_citizen_001';
+    final citizenId = _authService.currentUser?.id ?? _authService.currentUid ?? '';
     _complaintsSubscription?.cancel();
     _complaintsSubscription = _repository.watchCitizenComplaints(citizenId).listen((list) {
       if (mounted) {
@@ -98,7 +98,7 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
     });
 
     try {
-      final citizenId = _authService.currentUser?.id ?? 'user_citizen_001';
+      final citizenId = _authService.currentUser?.id ?? _authService.currentUid ?? '';
       final complaints = await _repository.getCitizenComplaints(citizenId);
       if (mounted) {
         setState(() {
@@ -322,6 +322,33 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
                           AppRoutes.complaintDetails,
                           arguments: complaint,
                         );
+                      },
+                      onUpvote: () async {
+                        final messenger = ScaffoldMessenger.of(context);
+                        try {
+                          await _repository.upvoteComplaint(complaint.id);
+                          if (!mounted) return;
+                          setState(() {
+                            final idx = _allComplaints.indexWhere((c) => c.id == complaint.id);
+                            if (idx != -1) {
+                              _allComplaints[idx] = _allComplaints[idx].copyWith(
+                                upvotes: _allComplaints[idx].upvotes + 1,
+                              );
+                            }
+                          });
+                          messenger.hideCurrentSnackBar();
+                          messenger.showSnackBar(
+                            const SnackBar(
+                              content: Text('Supported complaint!'),
+                              duration: Duration(seconds: 1),
+                            ),
+                          );
+                        } catch (e) {
+                          if (!mounted) return;
+                          messenger.showSnackBar(
+                            SnackBar(content: Text('Failed to upvote: $e')),
+                          );
+                        }
                       },
                     ),
                   );

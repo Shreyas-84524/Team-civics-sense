@@ -11,7 +11,7 @@ class FirebaseNotificationRepository implements NotificationRepository {
 
   FirebaseNotificationRepository({
     FirebaseNotificationDataSource? dataSource,
-    String currentUserId = 'user_citizen_001',
+    String currentUserId = '',
   })  : _dataSource = dataSource ?? FirebaseNotificationDataSource(),
         _currentUserId = currentUserId,
         _unreadCountNotifier = ValueNotifier<int>(0);

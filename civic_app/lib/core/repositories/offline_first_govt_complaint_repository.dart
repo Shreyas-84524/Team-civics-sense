@@ -7,6 +7,7 @@ import '../firebase/firestore/firebase_department_data_source.dart';
 import '../models/category_model.dart';
 import '../models/complaint_model.dart';
 import '../network/connectivity_service.dart';
+import '../services/supabase_notification_service.dart';
 import '../sync/models/sync_queue_item.dart';
 import '../sync/sync_manager.dart';
 import 'hive_complaint_repository.dart';
@@ -23,6 +24,7 @@ class OfflineFirstGovtComplaintRepository implements GovtComplaintRepository {
   final FirebaseDepartmentDataSource _deptDataSource;
   final SyncManager _syncManager;
   final ConnectivityService _connectivity;
+  final SupabaseNotificationService _notificationService;
   final MockGovtComplaintRepository _mockFallback;
 
   OfflineFirstGovtComplaintRepository({
@@ -31,11 +33,13 @@ class OfflineFirstGovtComplaintRepository implements GovtComplaintRepository {
     FirebaseDepartmentDataSource? deptDataSource,
     SyncManager? syncManager,
     ConnectivityService? connectivity,
+    SupabaseNotificationService? notificationService,
   })  : _localRepo = localRepository ?? HiveComplaintRepository(),
         _complaintDataSource = complaintDataSource ?? FirebaseComplaintDataSource(),
         _deptDataSource = deptDataSource ?? FirebaseDepartmentDataSource(),
         _syncManager = syncManager ?? SyncManager(),
         _connectivity = connectivity ?? AppConnectivityService(),
+        _notificationService = notificationService ?? HttpSupabaseNotificationService(),
         _mockFallback = MockGovtComplaintRepository();
 
   @override
@@ -449,12 +453,20 @@ class OfflineFirstGovtComplaintRepository implements GovtComplaintRepository {
           resolvedAt: nextStatus == ComplaintStatus.resolved ? DateTime.now() : null,
         );
         await _complaintDataSource.addTimelineEvent(targetServerId, newEvent);
+
+        // 3. Trigger secondary serverless notification asynchronously after Firestore update
+        _triggerSupabaseNotification(
+          complaint: updated,
+          oldStatus: existing.status.name,
+          newStatus: nextStatus.name,
+          officerNotes: updateMessage,
+        );
       } catch (e) {
         debugPrint('[OfflineFirstGovtComplaintRepository] Remote status update failed, will queue: $e');
-        _queueWorkflowUpdate(updated);
+        _queueWorkflowUpdate(updated, oldStatus: existing.status.name);
       }
     } else {
-      _queueWorkflowUpdate(updated);
+      _queueWorkflowUpdate(updated, oldStatus: existing.status.name);
     }
 
     return true;
@@ -516,18 +528,52 @@ class OfflineFirstGovtComplaintRepository implements GovtComplaintRepository {
           officerNotes: assignmentNote,
         );
         await _complaintDataSource.addTimelineEvent(targetServerId, assignEvent);
+
+        // 3. Trigger secondary serverless notification asynchronously after Firestore update
+        _triggerSupabaseNotification(
+          complaint: updated,
+          oldStatus: existing.status.name,
+          newStatus: ComplaintStatus.assigned.name,
+          officerNotes: assignmentNote,
+        );
       } catch (e) {
         debugPrint('[OfflineFirstGovtComplaintRepository] Remote assign failed, queued: $e');
-        _queueWorkflowUpdate(updated);
+        _queueWorkflowUpdate(updated, oldStatus: existing.status.name);
       }
     } else {
-      _queueWorkflowUpdate(updated);
+      _queueWorkflowUpdate(updated, oldStatus: existing.status.name);
     }
 
     return true;
   }
 
-  void _queueWorkflowUpdate(ComplaintModel complaint) {
+  void _triggerSupabaseNotification({
+    required ComplaintModel complaint,
+    required String oldStatus,
+    required String newStatus,
+    String? officerNotes,
+  }) {
+    // Non-blocking fire-and-forget; never rolls back Firestore status update
+    unawaited(
+      _notificationService
+          .triggerStatusNotification(
+            complaintId: complaint.serverId ?? complaint.id,
+            citizenId: complaint.citizenId,
+            oldStatus: oldStatus,
+            newStatus: newStatus,
+            ticketNumber: complaint.ticketNumber,
+            title: complaint.title,
+            departmentName: complaint.departmentName,
+            officerNotes: officerNotes,
+          )
+          .catchError((e) {
+            debugPrint('[OfflineFirstGovtComplaintRepository] Notification non-fatal error: $e');
+            return NotificationDispatchResult.failure(message: e.toString());
+          }),
+    );
+  }
+
+  void _queueWorkflowUpdate(ComplaintModel complaint, {String? oldStatus}) {
     final item = SyncQueueItem(
       id: 'govt_update_${complaint.id}_${DateTime.now().millisecondsSinceEpoch}',
       entityType: 'complaint',
@@ -536,6 +582,10 @@ class OfflineFirstGovtComplaintRepository implements GovtComplaintRepository {
       payload: {
         'complaintId': complaint.id,
         'serverId': complaint.serverId,
+        'citizenId': complaint.citizenId,
+        'title': complaint.title,
+        'ticketNumber': complaint.ticketNumber,
+        'oldStatus': oldStatus ?? 'reported',
         'status': complaint.status.name,
         'assignedTo': complaint.assignedTo,
         'departmentName': complaint.departmentName,

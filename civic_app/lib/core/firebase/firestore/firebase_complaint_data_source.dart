@@ -274,13 +274,51 @@ class FirebaseComplaintDataSource {
     }
   }
 
-  /// Atomic community upvote increment on a complaint.
-  Future<void> upvoteComplaint(String complaintId) async {
+  /// Atomic community upvote increment on a complaint with user deduplication.
+  Future<void> upvoteComplaint(String complaintId, {String? userId}) async {
     try {
-      await _complaintsRef.doc(complaintId).update({
-        'upvotes': FieldValue.increment(1),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+      if (userId != null && userId.isNotEmpty) {
+        final docRef = _complaintsRef.doc(complaintId);
+        final upvoteRef = docRef.collection('upvotes').doc(userId);
+
+        await _db.runTransaction((transaction) async {
+          final upvoteSnapshot = await transaction.get(upvoteRef);
+          if (upvoteSnapshot.exists) {
+            // Already upvoted by this user - idempotent no-op
+            return;
+          }
+
+          transaction.set(upvoteRef, {
+            'userId': userId,
+            'timestamp': FieldValue.serverTimestamp(),
+          });
+
+          transaction.update(docRef, {
+            'upvotes': FieldValue.increment(1),
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        });
+      } else {
+        await _complaintsRef.doc(complaintId).update({
+          'upvotes': FieldValue.increment(1),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+    } catch (e, st) {
+      throw FirestoreErrorHandler.handle(e, st);
+    }
+  }
+
+  /// Checks if a user has already upvoted a complaint.
+  Future<bool> hasUserUpvoted(String complaintId, String userId) async {
+    try {
+      if (userId.isEmpty) return false;
+      final doc = await _complaintsRef
+          .doc(complaintId)
+          .collection('upvotes')
+          .doc(userId)
+          .get();
+      return doc.exists;
     } catch (e, st) {
       throw FirestoreErrorHandler.handle(e, st);
     }

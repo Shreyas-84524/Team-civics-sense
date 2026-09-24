@@ -72,7 +72,7 @@ class FakeFirebaseComplaintDataSource extends FirebaseComplaintDataSource {
   }
 
   @override
-  Future<void> upvoteComplaint(String complaintId) async {
+  Future<void> upvoteComplaint(String complaintId, {String? userId}) async {
     if (simulateFirestoreError) {
       throw const FirestoreException(
         code: 'unavailable',

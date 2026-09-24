@@ -51,7 +51,7 @@ class MockComplaintRepository implements ComplaintRepository {
     return List.unmodifiable(
       _dataSource.complaints.where((c) {
         if (citizenId.isEmpty) return true;
-        return c.citizenId == citizenId || c.citizenId == 'user_citizen_001' || c.citizenId == 'user_001';
+        return c.citizenId == citizenId;
       }).toList(),
     );
   }
@@ -321,7 +321,7 @@ class MockComplaintRepository implements ComplaintRepository {
     yield* _complaintsStreamController.stream.map((list) {
       return list.where((c) {
         if (citizenId.isEmpty) return true;
-        return c.citizenId == citizenId || c.citizenId == 'user_citizen_001' || c.citizenId == 'user_001';
+        return c.citizenId == citizenId;
       }).toList();
     });
   }

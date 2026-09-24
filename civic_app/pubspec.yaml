@@ -43,6 +43,7 @@ dependencies:
   firebase_messaging: ^16.6.0
   image_picker: ^1.1.2
   geolocator: ^13.0.2
+  http: ^1.2.0
 
 dev_dependencies:
   flutter_test:

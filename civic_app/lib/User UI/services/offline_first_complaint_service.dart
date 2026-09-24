@@ -35,7 +35,12 @@ class OfflineFirstComplaintService implements ComplaintService {
     final location = draft.location!;
 
     final priority = draft.isHazard ? ComplaintPriority.high : ComplaintPriority.medium;
-    final citizenId = AuthServiceLocator.citizenAuth.currentUser?.id ?? 'user_citizen_001';
+    final citizenId = AuthServiceLocator.citizenAuth.currentUid ??
+        AuthServiceLocator.citizenAuth.currentUser?.id;
+
+    if (citizenId == null || citizenId.trim().isEmpty) {
+      throw Exception('Please sign in to submit a complaint.');
+    }
 
     return await _activeRepository.createComplaint(
       citizenId: citizenId,

@@ -1,6 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import '../../Govt UI/services/analytics_repository.dart';
+import '../../Govt UI/services/govt_complaint_analytics_repository.dart';
 import '../../Govt UI/services/govt_complaint_repository.dart';
 import '../../Govt UI/services/govt_user_repository.dart';
 import '../../User UI/services/app_home_service.dart';
@@ -227,7 +228,12 @@ class RepositoryLocator {
 
   /// Active [AnalyticsRepository] instance.
   static AnalyticsRepository get analyticsRepository {
-    _analyticsRepository ??= MockAnalyticsRepository();
+    if (_analyticsRepository != null) return _analyticsRepository!;
+    if (isProductionActive) {
+      _analyticsRepository = GovtComplaintAnalyticsRepository();
+    } else {
+      _analyticsRepository = MockAnalyticsRepository();
+    }
     return _analyticsRepository!;
   }
 
@@ -249,7 +255,7 @@ class RepositoryLocator {
     _rewardsRepository = OfflineFirstRewardsRepository();
     _userRepository = OfflineFirstUserRepository();
     _govtUserRepository = MockGovernmentUserRepository();
-    _analyticsRepository = MockAnalyticsRepository();
+    _analyticsRepository = GovtComplaintAnalyticsRepository();
     _homeService = AppHomeService();
     _complaintService = OfflineFirstComplaintService();
     _evidenceService = ImagePickerEvidenceService();

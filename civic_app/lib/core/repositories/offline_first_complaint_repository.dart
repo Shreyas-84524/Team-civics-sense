@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import '../auth/auth_service_locator.dart';
 import '../firebase/firestore/firebase_complaint_data_source.dart';
 import '../location/location_model.dart';
 import '../models/category_model.dart';
@@ -269,7 +270,9 @@ class OfflineFirstComplaintRepository implements ComplaintRepository {
       try {
         final complaint = await _localRepo.getComplaintById(id);
         final targetServerId = complaint?.serverId ?? id;
-        await _remoteDataSource.upvoteComplaint(targetServerId);
+        final currentUid = AuthServiceLocator.citizenAuth.currentUid ??
+            AuthServiceLocator.citizenAuth.currentUser?.id;
+        await _remoteDataSource.upvoteComplaint(targetServerId, userId: currentUid);
       } catch (e) {
         debugPrint('[OfflineFirstComplaintRepository] Remote upvote failed, will queue: $e');
         _queueUpvoteOperation(id);

@@ -232,9 +232,7 @@ class HiveComplaintRepository implements ComplaintRepository {
           domainComplaints.sort((a, b) => b.createdAt.compareTo(a.createdAt));
           return domainComplaints.where((c) {
             if (citizenId.isEmpty) return true;
-            return c.citizenId == citizenId ||
-                c.citizenId == 'user_citizen_001' ||
-                c.citizenId == 'user_001';
+            return c.citizenId == citizenId;
           }).toList();
         }
       } catch (e) {
@@ -246,9 +244,7 @@ class HiveComplaintRepository implements ComplaintRepository {
     return List.unmodifiable(
       _dataSource.complaints.where((c) {
         if (citizenId.isEmpty) return true;
-        return c.citizenId == citizenId ||
-            c.citizenId == 'user_citizen_001' ||
-            c.citizenId == 'user_001';
+        return c.citizenId == citizenId;
       }).toList(),
     );
   }
