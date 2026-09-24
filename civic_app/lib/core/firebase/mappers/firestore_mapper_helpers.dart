@@ -44,14 +44,21 @@ class FirestoreMapperHelpers {
 
   /// Serializes [CivicLocation] into a structured Firestore map.
   static Map<String, dynamic> locationToMap(CivicLocation loc) {
-    return {
+    final Map<String, dynamic> map = {
       'latitude': loc.latitude,
       'longitude': loc.longitude,
       'address': loc.address,
       'landmark': loc.landmark,
       'ward': loc.ward,
       'city': loc.city,
+      'pincode': loc.pincode,
+      'source': loc.source.name,
+      'accuracyMeters': loc.accuracyMeters,
     };
+    if (loc.timestamp != null) {
+      map['timestamp'] = dateTimeToTimestamp(loc.timestamp);
+    }
+    return map;
   }
 
   /// Safely reconstructs [CivicLocation] from Firestore map or data object.
@@ -70,6 +77,21 @@ class FirestoreMapperHelpers {
     final String? landmark = map['landmark'] as String?;
     final String? ward = map['ward'] as String?;
     final String? city = map['city'] as String?;
+    final String? pincode = map['pincode'] as String?;
+
+    // Parse source with safe backward compatibility fallback
+    final sourceStr = map['source'] as String?;
+    LocationSource source = LocationSource.manual;
+    if (sourceStr != null) {
+      if (sourceStr.toLowerCase() == 'gps') {
+        source = LocationSource.gps;
+      } else {
+        source = LocationSource.manual;
+      }
+    }
+
+    final double? accuracyMeters = (map['accuracyMeters'] as num?)?.toDouble();
+    final DateTime? timestamp = timestampToDateTime(map['timestamp']);
 
     return CivicLocation(
       latitude: lat,
@@ -78,6 +100,10 @@ class FirestoreMapperHelpers {
       landmark: landmark,
       ward: ward,
       city: city,
+      pincode: pincode,
+      source: source,
+      accuracyMeters: accuracyMeters,
+      timestamp: timestamp,
     );
   }
 

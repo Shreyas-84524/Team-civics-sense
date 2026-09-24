@@ -152,6 +152,10 @@ class FirebaseSyncProvider implements SyncProvider {
       'landmark': payload['landmark'],
       'ward': payload['ward'],
       'city': payload['city'],
+      'pincode': payload['pincode'],
+      'source': payload['source'],
+      'accuracyMeters': payload['accuracyMeters'],
+      'timestamp': payload['locationTimestamp'] ?? payload['timestamp'],
     });
 
     final priority = ComplaintPriority.values.firstWhere(
@@ -339,13 +343,18 @@ class FirebaseSyncProvider implements SyncProvider {
 
     CivicLocation? location;
     if (payload['latitude'] != null && payload['longitude'] != null) {
-      location = CivicLocation(
-        latitude: (payload['latitude'] as num).toDouble(),
-        longitude: (payload['longitude'] as num).toDouble(),
-        address: payload['address'] as String? ?? '',
-        landmark: payload['landmark'] as String?,
-        ward: payload['ward'] as String?,
-      );
+      location = FirestoreMapperHelpers.locationFromMap({
+        'latitude': payload['latitude'],
+        'longitude': payload['longitude'],
+        'address': payload['address'] as String? ?? '',
+        'landmark': payload['landmark'] as String?,
+        'ward': payload['ward'] as String?,
+        'city': payload['city'] as String?,
+        'pincode': payload['pincode'] as String?,
+        'source': payload['source'] as String?,
+        'accuracyMeters': payload['accuracyMeters'],
+        'timestamp': payload['locationTimestamp'] ?? payload['timestamp'],
+      });
     }
 
     await _complaintDataSource.updateCitizenComplaint(

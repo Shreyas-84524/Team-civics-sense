@@ -30,28 +30,71 @@ void main() {
       expect(FirestoreMapperHelpers.timestampToDateTime(123.45), isNull);
     });
 
-    test('location conversions handle valid maps and fallbacks safely', () {
-      const loc = CivicLocation(
+    test('location conversions handle valid maps, full telemetry, and fallbacks safely', () {
+      final locTime = DateTime(2026, 9, 8, 9, 30, 0);
+      final loc = CivicLocation(
         latitude: 19.0760,
         longitude: 72.8777,
         address: 'MG Road, Fort',
         landmark: 'Near Fountain',
         ward: 'Ward 14',
         city: 'Mumbai',
+        pincode: '400001',
+        source: LocationSource.gps,
+        accuracyMeters: 4.5,
+        timestamp: locTime,
       );
 
       final map = FirestoreMapperHelpers.locationToMap(loc);
       expect(map['latitude'], equals(19.0760));
       expect(map['longitude'], equals(72.8777));
       expect(map['address'], equals('MG Road, Fort'));
+      expect(map['landmark'], equals('Near Fountain'));
+      expect(map['ward'], equals('Ward 14'));
+      expect(map['city'], equals('Mumbai'));
+      expect(map['pincode'], equals('400001'));
+      expect(map['source'], equals('gps'));
+      expect(map['accuracyMeters'], equals(4.5));
+      expect(map['timestamp'], isNotNull);
 
       final parsed = FirestoreMapperHelpers.locationFromMap(map);
       expect(parsed.latitude, equals(19.0760));
+      expect(parsed.longitude, equals(72.8777));
       expect(parsed.address, equals('MG Road, Fort'));
+      expect(parsed.landmark, equals('Near Fountain'));
+      expect(parsed.ward, equals('Ward 14'));
+      expect(parsed.city, equals('Mumbai'));
+      expect(parsed.pincode, equals('400001'));
+      expect(parsed.source, equals(LocationSource.gps));
+      expect(parsed.accuracyMeters, equals(4.5));
+      expect(parsed.timestamp, equals(locTime));
 
       final fallback = FirestoreMapperHelpers.locationFromMap(null);
       expect(fallback.latitude, equals(0.0));
       expect(fallback.address, equals('Unknown Location'));
+      expect(fallback.source, equals(LocationSource.manual));
+      expect(fallback.pincode, isNull);
+      expect(fallback.accuracyMeters, isNull);
+    });
+
+    test('location conversions safely handle legacy maps omitting source, pincode, accuracyMeters', () {
+      final legacyMap = {
+        'latitude': 12.9716,
+        'longitude': 77.5946,
+        'address': 'MG Road Boulevard',
+        'ward': 'Ward 12',
+      };
+
+      final parsed = FirestoreMapperHelpers.locationFromMap(legacyMap);
+      expect(parsed.latitude, equals(12.9716));
+      expect(parsed.longitude, equals(77.5946));
+      expect(parsed.address, equals('MG Road Boulevard'));
+      expect(parsed.ward, equals('Ward 12'));
+      expect(parsed.city, isNull);
+      expect(parsed.pincode, isNull);
+      expect(parsed.source, equals(LocationSource.manual));
+      expect(parsed.accuracyMeters, isNull);
+      expect(parsed.timestamp, isNull);
     });
 
     test('Enum parsers handle known values and fallback gracefully on unknown/null', () {
@@ -72,8 +115,9 @@ void main() {
   });
 
   group('ComplaintFirestoreMapper Unit Tests', () {
-    test('toFirestore and fromFirestore serialize and deserialize accurately', () {
+    test('toFirestore and fromFirestore serialize and deserialize accurately with location telemetry', () {
       final now = DateTime(2026, 9, 8, 10, 0, 0);
+      final locTime = DateTime(2026, 9, 8, 9, 58, 0);
       final complaint = ComplaintModel(
         id: 'cmp_101',
         citizenId: 'usr_001',
@@ -83,10 +127,17 @@ void main() {
         category: CivicCategory.defaultCategories[4],
         status: ComplaintStatus.inProgress,
         priority: ComplaintPriority.high,
-        location: const CivicLocation(
+        location: CivicLocation(
           latitude: 12.9716,
           longitude: 77.5946,
           address: 'Park Avenue',
+          landmark: 'Opposite Park',
+          ward: 'Ward 14',
+          city: 'Bengaluru',
+          pincode: '560001',
+          source: LocationSource.gps,
+          accuracyMeters: 3.2,
+          timestamp: locTime,
         ),
         imageUrls: const ['https://storage.civicfix.com/evidence_1.jpg'],
         createdAt: now,
@@ -104,6 +155,9 @@ void main() {
       expect(map['priority'], equals('high'));
       expect(map['upvotes'], equals(5));
       expect(map['isHazard'], isTrue);
+      expect(map['location']['pincode'], equals('560001'));
+      expect(map['location']['source'], equals('gps'));
+      expect(map['location']['accuracyMeters'], equals(3.2));
 
       final restored = ComplaintFirestoreMapper.fromFirestore(
         documentId: 'doc_cmp_101',
@@ -115,7 +169,18 @@ void main() {
           'category': {'id': 'cat_electrical', 'name': 'Street Lights'},
           'status': 'inProgress',
           'priority': 'high',
-          'location': {'latitude': 12.9716, 'longitude': 77.5946, 'address': 'Park Avenue'},
+          'location': {
+            'latitude': 12.9716,
+            'longitude': 77.5946,
+            'address': 'Park Avenue',
+            'landmark': 'Opposite Park',
+            'ward': 'Ward 14',
+            'city': 'Bengaluru',
+            'pincode': '560001',
+            'source': 'gps',
+            'accuracyMeters': 3.2,
+            'timestamp': locTime,
+          },
           'imageUrls': ['https://storage.civicfix.com/evidence_1.jpg'],
           'createdAt': now,
           'updatedAt': now,
@@ -129,6 +194,42 @@ void main() {
       expect(restored.status, equals(ComplaintStatus.inProgress));
       expect(restored.priority, equals(ComplaintPriority.high));
       expect(restored.isHazard, isTrue);
+      expect(restored.location.pincode, equals('560001'));
+      expect(restored.location.source, equals(LocationSource.gps));
+      expect(restored.location.accuracyMeters, equals(3.2));
+      expect(restored.location.timestamp, equals(locTime));
+    });
+
+    test('ComplaintFirestoreMapper safely deserializes legacy complaints missing location telemetry', () {
+      final now = DateTime(2026, 9, 8, 10, 0, 0);
+      final restored = ComplaintFirestoreMapper.fromFirestore(
+        documentId: 'doc_cmp_legacy',
+        data: {
+          'citizenId': 'usr_legacy',
+          'ticketNumber': 'CF-2026-000001',
+          'title': 'Old Pothole',
+          'description': 'Legacy record without new telemetry',
+          'category': {'id': 'cat_roads', 'name': 'Roads & Potholes'},
+          'status': 'reported',
+          'priority': 'medium',
+          'location': {
+            'latitude': 12.9750,
+            'longitude': 77.6080,
+            'address': 'MG Road',
+          },
+          'imageUrls': [],
+          'createdAt': now,
+          'updatedAt': now,
+        },
+      );
+
+      expect(restored.location.latitude, equals(12.9750));
+      expect(restored.location.longitude, equals(77.6080));
+      expect(restored.location.address, equals('MG Road'));
+      expect(restored.location.source, equals(LocationSource.manual));
+      expect(restored.location.pincode, isNull);
+      expect(restored.location.accuracyMeters, isNull);
+      expect(restored.location.timestamp, isNull);
     });
 
     test('timelineEventToFirestore and timelineEventFromFirestore map correctly', () {
