@@ -53,7 +53,7 @@ class CivicFixApp extends StatelessWidget {
 
   const CivicFixApp({
     super.key,
-    this.initialRoute = AppRoutes.home,
+    this.initialRoute = AppRoutes.splash,
   });
 
   @override
@@ -64,6 +64,11 @@ class CivicFixApp extends StatelessWidget {
       navigatorKey: NotificationServiceLocator.navigatorKey,
       theme: AppTheme.lightTheme,
       initialRoute: initialRoute,
+      onGenerateInitialRoutes: (String initialRouteName) {
+        return [
+          AppRouter.generateRoute(RouteSettings(name: initialRouteName)),
+        ];
+      },
       onGenerateRoute: AppRouter.generateRoute,
     );
   }

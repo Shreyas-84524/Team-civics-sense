@@ -118,5 +118,33 @@ void main() {
       service.updateUser(officer);
       expect(service.userListenable.value, isNotNull);
     });
+
+    test('loginWithGovernmentId rejects empty Government ID or password', () async {
+      final service = FirebaseGovtAuthService();
+
+      final emptyIdResult = await service.loginWithGovernmentId(
+        governmentId: '',
+        password: 'any_password',
+      );
+      expect(emptyIdResult.isSuccess, isFalse);
+      expect(emptyIdResult.errorMessage, equals('Please enter your Government ID and password.'));
+      expect(service.currentAuthState, equals(GovtAuthState.authenticationError));
+
+      final emptyPwdResult = await service.loginWithGovernmentId(
+        governmentId: 'MUMHQ00001',
+        password: '',
+      );
+      expect(emptyPwdResult.isSuccess, isFalse);
+      expect(emptyPwdResult.errorMessage, equals('Please enter your Government ID and password.'));
+      expect(service.currentAuthState, equals(GovtAuthState.authenticationError));
+
+      final whitespaceResult = await service.loginWithGovernmentId(
+        governmentId: '   ',
+        password: '   ',
+      );
+      expect(whitespaceResult.isSuccess, isFalse);
+      expect(whitespaceResult.errorMessage, equals('Please enter your Government ID and password.'));
+    });
   });
 }
+

@@ -104,6 +104,17 @@ class FirebaseGovtAuthService implements GovtAuthService {
   }
 
   @override
+  Future<GovtAuthResult> loginWithGovernmentId({
+    required String governmentId,
+    required String password,
+  }) async {
+    return login(
+      emailOrEmployeeId: governmentId,
+      password: password,
+    );
+  }
+
+  @override
   Future<GovtAuthResult> login({
     required String emailOrEmployeeId,
     required String password,
@@ -112,13 +123,15 @@ class FirebaseGovtAuthService implements GovtAuthService {
   }) async {
     _authStateNotifier.value = GovtAuthState.authenticating;
 
-    final trimmedInput = emailOrEmployeeId.trim().toLowerCase();
-    if (trimmedInput.isEmpty || password.isEmpty) {
+    final rawInput = emailOrEmployeeId.trim();
+    if (rawInput.isEmpty || password.isEmpty) {
       _authStateNotifier.value = GovtAuthState.authenticationError;
-      return const GovtAuthResult.failure('Please provide your official ID and password.');
+      return const GovtAuthResult.failure('Please enter your Government ID and password.');
     }
 
-    // Resolve email address (support employee ID format if needed)
+    final trimmedInput = rawInput.toLowerCase();
+
+    // Deterministic Government ID -> Firebase identity mapping
     String email = trimmedInput;
     if (!email.contains('@')) {
       email = '$trimmedInput@civicfix.gov.in';
@@ -134,7 +147,7 @@ class FirebaseGovtAuthService implements GovtAuthService {
       final firebaseUser = credential.user;
       if (firebaseUser == null) {
         _authStateNotifier.value = GovtAuthState.authenticationError;
-        return const GovtAuthResult.failure('Government authentication failed. No user record found.');
+        return const GovtAuthResult.failure('Authentication failed. No user record found.');
       }
 
       // 2. Authorize Government Role via Custom Claims & Firestore Profile
@@ -144,7 +157,8 @@ class FirebaseGovtAuthService implements GovtAuthService {
       final remoteGovtProfile = await _userDataSource.getGovtUserById(firebaseUser.uid);
 
       final isGovtClaim = customRole == 'government' || customRole == 'admin';
-      final isGovtDoc = remoteGovtProfile != null && remoteGovtProfile.role == 'government';
+      final isGovtDoc = remoteGovtProfile != null &&
+          (remoteGovtProfile.role == 'government' || remoteGovtProfile.role == 'admin');
 
       // SECURITY INVARIANT: Reject non-government accounts
       if (!isGovtClaim && !isGovtDoc) {
@@ -163,11 +177,11 @@ class FirebaseGovtAuthService implements GovtAuthService {
             id: firebaseUser.uid,
             fullName: firebaseUser.displayName ?? 'Municipal Officer',
             email: firebaseUser.email ?? email,
-            employeeId: firebaseUser.uid.substring(0, 8).toUpperCase(),
-            departmentId: departmentId ?? 'dept_roads',
-            departmentName: 'Roads & Infrastructure',
-            designation: 'Municipal Nodal Officer',
-            assignedWard: 'Ward 14 (Central)',
+            employeeId: rawInput.toUpperCase(),
+            departmentId: departmentId ?? 'dept_admin',
+            departmentName: 'Municipal Administration',
+            designation: 'Municipal Officer',
+            assignedWard: 'HQ',
             role: 'government',
           );
 
@@ -192,7 +206,37 @@ class FirebaseGovtAuthService implements GovtAuthService {
     } catch (e) {
       debugPrint('[FirebaseGovtAuthService] Login error: $e');
       _authStateNotifier.value = GovtAuthState.authenticationError;
-      return GovtAuthResult.failure(FirebaseAuthErrorHandler.getMessage(e));
+
+      if (e is FirebaseAuthException) {
+        switch (e.code) {
+          case 'user-not-found':
+          case 'wrong-password':
+          case 'invalid-credential':
+          case 'invalid-email':
+            return const GovtAuthResult.failure(
+              'Invalid Government ID or password. Please verify your municipal credentials.',
+            );
+          case 'user-disabled':
+            return const GovtAuthResult.failure(
+              'This government officer account has been disabled. Please contact municipal administration.',
+            );
+          case 'too-many-requests':
+            return const GovtAuthResult.failure(
+              'Too many unsuccessful attempts. Access has been temporarily locked. Please try again later.',
+            );
+          case 'network-request-failed':
+            return const GovtAuthResult.failure(
+              'Network connection unavailable. Please check your internet connection and try again.',
+            );
+          default:
+            return const GovtAuthResult.failure(
+              'Authentication failed. Please verify your municipal credentials.',
+            );
+        }
+      }
+      return const GovtAuthResult.failure(
+        'Authentication failed. Please verify your municipal credentials.',
+      );
     }
   }
 

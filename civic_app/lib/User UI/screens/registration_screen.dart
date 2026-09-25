@@ -13,6 +13,7 @@ import '../widgets/auth_error_banner.dart';
 import '../widgets/auth_header.dart';
 import '../widgets/auth_success_banner.dart';
 import '../widgets/auth_text_field.dart';
+import '../widgets/google_sign_in_button.dart';
 
 /// Citizen Registration Screen with form validation, language selection, and mock/Firebase account creation.
 class RegistrationScreen extends StatefulWidget {
@@ -37,6 +38,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
   bool _isLoading = false;
+  bool _isGoogleLoading = false;
   String? _errorMessage;
   String? _successMessage;
 
@@ -147,12 +149,54 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       // Brief pause to allow user to see success state, then navigate
       await Future.delayed(const Duration(milliseconds: 700));
       if (mounted) {
-        Navigator.pushReplacementNamed(context, AppRoutes.home);
+        if (result.user != null && !result.user!.phoneVerified) {
+          Navigator.pushReplacementNamed(
+            context,
+            AppRoutes.verifyPhone,
+            arguments: result.user?.phone,
+          );
+        } else {
+          Navigator.pushReplacementNamed(context, AppRoutes.home);
+        }
       }
     } else {
       setState(() {
         _isLoading = false;
         _errorMessage = result.errorMessage ?? 'Registration failed. Please try again.';
+      });
+    }
+  }
+
+  Future<void> _handleGoogleSignIn() async {
+    FocusScope.of(context).unfocus();
+
+    setState(() {
+      _errorMessage = null;
+      _successMessage = null;
+      _isGoogleLoading = true;
+    });
+
+    final result = await _authService.signInWithGoogle();
+
+    if (!mounted) return;
+
+    setState(() => _isGoogleLoading = false);
+
+    if (result.isSuccess) {
+      if (result.user != null && !result.user!.phoneVerified) {
+        Navigator.pushReplacementNamed(
+          context,
+          AppRoutes.verifyPhone,
+          arguments: result.user?.phone,
+        );
+      } else {
+        Navigator.pushReplacementNamed(context, AppRoutes.home);
+      }
+    } else if (result.isCancelled) {
+      // User cancelled Google selection
+    } else {
+      setState(() {
+        _errorMessage = result.errorMessage ?? 'Google Sign-In failed. Please try again.';
       });
     }
   }
@@ -326,7 +370,33 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                   CivicFixButton(
                     text: 'Create Account',
                     isLoading: _isLoading,
-                    onPressed: _isLoading ? null : _handleRegister,
+                    onPressed: (_isLoading || _isGoogleLoading) ? null : _handleRegister,
+                  ),
+                  CivicFixSpacing.vSpaceLg,
+
+                  // Divider with "OR"
+                  Row(
+                    children: [
+                      const Expanded(child: Divider(color: CivicFixColors.border, thickness: 1)),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: CivicFixSpacing.md),
+                        child: Text(
+                          'OR',
+                          style: CivicFixTypography.caption.copyWith(
+                            color: CivicFixColors.secondaryText,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const Expanded(child: Divider(color: CivicFixColors.border, thickness: 1)),
+                    ],
+                  ),
+                  CivicFixSpacing.vSpaceLg,
+
+                  // Continue with Google Button
+                  GoogleSignInButton(
+                    isLoading: _isGoogleLoading,
+                    onPressed: (_isLoading || _isGoogleLoading) ? null : _handleGoogleSignIn,
                   ),
                   CivicFixSpacing.vSpaceXl,
 
@@ -342,7 +412,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                           style: CivicFixTypography.bodySmall,
                         ),
                         GestureDetector(
-                          onTap: _isLoading
+                          onTap: (_isLoading || _isGoogleLoading)
                               ? null
                               : () {
                                   Navigator.pushReplacementNamed(context, AppRoutes.login);

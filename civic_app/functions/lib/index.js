@@ -1,0 +1,452 @@
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.verifyCitizenPhoneMsg91 = exports.onComplaintCreated = exports.onComplaintStatusChanged = void 0;
+exports.sanitizeTokenDocId = sanitizeTokenDocId;
+const admin = __importStar(require("firebase-admin"));
+const functions = __importStar(require("firebase-functions"));
+// Initialize Firebase Admin SDK once per container lifecycle
+if (!admin.apps.length) {
+    admin.initializeApp();
+}
+const db = admin.firestore();
+const messaging = admin.messaging();
+function getStatusContent(status, ticketNumber, complaintTitle, departmentName, officerNotes) {
+    switch (status) {
+        case 'verified':
+            return {
+                title: `Complaint Verified: ${ticketNumber}`,
+                body: `Your grievance "${complaintTitle}" has been verified by the municipal authority.`,
+                type: 'complaintVerified',
+            };
+        case 'assigned':
+            return {
+                title: `Officer Assigned: ${ticketNumber}`,
+                body: departmentName
+                    ? `Your grievance has been assigned to ${departmentName} for action.`
+                    : `An officer has been assigned to address your grievance "${complaintTitle}".`,
+                type: 'complaintAssigned',
+            };
+        case 'inProgress':
+            return {
+                title: `Work In Progress: ${ticketNumber}`,
+                body: `Municipal ground teams are actively resolving "${complaintTitle}".`,
+                type: 'complaintStatusChanged',
+            };
+        case 'resolved':
+            return {
+                title: `Grievance Resolved: ${ticketNumber}`,
+                body: `Work on "${complaintTitle}" is complete. Tap to review the resolution.`,
+                type: 'complaintResolved',
+            };
+        case 'rejected':
+            return {
+                title: `Complaint Update: ${ticketNumber}`,
+                body: officerNotes
+                    ? `Status updated: Closed/Rejected. Note: ${officerNotes}`
+                    : `Your grievance "${complaintTitle}" has been closed. Tap for details.`,
+                type: 'complaintStatusChanged',
+            };
+        default:
+            return {
+                title: `Status Updated: ${ticketNumber}`,
+                body: `Your grievance "${complaintTitle}" is now marked as ${status}.`,
+                type: 'complaintStatusChanged',
+            };
+    }
+}
+/**
+ * Sanitizes FCM registration token for use as Firestore document ID.
+ */
+function sanitizeTokenDocId(token) {
+    return token.replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+/**
+ * Cloud Function Trigger: Automated Status Change Notifications
+ *
+ * Triggered whenever a document in the `complaints` collection is updated.
+ * Diffs previous status vs new status. If changed:
+ * 1. Writes an authoritative notification record to Firestore `notifications` collection (idempotent).
+ * 2. Fetches registered FCM device tokens for the citizen.
+ * 3. Sends FCM high-priority push notifications with deep-link metadata.
+ * 4. Automatically removes stale/invalid FCM tokens to keep device collections clean.
+ */
+exports.onComplaintStatusChanged = functions.firestore
+    .document('complaints/{complaintId}')
+    .onUpdate(async (change, context) => {
+    const complaintId = context.params.complaintId;
+    const beforeData = change.before.data();
+    const afterData = change.after.data();
+    if (!beforeData || !afterData) {
+        functions.logger.info(`[onComplaintStatusChanged] Missing before/after data for ${complaintId}`);
+        return;
+    }
+    const prevStatus = beforeData.status;
+    const newStatus = afterData.status;
+    // 1. Strict Status Diffing: Only execute if status has actually transitioned
+    if (prevStatus === newStatus) {
+        functions.logger.debug(`[onComplaintStatusChanged] Status unchanged (${prevStatus}) for ${complaintId}. Skipping.`);
+        return;
+    }
+    const citizenId = afterData.citizenId;
+    const ticketNumber = afterData.ticketNumber || `CF-${complaintId.substring(0, 6).toUpperCase()}`;
+    const complaintTitle = afterData.title || 'Civic Grievance';
+    const departmentName = afterData.departmentName;
+    const officerNotes = afterData.officerNotes;
+    const priority = afterData.priority || 'medium';
+    if (!citizenId) {
+        functions.logger.warn(`[onComplaintStatusChanged] Complaint ${complaintId} has no citizenId. Cannot notify.`);
+        return;
+    }
+    // 2. Compute Idempotent Event Identifier
+    const updatedAtMillis = afterData.updatedAt?.toMillis ? afterData.updatedAt.toMillis() : Date.now();
+    const sourceEventId = `status_${complaintId}_${newStatus}_${updatedAtMillis}`;
+    const notificationDocId = `notif_${complaintId}_${newStatus}_${updatedAtMillis}`;
+    const content = getStatusContent(newStatus, ticketNumber, complaintTitle, departmentName, officerNotes);
+    functions.logger.info(`[onComplaintStatusChanged] Processing status change ${prevStatus} -> ${newStatus} for ticket ${ticketNumber}`);
+    // 3. Write Authoritative Firestore Notification Record (Idempotent via deterministic doc ID)
+    const notificationRef = db.collection('notifications').doc(notificationDocId);
+    try {
+        await notificationRef.set({
+            id: notificationDocId,
+            userId: citizenId,
+            title: content.title,
+            message: content.body,
+            type: content.type,
+            complaintId: complaintId,
+            ticketNumber: ticketNumber,
+            isRead: false,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            sourceEventId: sourceEventId,
+            priority: priority,
+        }, { merge: true });
+        functions.logger.info(`[onComplaintStatusChanged] Created Firestore notification: ${notificationDocId}`);
+    }
+    catch (err) {
+        functions.logger.error(`[onComplaintStatusChanged] Failed to write Firestore notification record:`, err);
+        // Non-blocking: continue attempting push notification delivery
+    }
+    // 4. Retrieve Active FCM Device Tokens for the Citizen
+    try {
+        const devicesSnapshot = await db
+            .collection('users')
+            .doc(citizenId)
+            .collection('devices')
+            .get();
+        if (devicesSnapshot.empty) {
+            functions.logger.info(`[onComplaintStatusChanged] No registered devices for user ${citizenId}`);
+            return;
+        }
+        const tokensWithDocIds = [];
+        devicesSnapshot.forEach((doc) => {
+            const data = doc.data();
+            if (data.token && typeof data.token === 'string') {
+                tokensWithDocIds.push({ token: data.token, docId: doc.id });
+            }
+        });
+        if (tokensWithDocIds.length === 0) {
+            functions.logger.info(`[onComplaintStatusChanged] No valid token strings for user ${citizenId}`);
+            return;
+        }
+        const tokens = tokensWithDocIds.map((item) => item.token);
+        // 5. Construct FCM Multicast Payload with Deep-Linking Data
+        const multicastMessage = {
+            tokens: tokens,
+            notification: {
+                title: content.title,
+                body: content.body,
+            },
+            data: {
+                complaintId: complaintId,
+                ticketNumber: ticketNumber,
+                status: newStatus,
+                type: content.type,
+                role: 'citizen',
+                targetRoute: '/complaint-details',
+                click_action: 'FLUTTER_NOTIFICATION_CLICK',
+            },
+            android: {
+                priority: 'high',
+                notification: {
+                    channelId: 'civicfix_complaints_channel',
+                    icon: 'ic_launcher',
+                    color: '#0052CC',
+                    clickAction: 'FLUTTER_NOTIFICATION_CLICK',
+                },
+            },
+            apns: {
+                payload: {
+                    aps: {
+                        sound: 'default',
+                        badge: 1,
+                    },
+                },
+            },
+        };
+        // 6. Send FCM Push Notification
+        const response = await messaging.sendEachForMulticast(multicastMessage);
+        functions.logger.info(`[onComplaintStatusChanged] FCM push result: ${response.successCount} succeeded, ${response.failureCount} failed.`);
+        // 7. Cleanup Stale / Invalid Tokens
+        if (response.failureCount > 0) {
+            const invalidDocIdsToDelete = [];
+            response.responses.forEach((resp, idx) => {
+                if (!resp.success && resp.error) {
+                    const errCode = resp.error.code;
+                    functions.logger.warn(`[onComplaintStatusChanged] Token failure [${errCode}]:`, resp.error.message);
+                    if (errCode === 'messaging/registration-token-not-registered' ||
+                        errCode === 'messaging/invalid-registration-token' ||
+                        errCode === 'messaging/mismatched-credential') {
+                        invalidDocIdsToDelete.push(tokensWithDocIds[idx].docId);
+                    }
+                }
+            });
+            if (invalidDocIdsToDelete.length > 0) {
+                functions.logger.info(`[onComplaintStatusChanged] Cleaning up ${invalidDocIdsToDelete.length} stale FCM device tokens for user ${citizenId}`);
+                const batch = db.batch();
+                invalidDocIdsToDelete.forEach((docId) => {
+                    const staleRef = db.collection('users').doc(citizenId).collection('devices').doc(docId);
+                    batch.delete(staleRef);
+                });
+                await batch.commit();
+            }
+        }
+    }
+    catch (pushErr) {
+        functions.logger.error(`[onComplaintStatusChanged] Error during FCM push multicast:`, pushErr);
+    }
+});
+/**
+ * Cloud Function Trigger: Automated Submission Confirmation
+ *
+ * Triggered on initial grievance submission.
+ * Writes confirmation notification to Firestore and dispatches push to citizen.
+ */
+exports.onComplaintCreated = functions.firestore
+    .document('complaints/{complaintId}')
+    .onCreate(async (snapshot, context) => {
+    const complaintId = context.params.complaintId;
+    const data = snapshot.data();
+    if (!data)
+        return;
+    const citizenId = data.citizenId;
+    const ticketNumber = data.ticketNumber || `CF-${complaintId.substring(0, 6).toUpperCase()}`;
+    const complaintTitle = data.title || 'Civic Grievance';
+    if (!citizenId)
+        return;
+    const sourceEventId = `created_${complaintId}`;
+    const notificationDocId = `notif_created_${complaintId}`;
+    const title = `Grievance Submitted: ${ticketNumber}`;
+    const body = `Your complaint "${complaintTitle}" has been logged successfully and routed for verification.`;
+    // 1. Authoritative notification record
+    try {
+        await db.collection('notifications').doc(notificationDocId).set({
+            id: notificationDocId,
+            userId: citizenId,
+            title: title,
+            message: body,
+            type: 'complaintSubmitted',
+            complaintId: complaintId,
+            ticketNumber: ticketNumber,
+            isRead: false,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            sourceEventId: sourceEventId,
+            priority: data.priority || 'medium',
+        }, { merge: true });
+    }
+    catch (err) {
+        functions.logger.error(`[onComplaintCreated] Error writing submission notification:`, err);
+    }
+    // 2. Dispatch Push
+    try {
+        const devicesSnapshot = await db
+            .collection('users')
+            .doc(citizenId)
+            .collection('devices')
+            .get();
+        if (devicesSnapshot.empty)
+            return;
+        const tokens = [];
+        devicesSnapshot.forEach((doc) => {
+            const token = doc.data().token;
+            if (token && typeof token === 'string') {
+                tokens.push(token);
+            }
+        });
+        if (tokens.length === 0)
+            return;
+        await messaging.sendEachForMulticast({
+            tokens: tokens,
+            notification: { title, body },
+            data: {
+                complaintId: complaintId,
+                ticketNumber: ticketNumber,
+                status: 'reported',
+                type: 'complaintSubmitted',
+                role: 'citizen',
+                targetRoute: '/complaint-details',
+                click_action: 'FLUTTER_NOTIFICATION_CLICK',
+            },
+        });
+    }
+    catch (pushErr) {
+        functions.logger.error(`[onComplaintCreated] Error dispatching push:`, pushErr);
+    }
+});
+/**
+ * Callable Cloud Function: Verify Citizen Phone via MSG91 Access Token
+ *
+ * Validates the MSG91 Access Token securely server-side using MSG91 Account AuthKey
+ * (strictly kept in server environment variables `process.env.MSG91_AUTH_KEY`).
+ *
+ * Upon verification, writes phone, phoneVerified: true, and phoneVerifiedAt
+ * to the authenticated citizen's Firestore user document (`/users/{uid}`).
+ */
+exports.verifyCitizenPhoneMsg91 = functions.https.onCall(async (data, context) => {
+    // 1. Verify caller authentication
+    if (!context.auth || !context.auth.uid) {
+        throw new functions.https.HttpsError('unauthenticated', 'The caller must be authenticated to verify their phone number.');
+    }
+    const uid = context.auth.uid;
+    const { phone, accessToken } = data || {};
+    if (!phone || typeof phone !== 'string') {
+        throw new functions.https.HttpsError('invalid-argument', 'The function must be called with a valid "phone" parameter.');
+    }
+    // Normalize Indian phone number
+    const cleaned = phone.replace(/[\s\-\(\)\+]/g, '');
+    let tenDigit = cleaned;
+    if (cleaned.length === 12 && cleaned.startsWith('91')) {
+        tenDigit = cleaned.substring(2);
+    }
+    else if (cleaned.length === 11 && cleaned.startsWith('0')) {
+        tenDigit = cleaned.substring(1);
+    }
+    if (tenDigit.length !== 10 || !/^[6-9]/.test(tenDigit)) {
+        throw new functions.https.HttpsError('invalid-argument', 'The phone number provided is not a valid 10-digit Indian mobile number.');
+    }
+    const normalizedE164 = `+91${tenDigit}`;
+    // 2. Server-side validation with MSG91 if AuthKey is configured
+    const msg91AuthKey = process.env.MSG91_AUTH_KEY;
+    if (msg91AuthKey && accessToken && typeof accessToken === 'string') {
+        try {
+            const response = await fetch('https://control.msg91.com/api/v5/widget/verifyAccessToken', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'authkey': msg91AuthKey,
+                },
+                body: JSON.stringify({ accessToken }),
+            });
+            const result = await response.json();
+            if (!response.ok || (result && result.type === 'error')) {
+                functions.logger.warn(`[verifyCitizenPhoneMsg91] MSG91 verification failed for UID ${uid}:`, result);
+                throw new functions.https.HttpsError('invalid-argument', 'MSG91 OTP access token verification failed or expired.');
+            }
+        }
+        catch (fetchErr) {
+            if (fetchErr instanceof functions.https.HttpsError)
+                throw fetchErr;
+            functions.logger.error(`[verifyCitizenPhoneMsg91] Server fetch error verifying token:`, fetchErr);
+            throw new functions.https.HttpsError('internal', 'Failed to connect to MSG91 verification gateway.');
+        }
+    }
+    else if (msg91AuthKey && !accessToken) {
+        throw new functions.https.HttpsError('invalid-argument', 'Missing accessToken required for MSG91 server-side validation.');
+    }
+    // 3. Server-Authoritative Uniqueness Enforcement via Atomic Firestore Transaction
+    // Root collection: /phoneIndex/{normalizedE164}
+    // Enforces: 1 verified phone number = 1 CivicFix citizen account
+    try {
+        await db.runTransaction(async (transaction) => {
+            const phoneIndexRef = db.collection('phoneIndex').doc(normalizedE164);
+            const userRef = db.collection('users').doc(uid);
+            // Check existing phone ownership in /phoneIndex
+            const phoneIndexDoc = await transaction.get(phoneIndexRef);
+            if (phoneIndexDoc.exists) {
+                const existingData = phoneIndexDoc.data();
+                if (existingData && existingData.uid && existingData.uid !== uid) {
+                    // Privacy protection: Generic error message without revealing any other account info
+                    throw new functions.https.HttpsError('already-exists', 'This phone number is already associated with another CivicFix account.');
+                }
+            }
+            // Check current user document for old verified phone to release if changed
+            const userDoc = await transaction.get(userRef);
+            if (userDoc.exists) {
+                const userData = userDoc.data();
+                const oldPhone = userData?.phone;
+                if (oldPhone && oldPhone !== normalizedE164 && userData?.phoneVerified === true) {
+                    const oldPhoneIndexRef = db.collection('phoneIndex').doc(oldPhone);
+                    const oldPhoneIndexDoc = await transaction.get(oldPhoneIndexRef);
+                    if (oldPhoneIndexDoc.exists && oldPhoneIndexDoc.data()?.uid === uid) {
+                        transaction.delete(oldPhoneIndexRef);
+                    }
+                }
+            }
+            const now = admin.firestore.FieldValue.serverTimestamp();
+            // Write /phoneIndex/{normalizedE164}
+            const isNewIndex = !phoneIndexDoc.exists;
+            const indexPayload = {
+                uid: uid,
+                phone: normalizedE164,
+                verifiedAt: now,
+                updatedAt: now,
+            };
+            if (isNewIndex) {
+                indexPayload.createdAt = now;
+            }
+            transaction.set(phoneIndexRef, indexPayload, { merge: true });
+            // Write /users/{uid}
+            transaction.set(userRef, {
+                phone: normalizedE164,
+                phoneVerified: true,
+                phoneVerifiedAt: now,
+                updatedAt: now,
+            }, { merge: true });
+        });
+        return {
+            success: true,
+            message: 'Citizen phone number successfully verified.',
+            phone: normalizedE164,
+            phoneVerified: true,
+        };
+    }
+    catch (err) {
+        if (err instanceof functions.https.HttpsError) {
+            throw err;
+        }
+        functions.logger.error(`[verifyCitizenPhoneMsg91] Transaction write error for UID ${uid}:`, err);
+        throw new functions.https.HttpsError('internal', 'Failed to update citizen profile with verified phone.');
+    }
+});
+//# sourceMappingURL=index.js.map

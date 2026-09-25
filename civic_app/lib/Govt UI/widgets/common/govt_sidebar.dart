@@ -98,7 +98,10 @@ class GovtSidebar extends StatelessWidget {
           final auth = AuthServiceLocator.govtAuth;
           await auth.logout();
           if (context.mounted) {
-            Navigator.of(context, rootNavigator: true).pushReplacementNamed('/govt/login');
+            Navigator.of(context, rootNavigator: true).pushNamedAndRemoveUntil(
+              '/govt/login',
+              (route) => false,
+            );
           }
         },
       ),

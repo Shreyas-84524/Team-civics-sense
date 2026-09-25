@@ -268,7 +268,19 @@ void main() {
       expect(find.text('Password'), findsOneWidget);
       expect(find.widgetWithText(ElevatedButton, 'Login'), findsOneWidget);
       expect(find.text('Forgot Password?'), findsOneWidget);
+      expect(find.text('Continue with Google'), findsOneWidget);
       expect(find.text('Create an account'), findsOneWidget);
+    });
+
+    testWidgets('Tapping Continue with Google triggers Google Sign-In and navigates to Home', (WidgetTester tester) async {
+      await tester.pumpWidget(_createTestableWidget(const LoginScreen()));
+
+      final googleBtn = find.text('Continue with Google');
+      await tester.ensureVisible(googleBtn);
+      await tester.tap(googleBtn);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(MainNavigationScreen), findsOneWidget);
     });
 
     testWidgets('Validates empty email and password fields', (WidgetTester tester) async {
@@ -348,6 +360,18 @@ void main() {
       expect(find.text('Password'), findsOneWidget);
       expect(find.text('Confirm Password'), findsOneWidget);
       expect(find.text('Preferred Language'), findsOneWidget);
+      expect(find.text('Continue with Google'), findsOneWidget);
+    });
+
+    testWidgets('Tapping Continue with Google on RegistrationScreen triggers Google Sign-In and navigates to Home', (WidgetTester tester) async {
+      await tester.pumpWidget(_createTestableWidget(const RegistrationScreen()));
+
+      final googleBtn = find.text('Continue with Google');
+      await tester.ensureVisible(googleBtn);
+      await tester.tap(googleBtn);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(MainNavigationScreen), findsOneWidget);
     });
 
     testWidgets('Validates required fields and password rules on submit', (WidgetTester tester) async {
@@ -385,6 +409,7 @@ void main() {
       await tester.enterText(fields.at(3), 'ValidPass123');
       await tester.enterText(fields.at(4), 'DifferentPass123');
 
+      await tester.ensureVisible(createBtn);
       await tester.tap(createBtn);
       await tester.pump();
 
@@ -3185,9 +3210,9 @@ void main() {
 
       expect(find.text('CivicFix'), findsOneWidget);
       expect(find.text('MUNICIPAL OFFICER CONTROL DESK'), findsOneWidget);
-      expect(find.text('Enter Government Portal'), findsOneWidget);
-      expect(find.text('Official Email / Employee ID'), findsOneWidget);
-      expect(find.text('Security Passcode'), findsOneWidget);
+      expect(find.text('Government ID'), findsOneWidget);
+      expect(find.text('Password'), findsOneWidget);
+      expect(find.text('Login'), findsOneWidget);
     });
 
     testWidgets('GovtShellScreen adapts to desktop layout and switches tabs', (tester) async {
@@ -3223,21 +3248,21 @@ void main() {
       expect(auth.currentAuthState, GovtAuthState.unauthenticated);
 
       // Attempt invalid credentials
-      final failResult = await auth.login(
-        emailOrEmployeeId: 'invalid@civicfix.test',
+      final failResult = await auth.loginWithGovernmentId(
+        governmentId: 'MUM_INVALID',
         password: 'WrongPassword',
       );
       expect(failResult.isSuccess, isFalse);
-      expect(failResult.errorMessage, contains('Invalid government officer credentials'));
+      expect(failResult.errorMessage, contains('Invalid Government ID or password'));
       expect(auth.currentAuthState, GovtAuthState.authenticationError);
 
-      // Attempt valid login with Prompt 2 mock credentials
-      final successResult = await auth.login(
-        emailOrEmployeeId: 'government@civicfix.test',
+      // Attempt valid login with Government ID
+      final successResult = await auth.loginWithGovernmentId(
+        governmentId: 'MUMHQ00001',
         password: 'CivicFix123',
       );
       expect(successResult.isSuccess, isTrue);
-      expect(successResult.user?.email, 'government@civicfix.test');
+      expect(successResult.user?.employeeId, 'MUMHQ00001');
       expect(auth.currentAuthState, GovtAuthState.authenticated);
     });
 
@@ -3264,20 +3289,20 @@ void main() {
 
       // Enter invalid credentials
       final textFields = find.byType(TextFormField);
-      await tester.enterText(textFields.at(0), 'bad_officer@test.com');
+      await tester.enterText(textFields.at(0), 'bad_officer');
       await tester.enterText(textFields.at(1), 'wrongpassword');
       await tester.pump();
 
-      final loginBtn = find.text('Enter Government Portal');
+      final loginBtn = find.text('Login');
       await tester.ensureVisible(loginBtn);
       await tester.tap(loginBtn);
       await tester.pump(); // Start loading
       await tester.pump(const Duration(milliseconds: 600)); // Finish delay
 
-      expect(find.textContaining('Invalid government officer credentials'), findsOneWidget);
+      expect(find.textContaining('Invalid Government ID or password'), findsOneWidget);
 
       // Enter valid credentials
-      await tester.enterText(textFields.at(0), 'government@civicfix.test');
+      await tester.enterText(textFields.at(0), 'MUMHQ00001');
       await tester.enterText(textFields.at(1), 'CivicFix123');
       await tester.pump();
 
@@ -3287,15 +3312,8 @@ void main() {
       await tester.pumpAndSettle();
     });
 
-    testWidgets('GovtLoginScreen toggles password visibility and remember session', (tester) async {
+    testWidgets('GovtLoginScreen toggles password visibility', (tester) async {
       await tester.pumpWidget(_createTestableWidget(const GovtLoginScreen()));
-      await tester.pump();
-
-      expect(find.text('Remember session'), findsOneWidget);
-      expect(find.byType(Checkbox), findsOneWidget);
-
-      // Toggle remember session
-      await tester.tap(find.text('Remember session'));
       await tester.pump();
 
       // Toggle password visibility

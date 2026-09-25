@@ -14,6 +14,8 @@ class UserLocalModel {
   final String languageCode;
   final String wardNumber;
   final String role;
+  final bool phoneVerified;
+  final DateTime? phoneVerifiedAt;
 
   const UserLocalModel({
     required this.id,
@@ -28,6 +30,8 @@ class UserLocalModel {
     this.languageCode = 'en',
     this.wardNumber = 'Ward 14 (Central)',
     this.role = 'citizen',
+    this.phoneVerified = false,
+    this.phoneVerifiedAt,
   });
 
   /// Map from Domain Model [UserModel] -> [UserLocalModel]
@@ -45,6 +49,8 @@ class UserLocalModel {
       languageCode: user.languageCode,
       wardNumber: user.wardNumber,
       role: user.role,
+      phoneVerified: user.phoneVerified,
+      phoneVerifiedAt: user.phoneVerifiedAt,
     );
   }
 
@@ -63,6 +69,8 @@ class UserLocalModel {
       languageCode: languageCode,
       wardNumber: wardNumber,
       role: role,
+      phoneVerified: phoneVerified,
+      phoneVerifiedAt: phoneVerifiedAt,
     );
   }
 
@@ -79,6 +87,8 @@ class UserLocalModel {
     String? languageCode,
     String? wardNumber,
     String? role,
+    bool? phoneVerified,
+    DateTime? phoneVerifiedAt,
   }) {
     return UserLocalModel(
       id: id ?? this.id,
@@ -93,6 +103,8 @@ class UserLocalModel {
       languageCode: languageCode ?? this.languageCode,
       wardNumber: wardNumber ?? this.wardNumber,
       role: role ?? this.role,
+      phoneVerified: phoneVerified ?? this.phoneVerified,
+      phoneVerifiedAt: phoneVerifiedAt ?? this.phoneVerifiedAt,
     );
   }
 }

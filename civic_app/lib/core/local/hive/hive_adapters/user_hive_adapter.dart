@@ -25,13 +25,15 @@ class UserHiveAdapter extends TypeAdapter<UserLocalModel> {
       languageCode: fields[9] as String? ?? 'en',
       wardNumber: fields[10] as String? ?? 'Ward 14 (Central)',
       role: fields[11] as String? ?? 'citizen',
+      phoneVerified: fields.containsKey(12) ? (fields[12] as bool? ?? false) : false,
+      phoneVerifiedAt: fields[13] != null ? DateTime.tryParse(fields[13] as String) : null,
     );
   }
 
   @override
   void write(BinaryWriter writer, UserLocalModel obj) {
     writer
-      ..writeByte(12)
+      ..writeByte(14)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -55,6 +57,10 @@ class UserHiveAdapter extends TypeAdapter<UserLocalModel> {
       ..writeByte(10)
       ..write(obj.wardNumber)
       ..writeByte(11)
-      ..write(obj.role);
+      ..write(obj.role)
+      ..writeByte(12)
+      ..write(obj.phoneVerified)
+      ..writeByte(13)
+      ..write(obj.phoneVerifiedAt?.toIso8601String());
   }
 }

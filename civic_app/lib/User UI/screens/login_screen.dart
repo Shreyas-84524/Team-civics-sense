@@ -10,6 +10,7 @@ import '../../core/widgets/responsive_container.dart';
 import '../widgets/auth_error_banner.dart';
 import '../widgets/auth_header.dart';
 import '../widgets/auth_text_field.dart';
+import '../widgets/google_sign_in_button.dart';
 
 /// Citizen Login Screen with form validation, loading state, and Firebase authentication.
 class LoginScreen extends StatefulWidget {
@@ -29,6 +30,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _isPasswordVisible = false;
   bool _isLoading = false;
+  bool _isGoogleLoading = false;
   String? _errorMessage;
 
   @override
@@ -84,10 +86,51 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = false);
 
     if (result.isSuccess) {
-      Navigator.pushReplacementNamed(context, AppRoutes.home);
+      if (result.user != null && !result.user!.phoneVerified) {
+        Navigator.pushReplacementNamed(
+          context,
+          AppRoutes.verifyPhone,
+          arguments: result.user?.phone,
+        );
+      } else {
+        Navigator.pushReplacementNamed(context, AppRoutes.home);
+      }
     } else {
       setState(() {
         _errorMessage = result.errorMessage ?? 'Incorrect email or password.';
+      });
+    }
+  }
+
+  Future<void> _handleGoogleSignIn() async {
+    FocusScope.of(context).unfocus();
+
+    setState(() {
+      _errorMessage = null;
+      _isGoogleLoading = true;
+    });
+
+    final result = await _authService.signInWithGoogle();
+
+    if (!mounted) return;
+
+    setState(() => _isGoogleLoading = false);
+
+    if (result.isSuccess) {
+      if (result.user != null && !result.user!.phoneVerified) {
+        Navigator.pushReplacementNamed(
+          context,
+          AppRoutes.verifyPhone,
+          arguments: result.user?.phone,
+        );
+      } else {
+        Navigator.pushReplacementNamed(context, AppRoutes.home);
+      }
+    } else if (result.isCancelled) {
+      // User cancelled account selection - keep quiet without error banner
+    } else {
+      setState(() {
+        _errorMessage = result.errorMessage ?? 'Google Sign-In failed. Please try again.';
       });
     }
   }
@@ -130,7 +173,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
                       textInputAction: TextInputAction.next,
-                      enabled: !_isLoading,
+                      enabled: !_isLoading && !_isGoogleLoading,
                       prefixIcon: const Icon(
                         Icons.mail_outline_rounded,
                         color: CivicFixColors.secondaryText,
@@ -147,7 +190,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       controller: _passwordController,
                       isPassword: true,
                       isPasswordVisible: _isPasswordVisible,
-                      enabled: !_isLoading,
+                      enabled: !_isLoading && !_isGoogleLoading,
                       textInputAction: TextInputAction.done,
                       prefixIcon: const Icon(
                         Icons.lock_outline_rounded,
@@ -158,7 +201,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         setState(() => _isPasswordVisible = !_isPasswordVisible);
                       },
                       validator: _validatePassword,
-                      onFieldSubmitted: (_) => _isLoading ? null : _handleLogin(),
+                      onFieldSubmitted: (_) => (_isLoading || _isGoogleLoading) ? null : _handleLogin(),
                     ),
                     CivicFixSpacing.vSpaceXs,
 
@@ -166,7 +209,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
-                        onPressed: _isLoading
+                        onPressed: (_isLoading || _isGoogleLoading)
                             ? null
                             : () {
                                 Navigator.pushNamed(context, AppRoutes.forgotPassword);
@@ -186,7 +229,33 @@ class _LoginScreenState extends State<LoginScreen> {
                     CivicFixButton(
                       text: 'Login',
                       isLoading: _isLoading,
-                      onPressed: _isLoading ? null : _handleLogin,
+                      onPressed: (_isLoading || _isGoogleLoading) ? null : _handleLogin,
+                    ),
+                    CivicFixSpacing.vSpaceLg,
+
+                    // Divider with "OR"
+                    Row(
+                      children: [
+                        const Expanded(child: Divider(color: CivicFixColors.border, thickness: 1)),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: CivicFixSpacing.md),
+                          child: Text(
+                            'OR',
+                            style: CivicFixTypography.caption.copyWith(
+                              color: CivicFixColors.secondaryText,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        const Expanded(child: Divider(color: CivicFixColors.border, thickness: 1)),
+                      ],
+                    ),
+                    CivicFixSpacing.vSpaceLg,
+
+                    // Continue with Google Button
+                    GoogleSignInButton(
+                      isLoading: _isGoogleLoading,
+                      onPressed: (_isLoading || _isGoogleLoading) ? null : _handleGoogleSignIn,
                     ),
                     CivicFixSpacing.vSpaceXl,
 
@@ -202,7 +271,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             style: CivicFixTypography.bodySmall,
                           ),
                           GestureDetector(
-                            onTap: _isLoading
+                            onTap: (_isLoading || _isGoogleLoading)
                                 ? null
                                 : () {
                                     Navigator.pushNamed(context, AppRoutes.registration);

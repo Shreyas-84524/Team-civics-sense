@@ -1,5 +1,6 @@
 import 'dart:async';
 import '../../core/auth/auth_service.dart';
+import '../../core/auth/phone_normalizer.dart';
 import '../../core/models/user_model.dart';
 
 /// Test-isolated Mock Authentication Service for automated widget and unit tests.
@@ -11,12 +12,19 @@ class MockAuthService implements AuthService {
   factory MockAuthService() => _instance;
   MockAuthService._internal() {
     _seedDefaultAccounts();
+    _currentUser = _mockAccounts['citizen@civicfix.test']?.user;
+    _isAuthenticated = _currentUser != null;
   }
 
   UserModel? _currentUser;
   bool _isAuthenticated = false;
+  bool defaultPhoneVerified = true;
 
   final Map<String, _MockAccount> _mockAccounts = {};
+  final Map<String, String> _phoneToUidIndex = {};
+
+  /// Read-only snapshot of the phone-to-UID index for test assertions.
+  Map<String, String> get phoneIndex => Map.unmodifiable(_phoneToUidIndex);
 
   void _seedDefaultAccounts() {
     const defaultUser = UserModel(
@@ -30,19 +38,28 @@ class MockAuthService implements AuthService {
       wardNumber: 'Ward 14 (Central Ward)',
       languageCode: 'en',
       badges: ['First Report', 'Civic Contributor', 'Community Helper'],
+      phoneVerified: true,
     );
     _mockAccounts['citizen@civicfix.test'] = const _MockAccount(
       password: 'CivicFix123',
       user: defaultUser,
     );
+    _phoneToUidIndex['+919876543210'] = 'user_citizen_001';
   }
 
   /// Resets mock auth state for testing suites.
-  void resetForTesting() {
-    _currentUser = null;
-    _isAuthenticated = false;
+  void resetForTesting({bool authenticated = true}) {
+    defaultPhoneVerified = true;
     _mockAccounts.clear();
+    _phoneToUidIndex.clear();
     _seedDefaultAccounts();
+    if (authenticated) {
+      _currentUser = _mockAccounts['citizen@civicfix.test']?.user;
+      _isAuthenticated = _currentUser != null;
+    } else {
+      _currentUser = null;
+      _isAuthenticated = false;
+    }
   }
 
   @override
@@ -88,6 +105,31 @@ class MockAuthService implements AuthService {
   }
 
   @override
+  Future<AuthResult> signInWithGoogle() async {
+    const googleUser = UserModel(
+      id: 'user_google_001',
+      fullName: 'Rahul Sharma',
+      email: 'rahul.google@civicfix.test',
+      phone: '',
+      avatarUrl: 'https://lh3.googleusercontent.com/a/default-user',
+      civicPoints: 20,
+      reportsSubmitted: 0,
+      reportsResolved: 0,
+      wardNumber: 'Ward 14 (Central Ward)',
+      languageCode: 'en',
+      role: 'citizen',
+      badges: ['New Citizen'],
+      phoneVerified: true,
+    );
+    _currentUser = googleUser;
+    _isAuthenticated = true;
+    return const AuthResult.success(
+      user: googleUser,
+      successMessage: 'Signed in with Google successfully.',
+    );
+  }
+
+  @override
   Future<AuthResult> register({
     required String fullName,
     required String email,
@@ -112,6 +154,8 @@ class MockAuthService implements AuthService {
       wardNumber: 'Ward 14 (Central Ward)',
       languageCode: language,
       badges: const ['New Citizen'],
+      phoneVerified: defaultPhoneVerified,
+      phoneVerifiedAt: defaultPhoneVerified ? DateTime.now() : null,
     );
 
     _mockAccounts[normalizedEmail] = _MockAccount(
@@ -137,6 +181,55 @@ class MockAuthService implements AuthService {
 
     return const AuthResult.success(
       successMessage: 'Password reset instructions have been sent.',
+    );
+  }
+
+  @override
+  Future<AuthResult> markPhoneVerified({
+    required String phoneNumber,
+    String? accessToken,
+  }) async {
+    if (_currentUser == null) {
+      return const AuthResult.failure('No active session.');
+    }
+
+    final String normalized;
+    try {
+      normalized = PhoneNormalizer.toE164(phoneNumber);
+    } catch (_) {
+      return const AuthResult.failure('Please enter a valid 10-digit Indian mobile number.');
+    }
+
+    // Check collision against simulated server-authoritative phone index
+    final existingOwnerUid = _phoneToUidIndex[normalized];
+    if (existingOwnerUid != null && existingOwnerUid != _currentUser!.id) {
+      return const AuthResult.failure(
+        'This phone number is already associated with another CivicFix account.',
+      );
+    }
+
+    // If changing phone number from a previously verified phone, release old phone
+    final oldPhone = _currentUser!.phone;
+    if (oldPhone.isNotEmpty && _currentUser!.phoneVerified) {
+      try {
+        final oldE164 = PhoneNormalizer.toE164(oldPhone);
+        if (oldE164 != normalized && _phoneToUidIndex[oldE164] == _currentUser!.id) {
+          _phoneToUidIndex.remove(oldE164);
+        }
+      } catch (_) {}
+    }
+
+    _phoneToUidIndex[normalized] = _currentUser!.id;
+
+    final updated = _currentUser!.copyWith(
+      phone: normalized,
+      phoneVerified: true,
+      phoneVerifiedAt: DateTime.now(),
+    );
+    _currentUser = updated;
+    return AuthResult.success(
+      user: updated,
+      successMessage: 'Phone verified successfully.',
     );
   }
 

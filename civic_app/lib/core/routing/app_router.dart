@@ -14,6 +14,7 @@ import '../../User UI/screens/notification_settings_screen.dart';
 import '../../User UI/screens/notifications_screen.dart';
 import '../../User UI/screens/privacy_settings_screen.dart';
 import '../../User UI/screens/profile_screen.dart';
+import '../../User UI/screens/phone_verification_screen.dart';
 import '../../User UI/screens/registration_screen.dart';
 import '../../User UI/screens/report_issue_screen.dart';
 import '../../User UI/screens/rewards_screen.dart';
@@ -47,52 +48,56 @@ class AppRouter {
       case AppRoutes.registration:
         return MaterialPageRoute(builder: (_) => const RegistrationScreen());
 
+      case AppRoutes.verifyPhone:
+        final initialPhone = settings.arguments is String ? settings.arguments as String : null;
+        return _protectedVerifyPhoneRoute(
+          PhoneVerificationScreen(initialPhone: initialPhone),
+        );
+
       case AppRoutes.forgotPassword:
         return MaterialPageRoute(builder: (_) => const ForgotPasswordScreen());
 
       case AppRoutes.home:
-        return MaterialPageRoute(builder: (_) => const MainNavigationScreen(initialIndex: 0));
+        return _protectedCitizenRoute(const MainNavigationScreen(initialIndex: 0));
 
       case AppRoutes.mainNavigation:
         final initialIndex = settings.arguments is int ? settings.arguments as int : 0;
-        return MaterialPageRoute(builder: (_) => MainNavigationScreen(initialIndex: initialIndex));
+        return _protectedCitizenRoute(MainNavigationScreen(initialIndex: initialIndex));
 
       case AppRoutes.reportIssue:
-        return MaterialPageRoute(builder: (_) => const ReportIssueScreen());
+        return _protectedCitizenRoute(const ReportIssueScreen());
 
       case AppRoutes.selectLocation:
         final initialLoc = settings.arguments is CivicLocation ? settings.arguments as CivicLocation : null;
-        return MaterialPageRoute(builder: (_) => SelectLocationScreen(initialLocation: initialLoc));
+        return _protectedCitizenRoute(SelectLocationScreen(initialLocation: initialLoc));
 
       case AppRoutes.complaintSubmitted:
         final complaint = settings.arguments is ComplaintModel ? settings.arguments as ComplaintModel : null;
-        return MaterialPageRoute(builder: (_) => ComplaintSubmittedScreen(complaint: complaint));
+        return _protectedCitizenRoute(ComplaintSubmittedScreen(complaint: complaint));
 
       case AppRoutes.myComplaints:
-        return MaterialPageRoute(builder: (_) => const MyComplaintsScreen());
+        return _protectedCitizenRoute(const MyComplaintsScreen());
 
       case AppRoutes.complaintDetails:
         if (settings.arguments is ComplaintModel) {
-          return MaterialPageRoute(
-            builder: (_) => ComplaintDetailsScreen(
+          return _protectedCitizenRoute(
+            ComplaintDetailsScreen(
               complaint: settings.arguments as ComplaintModel,
             ),
           );
         } else if (settings.arguments is String) {
-          return MaterialPageRoute(
-            builder: (_) => ComplaintDetailsScreen(
+          return _protectedCitizenRoute(
+            ComplaintDetailsScreen(
               complaintId: settings.arguments as String,
             ),
           );
         }
-        return MaterialPageRoute(
-          builder: (_) => const ComplaintDetailsScreen(),
-        );
+        return _protectedCitizenRoute(const ComplaintDetailsScreen());
 
       case AppRoutes.complaintTracker:
         if (settings.arguments is ComplaintModel) {
-          return MaterialPageRoute(
-            builder: (_) => ComplaintTrackerScreen(
+          return _protectedCitizenRoute(
+            ComplaintTrackerScreen(
               complaint: settings.arguments as ComplaintModel,
             ),
           );
@@ -100,39 +105,39 @@ class AppRouter {
         return _errorRoute(settings.name);
 
       case AppRoutes.hazardMap:
-        return MaterialPageRoute(builder: (_) => const HazardMapScreen());
+        return _protectedCitizenRoute(const HazardMapScreen());
 
       case AppRoutes.notifications:
-        return MaterialPageRoute(builder: (_) => const NotificationsScreen());
+        return _protectedCitizenRoute(const NotificationsScreen());
 
       case AppRoutes.rewards:
-        return MaterialPageRoute(builder: (_) => const RewardsScreen());
+        return _protectedCitizenRoute(const RewardsScreen());
 
       case AppRoutes.assistant:
-        return MaterialPageRoute(builder: (_) => const AssistantScreen());
+        return _protectedCitizenRoute(const AssistantScreen());
 
       case AppRoutes.profile:
-        return MaterialPageRoute(builder: (_) => const ProfileScreen());
+        return _protectedCitizenRoute(const ProfileScreen());
 
       case AppRoutes.editProfile:
-        return MaterialPageRoute(builder: (_) => const EditProfileScreen());
+        return _protectedCitizenRoute(const EditProfileScreen());
 
       case AppRoutes.settings:
-        return MaterialPageRoute(builder: (_) => const SettingsScreen());
+        return _protectedCitizenRoute(const SettingsScreen());
 
       case AppRoutes.notificationSettings:
-        return MaterialPageRoute(builder: (_) => const NotificationSettingsScreen());
+        return _protectedCitizenRoute(const NotificationSettingsScreen());
 
       case AppRoutes.privacySettings:
-        return MaterialPageRoute(builder: (_) => const PrivacySettingsScreen());
+        return _protectedCitizenRoute(const PrivacySettingsScreen());
 
       case AppRoutes.about:
-        return MaterialPageRoute(builder: (_) => const AboutScreen());
+        return _protectedCitizenRoute(const AboutScreen());
 
       case AppRoutes.languageSelect:
         final currentCode = settings.arguments is String ? settings.arguments as String : 'en';
-        return MaterialPageRoute(
-          builder: (ctx) => Scaffold(
+        return _protectedCitizenRoute(
+          Scaffold(
             appBar: AppBar(title: const Text('Select Language')),
             body: LanguageSelectorSheet(currentLanguageCode: currentCode),
           ),
@@ -191,6 +196,42 @@ class AppRouter {
       default:
         return _errorRoute(settings.name);
     }
+  }
+
+  /// Helper to enforce Citizen authentication and phone verification on protected citizen routes.
+  static Route<dynamic> _protectedCitizenRoute(Widget authenticatedScreen) {
+    final citizenAuth = AuthServiceLocator.citizenAuth;
+    final isAuth = citizenAuth.isAuthenticated;
+    final user = citizenAuth.currentUser;
+
+    if (!isAuth || user == null) {
+      return MaterialPageRoute(builder: (_) => const LoginScreen());
+    }
+
+    if (!user.phoneVerified) {
+      return MaterialPageRoute(
+        builder: (_) => PhoneVerificationScreen(initialPhone: user.phone),
+      );
+    }
+
+    return MaterialPageRoute(builder: (_) => authenticatedScreen);
+  }
+
+  /// Helper to guard Phone Verification screen against unauthenticated or already-verified access.
+  static Route<dynamic> _protectedVerifyPhoneRoute(Widget verificationScreen) {
+    final citizenAuth = AuthServiceLocator.citizenAuth;
+    final isAuth = citizenAuth.isAuthenticated;
+    final user = citizenAuth.currentUser;
+
+    if (!isAuth || user == null) {
+      return MaterialPageRoute(builder: (_) => const LoginScreen());
+    }
+
+    if (user.phoneVerified) {
+      return MaterialPageRoute(builder: (_) => const MainNavigationScreen(initialIndex: 0));
+    }
+
+    return MaterialPageRoute(builder: (_) => verificationScreen);
   }
 
   /// Helper to enforce Government authentication on protected routes.

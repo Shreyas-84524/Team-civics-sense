@@ -20,6 +20,8 @@ class UserFirestoreMapper {
       'languageCode': user.languageCode,
       'wardNumber': user.wardNumber,
       'role': 'citizen',
+      'phoneVerified': user.phoneVerified,
+      'phoneVerifiedAt': user.phoneVerifiedAt != null ? Timestamp.fromDate(user.phoneVerifiedAt!) : null,
     };
 
     if (isCreate) {
@@ -37,6 +39,14 @@ class UserFirestoreMapper {
     required String documentId,
     required Map<String, dynamic> data,
   }) {
+    DateTime? phoneVerifiedAt;
+    final rawPhoneVerifiedAt = data['phoneVerifiedAt'];
+    if (rawPhoneVerifiedAt is Timestamp) {
+      phoneVerifiedAt = rawPhoneVerifiedAt.toDate();
+    } else if (rawPhoneVerifiedAt is String) {
+      phoneVerifiedAt = DateTime.tryParse(rawPhoneVerifiedAt);
+    }
+
     return UserModel(
       id: documentId,
       fullName: data['fullName'] as String? ?? '',
@@ -50,6 +60,8 @@ class UserFirestoreMapper {
       languageCode: data['languageCode'] as String? ?? 'en',
       wardNumber: data['wardNumber'] as String? ?? 'Ward 14 (Central)',
       role: data['role'] as String? ?? 'citizen',
+      phoneVerified: data['phoneVerified'] as bool? ?? false,
+      phoneVerifiedAt: phoneVerifiedAt,
     );
   }
 

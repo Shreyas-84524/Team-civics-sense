@@ -5,6 +5,7 @@ class AppRoutes {
   static const String splash = '/';
   static const String login = '/login';
   static const String registration = '/register';
+  static const String verifyPhone = '/verify-phone';
   static const String forgotPassword = '/forgot-password';
   static const String mainNavigation = '/main';
   static const String home = '/home';

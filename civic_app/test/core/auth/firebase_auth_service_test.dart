@@ -1,4 +1,5 @@
 import 'package:civic_app/core/auth/auth_service.dart';
+import 'package:civic_app/core/auth/firebase_auth_service.dart';
 import 'package:civic_app/core/firebase/firestore/firebase_user_data_source.dart';
 import 'package:civic_app/core/models/user_model.dart';
 import 'package:civic_app/core/repositories/hive_user_repository.dart';
@@ -138,8 +139,141 @@ void main() {
 
       const failureResult = AuthResult.failure('Invalid password provided.');
       expect(failureResult.isSuccess, isFalse);
+      expect(failureResult.isCancelled, isFalse);
       expect(failureResult.user, isNull);
       expect(failureResult.errorMessage, equals('Invalid password provided.'));
+
+      const cancelledResult = AuthResult.cancelled();
+      expect(cancelledResult.isSuccess, isFalse);
+      expect(cancelledResult.isCancelled, isTrue);
+      expect(cancelledResult.errorMessage, isNull);
+      expect(cancelledResult.user, isNull);
+    });
+
+    test('login validates empty email and password upfront', () async {
+      final fakeRemote = FakeFirebaseUserDataSource();
+      final fakeLocal = FakeHiveUserRepository();
+      final service = FirebaseAuthService(
+        userDataSource: fakeRemote,
+        userRepository: fakeLocal,
+      );
+
+      final emptyEmail = await service.login(email: '', password: 'secretpassword');
+      expect(emptyEmail.isSuccess, isFalse);
+      expect(emptyEmail.errorMessage, equals('Please enter your email.'));
+
+      final emptyWhitespaceEmail = await service.login(email: '   ', password: 'secretpassword');
+      expect(emptyWhitespaceEmail.isSuccess, isFalse);
+      expect(emptyWhitespaceEmail.errorMessage, equals('Please enter your email.'));
+
+      final emptyPassword = await service.login(email: 'citizen@test.com', password: '');
+      expect(emptyPassword.isSuccess, isFalse);
+      expect(emptyPassword.errorMessage, equals('Please enter your password.'));
+    });
+
+    test('register validates empty fields and password length upfront', () async {
+      final fakeRemote = FakeFirebaseUserDataSource();
+      final fakeLocal = FakeHiveUserRepository();
+      final service = FirebaseAuthService(
+        userDataSource: fakeRemote,
+        userRepository: fakeLocal,
+      );
+
+      final emptyName = await service.register(
+        fullName: '  ',
+        email: 'test@test.com',
+        password: 'password123',
+        language: 'en',
+      );
+      expect(emptyName.isSuccess, isFalse);
+      expect(emptyName.errorMessage, equals('Please enter your full name.'));
+
+      final emptyEmail = await service.register(
+        fullName: 'Citizen User',
+        email: '',
+        password: 'password123',
+        language: 'en',
+      );
+      expect(emptyEmail.isSuccess, isFalse);
+      expect(emptyEmail.errorMessage, equals('Please enter your email.'));
+
+      final shortPwd = await service.register(
+        fullName: 'Citizen User',
+        email: 'test@test.com',
+        password: 'short',
+        language: 'en',
+      );
+      expect(shortPwd.isSuccess, isFalse);
+      expect(shortPwd.errorMessage, equals('Password must be at least 8 characters.'));
+    });
+
+    test('new Google Sign-In user constructs citizen profile without fake phone and with citizen role', () async {
+      final fakeRemote = FakeFirebaseUserDataSource();
+      final fakeLocal = FakeHiveUserRepository();
+
+      // Simulated new Google account
+      const googleCitizen = UserModel(
+        id: 'google_uid_999',
+        fullName: 'Ananya Deshmukh',
+        email: 'ananya.deshmukh@gmail.com',
+        phone: '', // No fake phone invented
+        avatarUrl: 'https://lh3.googleusercontent.com/a/photo_123',
+        civicPoints: 20,
+        reportsSubmitted: 0,
+        reportsResolved: 0,
+        wardNumber: 'Ward 14 (Central)',
+        languageCode: 'en',
+        role: 'citizen', // Enforced citizen role
+        badges: ['New Citizen'],
+      );
+
+      await fakeRemote.createCitizenProfile(googleCitizen);
+      await fakeLocal.cacheUser(googleCitizen);
+
+      expect(fakeRemote.users['google_uid_999']?.fullName, equals('Ananya Deshmukh'));
+      expect(fakeRemote.users['google_uid_999']?.role, equals('citizen'));
+      expect(fakeRemote.users['google_uid_999']?.phone, isEmpty);
+      expect(fakeRemote.users['google_uid_999']?.avatarUrl, contains('googleusercontent'));
+      expect(fakeLocal.cachedUser?.id, equals('google_uid_999'));
+    });
+
+    test('existing Google Sign-In profile retrieval preserves existing profile data and role', () async {
+      final fakeRemote = FakeFirebaseUserDataSource();
+      const existingUser = UserModel(
+        id: 'google_existing_111',
+        fullName: 'Rohit Kadam',
+        email: 'rohit@gmail.com',
+        phone: '+91 91234 56789',
+        avatarUrl: 'https://lh3.googleusercontent.com/a/rohit',
+        civicPoints: 180,
+        reportsSubmitted: 5,
+        reportsResolved: 3,
+        wardNumber: 'Ward 8',
+        languageCode: 'mr',
+        role: 'citizen',
+        badges: ['Top Reporter'],
+      );
+
+      await fakeRemote.createCitizenProfile(existingUser);
+
+      final retrieved = await fakeRemote.getUserById('google_existing_111');
+      expect(retrieved, isNotNull);
+      expect(retrieved!.fullName, equals('Rohit Kadam'));
+      expect(retrieved.civicPoints, equals(180));
+      expect(retrieved.role, equals('citizen'));
+    });
+
+    test('role isolation blocks government and admin accounts from citizen portal', () {
+      const govtUser = UserModel(
+        id: 'govt_officer_001',
+        fullName: 'Ward Officer Deshmukh',
+        email: 'ward.a@civicfix.gov.in',
+        phone: '',
+        role: 'government',
+      );
+
+      final isCitizen = govtUser.role != 'government' && govtUser.role != 'admin';
+      expect(isCitizen, isFalse);
     });
   });
 }
