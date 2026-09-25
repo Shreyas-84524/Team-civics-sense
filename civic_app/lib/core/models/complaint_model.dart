@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../ai/models/ai_analysis_status.dart';
+import '../ai/models/ai_authenticity_result.dart';
 import '../constants/app_colors.dart';
 import '../location/location_model.dart';
 import '../utils/department_helper.dart';
@@ -230,10 +232,13 @@ class ComplaintModel {
   final SyncStatus syncStatus;
   final String? localId;
   final String? serverId;
+  final AiAuthenticityResult? aiAuthenticity;
+  final AiAnalysisStatus aiAnalysisStatus;
 
   String get effectiveDepartment => departmentName ?? DepartmentHelper.getDepartmentName(category);
 
   bool get isOfflineDraft => syncStatus == SyncStatus.pending;
+  bool get hasAiAuthenticity => aiAuthenticity != null;
 
   const ComplaintModel({
     required this.id,
@@ -258,6 +263,8 @@ class ComplaintModel {
     this.syncStatus = SyncStatus.synced,
     this.localId,
     this.serverId,
+    this.aiAuthenticity,
+    this.aiAnalysisStatus = AiAnalysisStatus.pending,
   });
 
   ComplaintModel copyWith({
@@ -283,6 +290,8 @@ class ComplaintModel {
     SyncStatus? syncStatus,
     String? localId,
     String? serverId,
+    AiAuthenticityResult? aiAuthenticity,
+    AiAnalysisStatus? aiAnalysisStatus,
   }) {
     return ComplaintModel(
       id: id ?? this.id,
@@ -307,6 +316,8 @@ class ComplaintModel {
       syncStatus: syncStatus ?? this.syncStatus,
       localId: localId ?? this.localId,
       serverId: serverId ?? this.serverId,
+      aiAuthenticity: aiAuthenticity ?? this.aiAuthenticity,
+      aiAnalysisStatus: aiAnalysisStatus ?? this.aiAnalysisStatus,
     );
   }
 }

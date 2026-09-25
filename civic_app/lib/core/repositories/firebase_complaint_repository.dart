@@ -1,3 +1,5 @@
+import '../ai/models/ai_analysis_status.dart';
+import '../ai/models/ai_authenticity_result.dart';
 import '../firebase/firestore/firebase_complaint_data_source.dart';
 import '../location/location_model.dart';
 import '../models/category_model.dart';
@@ -87,6 +89,8 @@ class FirebaseComplaintRepository implements ComplaintRepository {
     String complaintId,
     SyncStatus status, {
     String? serverId,
+    AiAuthenticityResult? aiAuthenticity,
+    AiAnalysisStatus? aiAnalysisStatus,
   }) async {
     // No-op on pure remote Firestore repository
   }

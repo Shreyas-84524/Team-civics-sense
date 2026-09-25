@@ -2,6 +2,10 @@ import 'dart:async';
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import '../../ai/ai_authenticity_service.dart';
+import '../../ai/gemini_ai_authenticity_service.dart';
+import '../../ai/models/ai_analysis_status.dart';
+import '../../ai/models/ai_authenticity_result.dart';
 import '../../auth/auth_service_locator.dart';
 import '../../firebase/errors/firestore_exception.dart';
 import '../../firebase/firebase_constants.dart';
@@ -24,16 +28,19 @@ class FirebaseSyncProvider implements SyncProvider {
   final EvidenceStorageService _evidenceStorageService;
   final SupabaseNotificationService _notificationService;
   final FirebaseFirestore? _firestore;
+  final AiAuthenticityService? _authenticityService;
 
   FirebaseSyncProvider({
     FirebaseComplaintDataSource? complaintDataSource,
     EvidenceStorageService? evidenceStorageService,
     SupabaseNotificationService? notificationService,
     FirebaseFirestore? firestore,
+    AiAuthenticityService? authenticityService,
   })  : _complaintDataSource = complaintDataSource ?? FirebaseComplaintDataSource(),
         _evidenceStorageService = evidenceStorageService ?? FirebaseEvidenceStorageService(),
         _notificationService = notificationService ?? HttpSupabaseNotificationService(),
-        _firestore = firestore;
+        _firestore = firestore,
+        _authenticityService = authenticityService;
 
   FirebaseFirestore get _db => _firestore ?? FirebaseFirestore.instance;
 
@@ -185,6 +192,24 @@ class FirebaseSyncProvider implements SyncProvider {
     // 5. Create in Firestore
     final created = await _complaintDataSource.createComplaint(complaintToCreate);
 
+    // 5b. Run AI Authenticity Verification on local evidence (isolated, never fails complaint)
+    AiAuthenticityResult? authenticityResult;
+    AiAnalysisStatus authenticityStatus = AiAnalysisStatus.pending;
+    try {
+      final res = await _performAuthenticityVerification(
+        complaintId: complaintId,
+        serverId: created.id,
+        localMediaRefs: rawImages,
+      );
+      if (res != null) {
+        authenticityResult = res;
+        authenticityStatus = res.isSuccess ? AiAnalysisStatus.completed : AiAnalysisStatus.failed;
+      }
+    } catch (e) {
+      debugPrint('[FirebaseSyncProvider] Authenticity verification caught error: $e');
+      authenticityStatus = AiAnalysisStatus.failed;
+    }
+
     // 6. Handle Partial Failure (Complaint created, but some images failed)
     if (failedImageUrls.isNotEmpty) {
       return SyncResult.partial(
@@ -192,6 +217,12 @@ class FirebaseSyncProvider implements SyncProvider {
         uploadedImageUrls: remoteImageUrls,
         failedImageUrls: failedImageUrls,
         errorMessage: 'Complaint created on cloud (${created.id}), but ${failedImageUrls.length} photo(s) failed upload and will be retried.',
+        responseData: {
+          'serverId': created.id,
+          'ticketNumber': created.ticketNumber,
+          if (authenticityResult != null) 'aiAuthenticity': authenticityResult.toMap(),
+          'aiAnalysisStatus': authenticityStatus.name,
+        },
       );
     }
 
@@ -201,8 +232,59 @@ class FirebaseSyncProvider implements SyncProvider {
       responseData: {
         'serverId': created.id,
         'ticketNumber': created.ticketNumber,
+        if (authenticityResult != null) 'aiAuthenticity': authenticityResult.toMap(),
+        'aiAnalysisStatus': authenticityStatus.name,
       },
     );
+  }
+
+  /// Evaluates evidence authenticity via Gemini and updates Firestore without blocking complaint sync.
+  Future<AiAuthenticityResult?> _performAuthenticityVerification({
+    required String complaintId,
+    required String serverId,
+    required List<String> localMediaRefs,
+  }) async {
+    try {
+      final authService = _authenticityService ?? GeminiAiAuthenticityService();
+
+      File? targetFile;
+      for (final ref in localMediaRefs) {
+        if (!ref.startsWith('http://') && !ref.startsWith('https://')) {
+          final f = File(ref);
+          if (await f.exists()) {
+            targetFile = f;
+            break;
+          }
+        }
+      }
+
+      if (targetFile == null) {
+        debugPrint('[CivicFix Sync] No local evidence file found for authenticity check on $complaintId');
+        return null;
+      }
+
+      debugPrint('[CivicFix AI] Authenticity analysis started for complaint $complaintId ($serverId)');
+      final result = await authService.analyzeAuthenticityFile(targetFile);
+
+      final status = result.isSuccess ? AiAnalysisStatus.completed : AiAnalysisStatus.failed;
+
+      // Update Firestore document with authenticity assessment
+      await _db.collection(FirestoreCollections.complaints).doc(serverId).update({
+        'aiAuthenticity': result.toMap(),
+        'aiAnalysisStatus': status.name,
+      });
+
+      debugPrint('[CivicFix Sync] AI authenticity result persisted to Firestore for $serverId: ${result.status.rawValue}');
+      return result;
+    } catch (e) {
+      debugPrint('[CivicFix Sync] AI authenticity verification failed (complaint remains synced): $e');
+      try {
+        await _db.collection(FirestoreCollections.complaints).doc(serverId).update({
+          'aiAnalysisStatus': AiAnalysisStatus.failed.name,
+        });
+      } catch (_) {}
+      return null;
+    }
   }
 
   // ===========================================================================

@@ -9,6 +9,7 @@ import '../../../core/widgets/priority_badge.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../services/govt_complaint_repository.dart';
 import '../../theme/govt_theme_tokens.dart';
+import '../../widgets/complaints/ai_authenticity_card.dart';
 import '../../widgets/dashboard/dashboard_card.dart';
 
 /// Government Detailed View Screen for a single Civic Grievance.
@@ -316,6 +317,8 @@ class _GovtComplaintDetailsScreenState extends State<GovtComplaintDetailsScreen>
                         _buildMainInfoCard(c),
                         CivicFixSpacing.vSpaceLg,
                         _buildEvidenceGallery(c),
+                        CivicFixSpacing.vSpaceLg,
+                        AiAuthenticityCard.fromComplaint(c),
                       ],
                     ),
                   ),
@@ -343,6 +346,8 @@ class _GovtComplaintDetailsScreenState extends State<GovtComplaintDetailsScreen>
                   CivicFixSpacing.vSpaceLg,
                   _buildEvidenceGallery(c),
                   CivicFixSpacing.vSpaceLg,
+                  AiAuthenticityCard.fromComplaint(c),
+                  CivicFixSpacing.vSpaceLg,
                   _buildTimelineCard(c),
                 ],
               );
@@ -360,7 +365,11 @@ class _GovtComplaintDetailsScreenState extends State<GovtComplaintDetailsScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: CivicFixSpacing.sm,
+            runSpacing: CivicFixSpacing.xs,
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -376,10 +385,14 @@ class _GovtComplaintDetailsScreenState extends State<GovtComplaintDetailsScreen>
                   ),
                 ),
               ),
-              const Spacer(),
-              PriorityBadge(priority: c.priority),
-              CivicFixSpacing.hSpaceSm,
-              StatusBadge(status: c.status),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  PriorityBadge(priority: c.priority),
+                  CivicFixSpacing.hSpaceSm,
+                  StatusBadge(status: c.status),
+                ],
+              ),
             ],
           ),
           CivicFixSpacing.vSpaceLg,

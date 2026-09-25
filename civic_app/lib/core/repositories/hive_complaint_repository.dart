@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import '../ai/models/ai_analysis_status.dart';
+import '../ai/models/ai_authenticity_result.dart';
 import '../local/hive/hive_boxes.dart';
 import '../local/hive/hive_storage_service.dart';
 import '../local/local_storage_service.dart';
@@ -159,6 +161,8 @@ class HiveComplaintRepository implements ComplaintRepository {
     String complaintId,
     SyncStatus status, {
     String? serverId,
+    AiAuthenticityResult? aiAuthenticity,
+    AiAnalysisStatus? aiAnalysisStatus,
   }) async {
     // 1. Update in Hive 'complaints' box
     if (_storage.isInitialized) {
@@ -181,6 +185,10 @@ class HiveComplaintRepository implements ComplaintRepository {
           final updated = stored.copyWith(
             syncStatus: status.name,
             serverId: serverId ?? stored.serverId,
+            aiAuthenticityJson: aiAuthenticity != null
+                ? aiAuthenticity.toJsonString()
+                : stored.aiAuthenticityJson,
+            aiAnalysisStatus: aiAnalysisStatus?.name ?? stored.aiAnalysisStatus,
           );
           await _storage.put<ComplaintLocalModel>(HiveBoxes.complaints, updated.id, updated);
         }
@@ -217,6 +225,8 @@ class HiveComplaintRepository implements ComplaintRepository {
       _dataSource.complaints[index] = current.copyWith(
         syncStatus: status,
         serverId: serverId ?? current.serverId,
+        aiAuthenticity: aiAuthenticity ?? current.aiAuthenticity,
+        aiAnalysisStatus: aiAnalysisStatus ?? current.aiAnalysisStatus,
       );
     }
   }

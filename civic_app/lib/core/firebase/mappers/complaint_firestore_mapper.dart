@@ -1,4 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../ai/models/ai_analysis_status.dart';
+import '../../ai/models/ai_authenticity_result.dart';
 import '../../models/complaint_model.dart';
 import 'firestore_mapper_helpers.dart';
 
@@ -24,6 +26,9 @@ class ComplaintFirestoreMapper {
       'assignedTo': complaint.assignedTo,
       'departmentName': complaint.departmentName,
       'resolvedAt': FirestoreMapperHelpers.dateTimeToTimestamp(complaint.resolvedAt),
+      if (complaint.aiAuthenticity != null)
+        'aiAuthenticity': complaint.aiAuthenticity!.toMap(),
+      'aiAnalysisStatus': complaint.aiAnalysisStatus.name,
     };
 
     if (isCreate) {
@@ -42,6 +47,13 @@ class ComplaintFirestoreMapper {
     required Map<String, dynamic> data,
     List<TimelineEvent> timeline = const [],
   }) {
+    AiAuthenticityResult? parsedAuthenticity;
+    if (data['aiAuthenticity'] is Map<String, dynamic>) {
+      parsedAuthenticity = AiAuthenticityResult.fromMap(data['aiAuthenticity'] as Map<String, dynamic>);
+    } else if (data['aiAuthenticity'] is Map) {
+      parsedAuthenticity = AiAuthenticityResult.fromMap(Map<String, dynamic>.from(data['aiAuthenticity'] as Map));
+    }
+
     return ComplaintModel(
       id: documentId,
       citizenId: data['citizenId'] as String? ?? '',
@@ -65,6 +77,8 @@ class ComplaintFirestoreMapper {
       syncStatus: SyncStatus.synced,
       serverId: documentId,
       localId: data['localId'] as String?,
+      aiAuthenticity: parsedAuthenticity,
+      aiAnalysisStatus: AiAnalysisStatus.fromString(data['aiAnalysisStatus'] as String?),
     );
   }
 
