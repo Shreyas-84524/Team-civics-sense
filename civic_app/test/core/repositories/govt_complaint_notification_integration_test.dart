@@ -1,8 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:civic_app/core/firebase/firestore/firebase_complaint_data_source.dart';
 import 'package:civic_app/core/local/mock_data_source.dart';
+import 'package:civic_app/core/location/location_model.dart';
+import 'package:civic_app/core/models/category_model.dart';
 import 'package:civic_app/core/models/complaint_model.dart';
 import 'package:civic_app/core/network/connectivity_service.dart';
+import 'package:civic_app/core/repositories/hive_complaint_repository.dart';
 import 'package:civic_app/core/repositories/offline_first_govt_complaint_repository.dart';
 import 'package:civic_app/core/services/supabase_notification_service.dart';
 import 'package:civic_app/core/sync/models/sync_queue_item.dart';
@@ -48,6 +51,17 @@ class FakeFirebaseComplaintDataSource extends FirebaseComplaintDataSource {
     if (simulateError) {
       throw Exception('Simulated Firestore remote failure');
     }
+    if (complaintId.isNotEmpty && complaints.containsKey(complaintId)) {
+      var c = complaints[complaintId]!;
+      complaints[complaintId] = c.copyWith(
+        status: status ?? c.status,
+        priority: priority ?? c.priority,
+        assignedTo: assignedTo ?? c.assignedTo,
+        departmentName: departmentName ?? c.departmentName,
+        officerNotes: officerNotes ?? c.officerNotes,
+        resolvedAt: resolvedAt ?? c.resolvedAt,
+      );
+    }
   }
 
   @override
@@ -69,6 +83,7 @@ void main() {
     late MockSupabaseNotificationService mockNotificationService;
     late MockTestConnectivityService mockConnectivity;
     late FakeFirebaseComplaintDataSource fakeDataSource;
+    late HiveComplaintRepository localRepo;
     late OfflineFirstGovtComplaintRepository govtRepo;
     late SyncManager syncManager;
     const String testComplaintId = 'cmp_101';
@@ -78,14 +93,37 @@ void main() {
       mockNotificationService = MockSupabaseNotificationService();
       mockConnectivity = MockTestConnectivityService(online: true);
       fakeDataSource = FakeFirebaseComplaintDataSource();
+      localRepo = HiveComplaintRepository();
       syncManager = SyncManager();
 
       govtRepo = OfflineFirstGovtComplaintRepository(
+        localRepository: localRepo,
         connectivity: mockConnectivity,
         complaintDataSource: fakeDataSource,
         notificationService: mockNotificationService,
         syncManager: syncManager,
       );
+
+      final initialComplaint = ComplaintModel(
+        id: testComplaintId,
+        citizenId: 'user_citizen_001',
+        ticketNumber: 'CF-2026-000024',
+        title: 'Broken street light near park',
+        description: 'The pole streetlight opposite the children play area has been dark for 3 days.',
+        category: CivicCategory.defaultCategories[4],
+        status: ComplaintStatus.reported,
+        priority: ComplaintPriority.medium,
+        location: const CivicLocation(
+          latitude: 12.9716,
+          longitude: 77.5946,
+          address: '4th Cross Road',
+        ),
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      fakeDataSource.complaints[testComplaintId] = initialComplaint;
+      await localRepo.cacheComplaints([initialComplaint]);
 
       mockNotificationService.dispatchedEvents.clear();
     });

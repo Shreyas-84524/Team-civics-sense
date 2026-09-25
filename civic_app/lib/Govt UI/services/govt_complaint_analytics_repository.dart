@@ -99,19 +99,24 @@ class GovtComplaintAnalyticsRepository implements AnalyticsRepository {
 
     final resolutionRate = total > 0 ? resolved / total : 0.0;
 
-    // Calculate actual average resolution duration in hours from resolved items
+    // Calculate actual average resolution duration and SLA compliance from resolved items
     double avgResolutionHours = 0.0;
+    double slaComplianceRate = 0.0;
     final resolvedList = filtered.where((c) => c.status == ComplaintStatus.resolved).toList();
     if (resolvedList.isNotEmpty) {
       double totalHours = 0.0;
+      int withinSlaCount = 0;
       for (final item in resolvedList) {
         final end = item.resolvedAt ?? item.updatedAt;
         final duration = end.difference(item.createdAt).inMinutes / 60.0;
-        totalHours += duration > 0 ? duration : 24.0;
+        final effectiveDuration = duration > 0 ? duration : 0.0;
+        totalHours += effectiveDuration;
+        if (effectiveDuration <= 48.0) {
+          withinSlaCount++;
+        }
       }
       avgResolutionHours = totalHours / resolvedList.length;
-    } else if (total > 0) {
-      avgResolutionHours = 36.5; // Target benchmark baseline
+      slaComplianceRate = withinSlaCount / resolvedList.length;
     }
 
     final summary = AnalyticsSummary(
@@ -124,7 +129,7 @@ class GovtComplaintAnalyticsRepository implements AnalyticsRepository {
       unassignedComplaints: unassigned,
       resolutionRate: resolutionRate,
       avgResolutionHours: avgResolutionHours,
-      slaComplianceRate: 0.912,
+      slaComplianceRate: slaComplianceRate,
     );
 
     // 3. Compute Chronological Time Trends from real complaints

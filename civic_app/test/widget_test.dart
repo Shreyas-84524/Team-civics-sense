@@ -109,6 +109,7 @@ import 'package:civic_app/Govt UI/widgets/profile/govt_privacy_principles_widget
 import 'package:civic_app/Govt UI/widgets/profile/govt_about_widget.dart';
 import 'package:civic_app/Govt UI/screens/profile/govt_profile_screen.dart';
 import 'package:civic_app/Govt UI/theme/govt_theme_tokens.dart';
+import 'package:civic_app/core/repositories/repository_locator.dart';
 import 'package:civic_app/core/widgets/civic_fix_button.dart';
 import 'package:civic_app/core/widgets/priority_badge.dart';
 import 'package:civic_app/core/routing/app_routes.dart';
@@ -124,6 +125,7 @@ Widget _createTestableWidget(Widget child) {
 void main() {
   setUp(() async {
     AuthServiceLocator.useMockServices();
+    RepositoryLocator.useMockRepositories();
     // Reset mock auth state and mock data sources before each test
     MockAuthService().resetForTesting();
     MockHomeService().resetMockData();
@@ -2590,18 +2592,18 @@ void main() {
       expect(model.achievements.length, 4);
     });
 
-    test('CivicAchievement returns 4 canonical MVP achievements with locked/unlocked states', () {
+    test('CivicAchievement returns 4 canonical MVP achievements in clean locked state', () {
       final achievements = CivicAchievement.defaultAchievements();
       expect(achievements.length, 4);
 
       expect(achievements[0].title, 'First Report');
-      expect(achievements[0].isUnlocked, isTrue);
+      expect(achievements[0].isUnlocked, isFalse);
 
       expect(achievements[1].title, 'Civic Contributor');
-      expect(achievements[1].isUnlocked, isTrue);
+      expect(achievements[1].isUnlocked, isFalse);
 
       expect(achievements[2].title, 'Community Helper');
-      expect(achievements[2].isUnlocked, isTrue);
+      expect(achievements[2].isUnlocked, isFalse);
 
       expect(achievements[3].title, 'Active Citizen');
       expect(achievements[3].isUnlocked, isFalse);

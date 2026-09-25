@@ -75,6 +75,13 @@ void main() {
     });
 
     test('redeemReward decrements points and caches updated points balance', () async {
+      await repository.cacheUser(const UserModel(
+        id: 'usr_test_redeem',
+        fullName: 'Ramesh K. Sharma',
+        email: 'ramesh@example.com',
+        phone: '+91 98765 00000',
+        civicPoints: 500,
+      ));
       final catalog = await repository.getRewardsCatalog();
       final firstReward = catalog.first;
 

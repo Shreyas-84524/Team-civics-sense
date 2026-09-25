@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../../core/auth/auth_service_locator.dart';
 import '../models/govt_settings_model.dart';
 import '../models/govt_user_model.dart';
 import 'govt_auth_service.dart';
@@ -31,13 +32,14 @@ abstract class GovernmentUserRepository {
 /// In-Memory Mock Implementation of GovernmentUserRepository.
 class MockGovernmentUserRepository implements GovernmentUserRepository {
   static final MockGovernmentUserRepository _instance = MockGovernmentUserRepository._internal();
-  factory MockGovernmentUserRepository() => _instance;
+  factory MockGovernmentUserRepository({GovtAuthService? authService}) =>
+      authService != null ? MockGovernmentUserRepository._internal(authService: authService) : _instance;
 
   final GovtAuthService _authService;
   late final ValueNotifier<GovtSettingsModel> _settingsNotifier;
 
   MockGovernmentUserRepository._internal({GovtAuthService? authService})
-      : _authService = authService ?? MockGovtAuthService() {
+      : _authService = authService ?? AuthServiceLocator.govtAuth {
     _settingsNotifier = ValueNotifier<GovtSettingsModel>(const GovtSettingsModel());
   }
 

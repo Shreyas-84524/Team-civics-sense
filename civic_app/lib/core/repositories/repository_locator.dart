@@ -32,9 +32,10 @@ import 'user_repository.dart';
 class RepositoryLocator {
   RepositoryLocator._();
 
-  static bool _useProduction = false;
+  static bool _useProduction = true;
 
-  static bool get _isFirebaseReady {
+  /// Returns whether a Firebase application instance is initialized.
+  static bool get isFirebaseReady {
     try {
       return Firebase.apps.isNotEmpty;
     } catch (_) {
@@ -43,7 +44,7 @@ class RepositoryLocator {
   }
 
   /// Whether production repositories are currently active.
-  static bool get isProductionActive => _useProduction || _isFirebaseReady;
+  static bool get isProductionActive => _useProduction;
 
   static ComplaintRepository? _complaintRepository;
   static GovtComplaintRepository? _govtComplaintRepository;

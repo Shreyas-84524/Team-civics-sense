@@ -28,6 +28,21 @@ class UserModel {
     this.role = 'citizen',
   });
 
+  /// Canonical empty/unauthenticated citizen profile representation.
+  static const UserModel empty = UserModel(
+    id: '',
+    fullName: 'Citizen',
+    email: '',
+    phone: '',
+    civicPoints: 0,
+    reportsSubmitted: 0,
+    reportsResolved: 0,
+    badges: [],
+    languageCode: 'en',
+    wardNumber: 'Ward 14 (Central)',
+    role: 'citizen',
+  );
+
   /// Derives user initials for avatar fallback (e.g. "Shreyas Shigwan" -> "SS").
   String get initials {
     final trimmed = fullName.trim();

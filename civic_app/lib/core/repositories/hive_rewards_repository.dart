@@ -4,7 +4,9 @@ import '../local/hive/hive_storage_service.dart';
 import '../local/local_storage_service.dart';
 import '../local/mock_data_source.dart';
 import '../local/models/reward_local_model.dart';
+import '../local/models/user_local_model.dart';
 import '../models/reward_model.dart';
+import '../models/user_model.dart';
 import 'rewards_repository.dart';
 
 /// Hive-backed cache-aware repository for gamification, rewards, and achievements.
@@ -34,9 +36,6 @@ class HiveRewardsRepository implements RewardsRepository {
             ..clear()
             ..addAll(achievements.map((e) => e.toDomain()));
           _lastCachedAt = DateTime.now();
-        } else {
-          await cacheAchievements(_dataSource.achievements);
-          await cacheRewardsCatalog(_dataSource.rewardsCatalog);
         }
       } catch (e) {
         debugPrint('Warning: HiveRewardsRepository failed reading cache: $e');
@@ -84,17 +83,43 @@ class HiveRewardsRepository implements RewardsRepository {
 
   @override
   Future<RewardDataModel> getRewardData(String userId) async {
-    final user = _dataSource.currentUser;
-    final achievements = await getAchievements();
+    UserModel user = UserModel.empty;
+    if (_storage.isInitialized) {
+      try {
+        final cachedUser = await _storage.get<UserLocalModel>(
+          HiveBoxes.user,
+          HiveBoxes.currentUserKey,
+        );
+        if (cachedUser != null) {
+          user = cachedUser.toDomain();
+        }
+      } catch (_) {}
+    }
+    if (user == UserModel.empty && _dataSource.currentUser != UserModel.empty) {
+      user = _dataSource.currentUser;
+    }
+
+    final rawAchievements = await getAchievements();
+    final dynamicAchievements = rawAchievements.map((a) {
+      bool isUnlocked = a.isUnlocked;
+      if (a.pointsRequired > 0 && user.civicPoints >= a.pointsRequired) {
+        isUnlocked = true;
+      }
+      return a.copyWith(
+        isUnlocked: isUnlocked,
+        unlockedAt: isUnlocked ? (a.unlockedAt ?? DateTime.now()) : null,
+      );
+    }).toList();
+
     final perks = await getRewardsCatalog();
 
     return RewardDataModel(
-      userId: user.id,
+      userId: user.id.isNotEmpty ? user.id : userId,
       currentPoints: user.civicPoints,
       nextMilestoneTarget: 1000,
       reportsSubmitted: user.reportsSubmitted,
       reportsResolved: user.reportsResolved,
-      achievements: achievements,
+      achievements: dynamicAchievements,
       perks: perks,
     );
   }
@@ -121,7 +146,8 @@ class HiveRewardsRepository implements RewardsRepository {
   Future<CivicAchievement?> getAchievementById(String id) async {
     if (_storage.isInitialized) {
       try {
-        final cached = await _storage.get<AchievementLocalModel>(HiveBoxes.rewards, 'ach_$id');
+        final cached = await _storage.get<AchievementLocalModel>(HiveBoxes.rewards, 'ach_$id') ??
+            await _storage.get<AchievementLocalModel>(HiveBoxes.rewards, id);
         if (cached != null) {
           return cached.toDomain();
         }
@@ -132,7 +158,7 @@ class HiveRewardsRepository implements RewardsRepository {
 
     try {
       final list = _inMemoryAchievements.isNotEmpty ? _inMemoryAchievements : _dataSource.achievements;
-      return list.firstWhere((a) => a.id == id);
+      return list.firstWhere((a) => a.id == id || 'ach_${a.id}' == id);
     } catch (_) {
       return null;
     }

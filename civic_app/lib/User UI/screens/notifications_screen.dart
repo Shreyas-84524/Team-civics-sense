@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/auth/auth_service_locator.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_radius.dart';
 import '../../core/constants/app_spacing.dart';
@@ -54,6 +55,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     _loadNotifications();
   }
 
+  String? get _currentUserId => AuthServiceLocator.citizenAuth.currentUser?.id;
+
   Future<void> _loadNotifications() async {
     setState(() {
       _isLoading = true;
@@ -61,7 +64,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     });
 
     try {
-      final list = await _notificationRepository.getNotifications();
+      final list = await _notificationRepository.getNotifications(userId: _currentUserId);
       if (!mounted) return;
       setState(() {
         _allNotifications = list;
@@ -77,7 +80,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Future<void> _markAllAsRead() async {
-    await _notificationRepository.markAllAsRead();
+    await _notificationRepository.markAllAsRead(userId: _currentUserId);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(

@@ -16,7 +16,7 @@ class HiveStorageService implements LocalStorageService {
   bool _isInitialized = false;
 
   @override
-  bool get isInitialized => _isInitialized;
+  bool get isInitialized => _isInitialized || HiveInitializer.isInitialized;
 
   @override
   Future<void> init({String? subDir, bool isTest = false}) async {

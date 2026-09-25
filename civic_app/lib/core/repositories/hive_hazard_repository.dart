@@ -20,6 +20,7 @@ class HiveHazardRepository implements HazardRepository {
     MockDataSource? dataSource,
   })  : _storage = storage ?? HiveStorageService.instance,
         _dataSource = dataSource ?? MockDataSource() {
+    _dataSource.hazards.clear();
     _initFromCache();
   }
 
@@ -34,9 +35,6 @@ class HiveHazardRepository implements HazardRepository {
             ..clear()
             ..addAll(cached.map((e) => e.toDomain()));
           _lastCachedAt = DateTime.now();
-        } else {
-          // Prime cache with default hazards
-          await cacheHazards(_dataSource.hazards);
         }
       } catch (e) {
         debugPrint('Warning: HiveHazardRepository failed reading cache: $e');
