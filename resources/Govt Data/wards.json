@@ -1,0 +1,841 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Brihanmumbai Municipal Corporation (BMC) 24 Administrative Wards Registry",
+  "version": "2.0.0",
+  "lastUpdated": "2026-09-25T15:07:00Z",
+  "city": "Mumbai",
+  "organization": "Brihanmumbai Municipal Corporation (BMC)",
+  "totalWards": 24,
+  "wards": [
+    {
+      "id": "ward_a",
+      "wardNumber": "Ward 1",
+      "name": "A Ward (Fort / Colaba)",
+      "administrativeCode": "A",
+      "zone": "Zone 1 (City South)",
+      "prominentNeighborhoods": [
+        "Fort",
+        "Colaba"
+      ],
+      "headquarters": {
+        "name": "A Ward Municipal Office",
+        "address": "BMC A Ward Office, Fort",
+        "city": "Mumbai",
+        "pincode": "400001",
+        "contactPhone": "+91 22 2495 0001",
+        "controlRoomPhone": "+91 22 2495 9001",
+        "email": "ward.a@mcgm.gov.in"
+      },
+      "centerCoordinates": {
+        "latitude": 18.922,
+        "longitude": 72.8347
+      },
+      "bounds": {
+        "north": 18.947,
+        "south": 18.897,
+        "east": 72.8597,
+        "west": 72.8097
+      },
+      "population": 162500,
+      "areaSqKm": 7.95,
+      "activeComplaintsCount": 11,
+      "resolvedComplaintsCount": 128,
+      "active": true
+    },
+    {
+      "id": "ward_b",
+      "wardNumber": "Ward 2",
+      "name": "B Ward (Dongri / Mandvi)",
+      "administrativeCode": "B",
+      "zone": "Zone 1 (City South)",
+      "prominentNeighborhoods": [
+        "Dongri",
+        "Mandvi"
+      ],
+      "headquarters": {
+        "name": "B Ward Municipal Office",
+        "address": "BMC B Ward Office, Dongri",
+        "city": "Mumbai",
+        "pincode": "400002",
+        "contactPhone": "+91 22 2495 0002",
+        "controlRoomPhone": "+91 22 2495 9002",
+        "email": "ward.b@mcgm.gov.in"
+      },
+      "centerCoordinates": {
+        "latitude": 18.956,
+        "longitude": 72.838
+      },
+      "bounds": {
+        "north": 18.981,
+        "south": 18.931,
+        "east": 72.863,
+        "west": 72.813
+      },
+      "population": 175000,
+      "areaSqKm": 8.4,
+      "activeComplaintsCount": 12,
+      "resolvedComplaintsCount": 136,
+      "active": true
+    },
+    {
+      "id": "ward_c",
+      "wardNumber": "Ward 3",
+      "name": "C Ward (Marine Lines / Bhuleshwar)",
+      "administrativeCode": "C",
+      "zone": "Zone 1 (City South)",
+      "prominentNeighborhoods": [
+        "Marine Lines",
+        "Bhuleshwar"
+      ],
+      "headquarters": {
+        "name": "C Ward Municipal Office",
+        "address": "BMC C Ward Office, Marine Lines",
+        "city": "Mumbai",
+        "pincode": "400003",
+        "contactPhone": "+91 22 2495 0003",
+        "controlRoomPhone": "+91 22 2495 9003",
+        "email": "ward.c@mcgm.gov.in"
+      },
+      "centerCoordinates": {
+        "latitude": 18.948,
+        "longitude": 72.825
+      },
+      "bounds": {
+        "north": 18.973,
+        "south": 18.923,
+        "east": 72.85,
+        "west": 72.8
+      },
+      "population": 187500,
+      "areaSqKm": 8.85,
+      "activeComplaintsCount": 13,
+      "resolvedComplaintsCount": 144,
+      "active": true
+    },
+    {
+      "id": "ward_d",
+      "wardNumber": "Ward 4",
+      "name": "D Ward (Grant Road / Malabar Hill)",
+      "administrativeCode": "D",
+      "zone": "Zone 2 (City Central)",
+      "prominentNeighborhoods": [
+        "Grant Road",
+        "Malabar Hill"
+      ],
+      "headquarters": {
+        "name": "D Ward Municipal Office",
+        "address": "BMC D Ward Office, Grant Road",
+        "city": "Mumbai",
+        "pincode": "400004",
+        "contactPhone": "+91 22 2495 0004",
+        "controlRoomPhone": "+91 22 2495 9004",
+        "email": "ward.d@mcgm.gov.in"
+      },
+      "centerCoordinates": {
+        "latitude": 18.962,
+        "longitude": 72.812
+      },
+      "bounds": {
+        "north": 18.987,
+        "south": 18.937,
+        "east": 72.837,
+        "west": 72.787
+      },
+      "population": 200000,
+      "areaSqKm": 9.3,
+      "activeComplaintsCount": 14,
+      "resolvedComplaintsCount": 152,
+      "active": true
+    },
+    {
+      "id": "ward_e",
+      "wardNumber": "Ward 5",
+      "name": "E Ward (Byculla)",
+      "administrativeCode": "E",
+      "zone": "Zone 2 (City Central)",
+      "prominentNeighborhoods": [
+        "Byculla"
+      ],
+      "headquarters": {
+        "name": "E Ward Municipal Office",
+        "address": "BMC E Ward Office, Byculla",
+        "city": "Mumbai",
+        "pincode": "400005",
+        "contactPhone": "+91 22 2495 0005",
+        "controlRoomPhone": "+91 22 2495 9005",
+        "email": "ward.e@mcgm.gov.in"
+      },
+      "centerCoordinates": {
+        "latitude": 18.975,
+        "longitude": 72.832
+      },
+      "bounds": {
+        "north": 19.0,
+        "south": 18.95,
+        "east": 72.857,
+        "west": 72.807
+      },
+      "population": 212500,
+      "areaSqKm": 9.75,
+      "activeComplaintsCount": 15,
+      "resolvedComplaintsCount": 160,
+      "active": true
+    },
+    {
+      "id": "ward_f_north",
+      "wardNumber": "Ward 6",
+      "name": "F North Ward (Parel / Wadala / Sion)",
+      "administrativeCode": "F/North",
+      "zone": "Zone 2 (City Central)",
+      "prominentNeighborhoods": [
+        "Parel",
+        "Wadala",
+        "Sion"
+      ],
+      "headquarters": {
+        "name": "F North Ward Municipal Office",
+        "address": "BMC F/North Ward Office, Parel",
+        "city": "Mumbai",
+        "pincode": "400006",
+        "contactPhone": "+91 22 2495 0006",
+        "controlRoomPhone": "+91 22 2495 9006",
+        "email": "ward.fnorth@mcgm.gov.in"
+      },
+      "centerCoordinates": {
+        "latitude": 19.03,
+        "longitude": 72.86
+      },
+      "bounds": {
+        "north": 19.055,
+        "south": 19.005,
+        "east": 72.885,
+        "west": 72.835
+      },
+      "population": 225000,
+      "areaSqKm": 10.2,
+      "activeComplaintsCount": 16,
+      "resolvedComplaintsCount": 168,
+      "active": true
+    },
+    {
+      "id": "ward_f_south",
+      "wardNumber": "Ward 7",
+      "name": "F South Ward (Matunga East / Kings Circle)",
+      "administrativeCode": "F/South",
+      "zone": "Zone 2 (City Central)",
+      "prominentNeighborhoods": [
+        "Matunga East",
+        "Kings Circle"
+      ],
+      "headquarters": {
+        "name": "F South Ward Municipal Office",
+        "address": "BMC F/South Ward Office, Matunga East",
+        "city": "Mumbai",
+        "pincode": "400007",
+        "contactPhone": "+91 22 2495 0007",
+        "controlRoomPhone": "+91 22 2495 9007",
+        "email": "ward.fsouth@mcgm.gov.in"
+      },
+      "centerCoordinates": {
+        "latitude": 19.005,
+        "longitude": 72.844
+      },
+      "bounds": {
+        "north": 19.03,
+        "south": 18.98,
+        "east": 72.869,
+        "west": 72.819
+      },
+      "population": 237500,
+      "areaSqKm": 10.65,
+      "activeComplaintsCount": 17,
+      "resolvedComplaintsCount": 176,
+      "active": true
+    },
+    {
+      "id": "ward_g_north",
+      "wardNumber": "Ward 8",
+      "name": "G North Ward (Lower Parel / Prabhadevi)",
+      "administrativeCode": "G/North",
+      "zone": "Zone 2 (City Central)",
+      "prominentNeighborhoods": [
+        "Lower Parel",
+        "Prabhadevi"
+      ],
+      "headquarters": {
+        "name": "G North Ward Municipal Office",
+        "address": "BMC G/North Ward Office, Lower Parel",
+        "city": "Mumbai",
+        "pincode": "400008",
+        "contactPhone": "+91 22 2495 0008",
+        "controlRoomPhone": "+91 22 2495 9008",
+        "email": "ward.gnorth@mcgm.gov.in"
+      },
+      "centerCoordinates": {
+        "latitude": 19.033,
+        "longitude": 72.853
+      },
+      "bounds": {
+        "north": 19.058,
+        "south": 19.008,
+        "east": 72.878,
+        "west": 72.828
+      },
+      "population": 250000,
+      "areaSqKm": 11.1,
+      "activeComplaintsCount": 18,
+      "resolvedComplaintsCount": 184,
+      "active": true
+    },
+    {
+      "id": "ward_g_south",
+      "wardNumber": "Ward 9",
+      "name": "G South Ward (Dadar West / Worli)",
+      "administrativeCode": "G/South",
+      "zone": "Zone 2 (City Central)",
+      "prominentNeighborhoods": [
+        "Dadar West",
+        "Worli"
+      ],
+      "headquarters": {
+        "name": "G South Ward Municipal Office",
+        "address": "BMC G/South Ward Office, Dadar West",
+        "city": "Mumbai",
+        "pincode": "400009",
+        "contactPhone": "+91 22 2495 0009",
+        "controlRoomPhone": "+91 22 2495 9009",
+        "email": "ward.gsouth@mcgm.gov.in"
+      },
+      "centerCoordinates": {
+        "latitude": 19.016,
+        "longitude": 72.828
+      },
+      "bounds": {
+        "north": 19.041,
+        "south": 18.991,
+        "east": 72.853,
+        "west": 72.803
+      },
+      "population": 262500,
+      "areaSqKm": 11.55,
+      "activeComplaintsCount": 19,
+      "resolvedComplaintsCount": 192,
+      "active": true
+    },
+    {
+      "id": "ward_h_east",
+      "wardNumber": "Ward 10",
+      "name": "H East Ward (Santacruz East / Khar East)",
+      "administrativeCode": "H/East",
+      "zone": "Zone 3 (Western Suburbs South)",
+      "prominentNeighborhoods": [
+        "Santacruz East",
+        "Khar East"
+      ],
+      "headquarters": {
+        "name": "H East Ward Municipal Office",
+        "address": "BMC H/East Ward Office, Santacruz East",
+        "city": "Mumbai",
+        "pincode": "400010",
+        "contactPhone": "+91 22 2495 0010",
+        "controlRoomPhone": "+91 22 2495 9010",
+        "email": "ward.heast@mcgm.gov.in"
+      },
+      "centerCoordinates": {
+        "latitude": 19.082,
+        "longitude": 72.852
+      },
+      "bounds": {
+        "north": 19.107,
+        "south": 19.057,
+        "east": 72.877,
+        "west": 72.827
+      },
+      "population": 275000,
+      "areaSqKm": 12.0,
+      "activeComplaintsCount": 20,
+      "resolvedComplaintsCount": 200,
+      "active": true
+    },
+    {
+      "id": "ward_h_west",
+      "wardNumber": "Ward 11",
+      "name": "H West Ward (Bandra West)",
+      "administrativeCode": "H/West",
+      "zone": "Zone 3 (Western Suburbs South)",
+      "prominentNeighborhoods": [
+        "Bandra West"
+      ],
+      "headquarters": {
+        "name": "H West Ward Municipal Office",
+        "address": "BMC H/West Ward Office, Bandra West",
+        "city": "Mumbai",
+        "pincode": "400011",
+        "contactPhone": "+91 22 2495 0011",
+        "controlRoomPhone": "+91 22 2495 9011",
+        "email": "ward.hwest@mcgm.gov.in"
+      },
+      "centerCoordinates": {
+        "latitude": 19.0596,
+        "longitude": 72.8295
+      },
+      "bounds": {
+        "north": 19.0846,
+        "south": 19.0346,
+        "east": 72.8545,
+        "west": 72.8045
+      },
+      "population": 287500,
+      "areaSqKm": 12.45,
+      "activeComplaintsCount": 21,
+      "resolvedComplaintsCount": 208,
+      "active": true
+    },
+    {
+      "id": "ward_k_east",
+      "wardNumber": "Ward 12",
+      "name": "K East Ward (Andheri East)",
+      "administrativeCode": "K/East",
+      "zone": "Zone 3 (Western Suburbs Central)",
+      "prominentNeighborhoods": [
+        "Andheri East"
+      ],
+      "headquarters": {
+        "name": "K East Ward Municipal Office",
+        "address": "BMC K/East Ward Office, Andheri East",
+        "city": "Mumbai",
+        "pincode": "400012",
+        "contactPhone": "+91 22 2495 0012",
+        "controlRoomPhone": "+91 22 2495 9012",
+        "email": "ward.keast@mcgm.gov.in"
+      },
+      "centerCoordinates": {
+        "latitude": 19.1136,
+        "longitude": 72.8697
+      },
+      "bounds": {
+        "north": 19.1386,
+        "south": 19.0886,
+        "east": 72.8947,
+        "west": 72.8447
+      },
+      "population": 300000,
+      "areaSqKm": 12.9,
+      "activeComplaintsCount": 22,
+      "resolvedComplaintsCount": 216,
+      "active": true
+    },
+    {
+      "id": "ward_k_west",
+      "wardNumber": "Ward 13",
+      "name": "K West Ward (Andheri West)",
+      "administrativeCode": "K/West",
+      "zone": "Zone 3 (Western Suburbs Central)",
+      "prominentNeighborhoods": [
+        "Andheri West"
+      ],
+      "headquarters": {
+        "name": "K West Ward Municipal Office",
+        "address": "BMC K/West Ward Office, Andheri West",
+        "city": "Mumbai",
+        "pincode": "400013",
+        "contactPhone": "+91 22 2495 0013",
+        "controlRoomPhone": "+91 22 2495 9013",
+        "email": "ward.kwest@mcgm.gov.in"
+      },
+      "centerCoordinates": {
+        "latitude": 19.1197,
+        "longitude": 72.828
+      },
+      "bounds": {
+        "north": 19.1447,
+        "south": 19.0947,
+        "east": 72.853,
+        "west": 72.803
+      },
+      "population": 312500,
+      "areaSqKm": 13.35,
+      "activeComplaintsCount": 23,
+      "resolvedComplaintsCount": 224,
+      "active": true
+    },
+    {
+      "id": "ward_l",
+      "wardNumber": "Ward 14",
+      "name": "L Ward (Kurla)",
+      "administrativeCode": "L",
+      "zone": "Zone 5 (Eastern Suburbs South)",
+      "prominentNeighborhoods": [
+        "Kurla"
+      ],
+      "headquarters": {
+        "name": "L Ward Municipal Office",
+        "address": "BMC L Ward Office, Kurla",
+        "city": "Mumbai",
+        "pincode": "400014",
+        "contactPhone": "+91 22 2495 0014",
+        "controlRoomPhone": "+91 22 2495 9014",
+        "email": "ward.l@mcgm.gov.in"
+      },
+      "centerCoordinates": {
+        "latitude": 19.0726,
+        "longitude": 72.8797
+      },
+      "bounds": {
+        "north": 19.0976,
+        "south": 19.0476,
+        "east": 72.9047,
+        "west": 72.8547
+      },
+      "population": 325000,
+      "areaSqKm": 13.8,
+      "activeComplaintsCount": 24,
+      "resolvedComplaintsCount": 232,
+      "active": true
+    },
+    {
+      "id": "ward_m_east",
+      "wardNumber": "Ward 15",
+      "name": "M East Ward (Govandi / Mankhurd)",
+      "administrativeCode": "M/East",
+      "zone": "Zone 5 (Eastern Suburbs South)",
+      "prominentNeighborhoods": [
+        "Govandi",
+        "Mankhurd"
+      ],
+      "headquarters": {
+        "name": "M East Ward Municipal Office",
+        "address": "BMC M/East Ward Office, Govandi",
+        "city": "Mumbai",
+        "pincode": "400015",
+        "contactPhone": "+91 22 2495 0015",
+        "controlRoomPhone": "+91 22 2495 9015",
+        "email": "ward.meast@mcgm.gov.in"
+      },
+      "centerCoordinates": {
+        "latitude": 19.055,
+        "longitude": 72.915
+      },
+      "bounds": {
+        "north": 19.08,
+        "south": 19.03,
+        "east": 72.94,
+        "west": 72.89
+      },
+      "population": 337500,
+      "areaSqKm": 14.25,
+      "activeComplaintsCount": 10,
+      "resolvedComplaintsCount": 240,
+      "active": true
+    },
+    {
+      "id": "ward_m_west",
+      "wardNumber": "Ward 16",
+      "name": "M West Ward (Chembur West)",
+      "administrativeCode": "M/West",
+      "zone": "Zone 5 (Eastern Suburbs South)",
+      "prominentNeighborhoods": [
+        "Chembur West"
+      ],
+      "headquarters": {
+        "name": "M West Ward Municipal Office",
+        "address": "BMC M/West Ward Office, Chembur West",
+        "city": "Mumbai",
+        "pincode": "400016",
+        "contactPhone": "+91 22 2495 0016",
+        "controlRoomPhone": "+91 22 2495 9016",
+        "email": "ward.mwest@mcgm.gov.in"
+      },
+      "centerCoordinates": {
+        "latitude": 19.0622,
+        "longitude": 72.8974
+      },
+      "bounds": {
+        "north": 19.0872,
+        "south": 19.0372,
+        "east": 72.9224,
+        "west": 72.8724
+      },
+      "population": 350000,
+      "areaSqKm": 14.7,
+      "activeComplaintsCount": 11,
+      "resolvedComplaintsCount": 248,
+      "active": true
+    },
+    {
+      "id": "ward_n",
+      "wardNumber": "Ward 17",
+      "name": "N Ward (Ghatkopar)",
+      "administrativeCode": "N",
+      "zone": "Zone 6 (Eastern Suburbs North)",
+      "prominentNeighborhoods": [
+        "Ghatkopar"
+      ],
+      "headquarters": {
+        "name": "N Ward Municipal Office",
+        "address": "BMC N Ward Office, Ghatkopar",
+        "city": "Mumbai",
+        "pincode": "400017",
+        "contactPhone": "+91 22 2495 0017",
+        "controlRoomPhone": "+91 22 2495 9017",
+        "email": "ward.n@mcgm.gov.in"
+      },
+      "centerCoordinates": {
+        "latitude": 19.086,
+        "longitude": 72.909
+      },
+      "bounds": {
+        "north": 19.111,
+        "south": 19.061,
+        "east": 72.934,
+        "west": 72.884
+      },
+      "population": 362500,
+      "areaSqKm": 15.15,
+      "activeComplaintsCount": 12,
+      "resolvedComplaintsCount": 256,
+      "active": true
+    },
+    {
+      "id": "ward_p_north",
+      "wardNumber": "Ward 18",
+      "name": "P North Ward (Goregaon)",
+      "administrativeCode": "P/North",
+      "zone": "Zone 4 (Western Suburbs North)",
+      "prominentNeighborhoods": [
+        "Goregaon"
+      ],
+      "headquarters": {
+        "name": "P North Ward Municipal Office",
+        "address": "BMC P/North Ward Office, Goregaon",
+        "city": "Mumbai",
+        "pincode": "400018",
+        "contactPhone": "+91 22 2495 0018",
+        "controlRoomPhone": "+91 22 2495 9018",
+        "email": "ward.pnorth@mcgm.gov.in"
+      },
+      "centerCoordinates": {
+        "latitude": 19.186,
+        "longitude": 72.848
+      },
+      "bounds": {
+        "north": 19.211,
+        "south": 19.161,
+        "east": 72.873,
+        "west": 72.823
+      },
+      "population": 375000,
+      "areaSqKm": 15.6,
+      "activeComplaintsCount": 13,
+      "resolvedComplaintsCount": 264,
+      "active": true
+    },
+    {
+      "id": "ward_p_south",
+      "wardNumber": "Ward 19",
+      "name": "P South Ward (Malad)",
+      "administrativeCode": "P/South",
+      "zone": "Zone 4 (Western Suburbs North)",
+      "prominentNeighborhoods": [
+        "Malad"
+      ],
+      "headquarters": {
+        "name": "P South Ward Municipal Office",
+        "address": "BMC P/South Ward Office, Malad",
+        "city": "Mumbai",
+        "pincode": "400019",
+        "contactPhone": "+91 22 2495 0019",
+        "controlRoomPhone": "+91 22 2495 9019",
+        "email": "ward.psouth@mcgm.gov.in"
+      },
+      "centerCoordinates": {
+        "latitude": 19.1663,
+        "longitude": 72.8526
+      },
+      "bounds": {
+        "north": 19.1913,
+        "south": 19.1413,
+        "east": 72.8776,
+        "west": 72.8276
+      },
+      "population": 387500,
+      "areaSqKm": 16.05,
+      "activeComplaintsCount": 14,
+      "resolvedComplaintsCount": 272,
+      "active": true
+    },
+    {
+      "id": "ward_r_central",
+      "wardNumber": "Ward 20",
+      "name": "R Central Ward (Kandivali)",
+      "administrativeCode": "R/Central",
+      "zone": "Zone 7 (Northern Suburbs)",
+      "prominentNeighborhoods": [
+        "Kandivali"
+      ],
+      "headquarters": {
+        "name": "R Central Ward Municipal Office",
+        "address": "BMC R/Central Ward Office, Kandivali",
+        "city": "Mumbai",
+        "pincode": "400020",
+        "contactPhone": "+91 22 2495 0020",
+        "controlRoomPhone": "+91 22 2495 9020",
+        "email": "ward.rcentral@mcgm.gov.in"
+      },
+      "centerCoordinates": {
+        "latitude": 19.229,
+        "longitude": 72.857
+      },
+      "bounds": {
+        "north": 19.254,
+        "south": 19.204,
+        "east": 72.882,
+        "west": 72.832
+      },
+      "population": 400000,
+      "areaSqKm": 16.5,
+      "activeComplaintsCount": 15,
+      "resolvedComplaintsCount": 280,
+      "active": true
+    },
+    {
+      "id": "ward_r_north",
+      "wardNumber": "Ward 21",
+      "name": "R North Ward (Borivali)",
+      "administrativeCode": "R/North",
+      "zone": "Zone 7 (Northern Suburbs)",
+      "prominentNeighborhoods": [
+        "Borivali"
+      ],
+      "headquarters": {
+        "name": "R North Ward Municipal Office",
+        "address": "BMC R/North Ward Office, Borivali",
+        "city": "Mumbai",
+        "pincode": "400021",
+        "contactPhone": "+91 22 2495 0021",
+        "controlRoomPhone": "+91 22 2495 9021",
+        "email": "ward.rnorth@mcgm.gov.in"
+      },
+      "centerCoordinates": {
+        "latitude": 19.248,
+        "longitude": 72.859
+      },
+      "bounds": {
+        "north": 19.273,
+        "south": 19.223,
+        "east": 72.884,
+        "west": 72.834
+      },
+      "population": 412500,
+      "areaSqKm": 16.95,
+      "activeComplaintsCount": 16,
+      "resolvedComplaintsCount": 288,
+      "active": true
+    },
+    {
+      "id": "ward_r_south",
+      "wardNumber": "Ward 22",
+      "name": "R South Ward (Borivali / Dahisar)",
+      "administrativeCode": "R/South",
+      "zone": "Zone 7 (Northern Suburbs)",
+      "prominentNeighborhoods": [
+        "Borivali",
+        "Dahisar"
+      ],
+      "headquarters": {
+        "name": "R South Ward Municipal Office",
+        "address": "BMC R/South Ward Office, Borivali",
+        "city": "Mumbai",
+        "pincode": "400022",
+        "contactPhone": "+91 22 2495 0022",
+        "controlRoomPhone": "+91 22 2495 9022",
+        "email": "ward.rsouth@mcgm.gov.in"
+      },
+      "centerCoordinates": {
+        "latitude": 19.206,
+        "longitude": 72.849
+      },
+      "bounds": {
+        "north": 19.231,
+        "south": 19.181,
+        "east": 72.874,
+        "west": 72.824
+      },
+      "population": 425000,
+      "areaSqKm": 17.4,
+      "activeComplaintsCount": 17,
+      "resolvedComplaintsCount": 296,
+      "active": true
+    },
+    {
+      "id": "ward_s",
+      "wardNumber": "Ward 23",
+      "name": "S Ward (Bhandup / Vikhroli)",
+      "administrativeCode": "S",
+      "zone": "Zone 6 (Eastern Suburbs North)",
+      "prominentNeighborhoods": [
+        "Bhandup",
+        "Vikhroli"
+      ],
+      "headquarters": {
+        "name": "S Ward Municipal Office",
+        "address": "BMC S Ward Office, Bhandup",
+        "city": "Mumbai",
+        "pincode": "400023",
+        "contactPhone": "+91 22 2495 0023",
+        "controlRoomPhone": "+91 22 2495 9023",
+        "email": "ward.s@mcgm.gov.in"
+      },
+      "centerCoordinates": {
+        "latitude": 19.145,
+        "longitude": 72.932
+      },
+      "bounds": {
+        "north": 19.17,
+        "south": 19.12,
+        "east": 72.957,
+        "west": 72.907
+      },
+      "population": 437500,
+      "areaSqKm": 17.85,
+      "activeComplaintsCount": 18,
+      "resolvedComplaintsCount": 304,
+      "active": true
+    },
+    {
+      "id": "ward_t",
+      "wardNumber": "Ward 24",
+      "name": "T Ward (Mulund / Nahur)",
+      "administrativeCode": "T",
+      "zone": "Zone 6 (Eastern Suburbs North)",
+      "prominentNeighborhoods": [
+        "Mulund",
+        "Nahur"
+      ],
+      "headquarters": {
+        "name": "T Ward Municipal Office",
+        "address": "BMC T Ward Office, Mulund",
+        "city": "Mumbai",
+        "pincode": "400024",
+        "contactPhone": "+91 22 2495 0024",
+        "controlRoomPhone": "+91 22 2495 9024",
+        "email": "ward.t@mcgm.gov.in"
+      },
+      "centerCoordinates": {
+        "latitude": 19.1726,
+        "longitude": 72.9565
+      },
+      "bounds": {
+        "north": 19.1976,
+        "south": 19.1476,
+        "east": 72.9815,
+        "west": 72.9315
+      },
+      "population": 450000,
+      "areaSqKm": 18.3,
+      "activeComplaintsCount": 19,
+      "resolvedComplaintsCount": 312,
+      "active": true
+    }
+  ]
+}
