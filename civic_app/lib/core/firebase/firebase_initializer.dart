@@ -1,3 +1,4 @@
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import '../../firebase_options.dart';
@@ -52,6 +53,18 @@ class FirebaseInitializer {
 
       _initialized = true;
       _configureProductionBackend();
+
+      // Configure App Check for supported platforms in debug/release
+      try {
+        await FirebaseAppCheck.instance.activate(
+          providerAndroid: kDebugMode ? const AndroidDebugProvider() : const AndroidPlayIntegrityProvider(),
+          providerApple: kDebugMode ? const AppleDebugProvider() : const AppleDeviceCheckProvider(),
+        );
+        debugPrint('[CivicFix Firebase] Firebase App Check activated (debug=$kDebugMode).');
+      } catch (e) {
+        debugPrint('[CivicFix Firebase] App Check activation notice: $e');
+      }
+
       debugPrint('[CivicFix Firebase] Firebase initialized successfully for project: ${_app?.options.projectId}');
       return true;
     } catch (e, stackTrace) {

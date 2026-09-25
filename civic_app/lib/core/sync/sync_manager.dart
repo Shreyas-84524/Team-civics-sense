@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
+import '../ai/models/ai_analysis_status.dart';
+import '../ai/models/ai_authenticity_result.dart';
 import '../models/complaint_model.dart';
 import '../network/connectivity_service.dart';
 import '../repositories/complaint_repository.dart';
@@ -303,10 +305,25 @@ class SyncManager {
       _logger.logSuccess(item, serverId: result.serverId);
 
       if (item.entityType == 'complaint') {
+        AiAuthenticityResult? aiResult;
+        AiAnalysisStatus? aiStatus;
+        if (result.responseData != null) {
+          final aiAuthMap = result.responseData!['aiAuthenticity'];
+          if (aiAuthMap is Map<String, dynamic>) {
+            aiResult = AiAuthenticityResult.fromMap(aiAuthMap);
+          }
+          final statusStr = result.responseData!['aiAnalysisStatus'] as String?;
+          if (statusStr != null) {
+            aiStatus = AiAnalysisStatus.fromString(statusStr);
+          }
+        }
+
         await _repository.updateSyncStatus(
           item.entityId,
           SyncStatus.synced,
           serverId: result.serverId,
+          aiAuthenticity: aiResult,
+          aiAnalysisStatus: aiStatus,
         );
       }
 

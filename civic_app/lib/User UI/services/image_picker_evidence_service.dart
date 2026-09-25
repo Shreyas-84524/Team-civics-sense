@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../core/evidence/permanent_evidence_storage.dart';
 import '../../core/location/location_model.dart';
 import '../../core/models/evidence_model.dart';
 import 'evidence_service.dart';
@@ -9,9 +10,13 @@ import 'evidence_service.dart';
 /// Production implementation of [EvidenceService] utilizing device camera and photo gallery via [ImagePicker].
 class ImagePickerEvidenceService implements EvidenceService {
   final ImagePicker _picker;
+  final PermanentEvidenceStorage _storage;
 
-  ImagePickerEvidenceService({ImagePicker? picker})
-      : _picker = picker ?? ImagePicker();
+  ImagePickerEvidenceService({
+    ImagePicker? picker,
+    PermanentEvidenceStorage? storage,
+  })  : _picker = picker ?? ImagePicker(),
+        _storage = storage ?? PermanentEvidenceStorage();
 
   @override
   Future<CivicPermissionStatus> checkPermission(EvidenceSource source) async {
@@ -50,9 +55,16 @@ class ImagePickerEvidenceService implements EvidenceService {
           ? rawName.split(RegExp(r'[/\\]')).last
           : (rawName.isNotEmpty ? rawName : 'camera_capture_${timestamp.millisecondsSinceEpoch}.jpg');
 
+      String durablePath = photo.path;
+      try {
+        durablePath = await _storage.persistEvidenceFile(photo.path);
+      } catch (e) {
+        debugPrint('[ImagePickerEvidenceService] Fallback to temporary path on storage error: $e');
+      }
+
       return EvidenceItem(
         id: id,
-        filePath: photo.path,
+        filePath: durablePath,
         fileName: fileName,
         source: EvidenceSource.camera,
         capturedAt: timestamp,
@@ -96,9 +108,16 @@ class ImagePickerEvidenceService implements EvidenceService {
           ? rawName.split(RegExp(r'[/\\]')).last
           : (rawName.isNotEmpty ? rawName : 'gallery_photo_${timestamp.millisecondsSinceEpoch}.jpg');
 
+      String durablePath = photo.path;
+      try {
+        durablePath = await _storage.persistEvidenceFile(photo.path);
+      } catch (e) {
+        debugPrint('[ImagePickerEvidenceService] Fallback to temporary path on storage error: $e');
+      }
+
       return EvidenceItem(
         id: id,
-        filePath: photo.path,
+        filePath: durablePath,
         fileName: fileName,
         source: EvidenceSource.gallery,
         capturedAt: timestamp,

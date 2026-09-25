@@ -40,13 +40,15 @@ class ComplaintHiveAdapter extends TypeAdapter<ComplaintLocalModel> {
       syncStatus: fields[21] as String? ?? 'synced',
       localId: fields[22] as String?,
       serverId: fields[23] as String?,
+      aiAuthenticityJson: fields[24] as String?,
+      aiAnalysisStatus: fields[25] as String? ?? 'pending',
     );
   }
 
   @override
   void write(BinaryWriter writer, ComplaintLocalModel obj) {
     writer
-      ..writeByte(24)
+      ..writeByte(26)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -94,6 +96,10 @@ class ComplaintHiveAdapter extends TypeAdapter<ComplaintLocalModel> {
       ..writeByte(22)
       ..write(obj.localId)
       ..writeByte(23)
-      ..write(obj.serverId);
+      ..write(obj.serverId)
+      ..writeByte(24)
+      ..write(obj.aiAuthenticityJson)
+      ..writeByte(25)
+      ..write(obj.aiAnalysisStatus);
   }
 }

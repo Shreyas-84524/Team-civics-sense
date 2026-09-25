@@ -60,6 +60,7 @@ class SyncResult {
     required List<String> uploadedImageUrls,
     required List<String> failedImageUrls,
     String? errorMessage,
+    Map<String, dynamic>? responseData,
   }) {
     return SyncResult(
       isSuccess: true, // Complaint created on backend
@@ -69,6 +70,7 @@ class SyncResult {
       failedImageUrls: failedImageUrls,
       errorMessage: errorMessage ?? 'Complaint synced but some evidence images failed to upload',
       isRecoverable: true,
+      responseData: responseData,
     );
   }
 }

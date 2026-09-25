@@ -1,4 +1,6 @@
 import 'dart:async';
+import '../ai/models/ai_analysis_status.dart';
+import '../ai/models/ai_authenticity_result.dart';
 import '../local/mock_data_source.dart';
 import '../location/location_model.dart';
 import '../models/category_model.dart';
@@ -22,7 +24,13 @@ abstract class ComplaintRepository {
   });
   Future<ComplaintModel> saveOfflineComplaint(ComplaintModel complaint);
   Future<List<ComplaintModel>> getPendingComplaints();
-  Future<void> updateSyncStatus(String complaintId, SyncStatus status, {String? serverId});
+  Future<void> updateSyncStatus(
+    String complaintId,
+    SyncStatus status, {
+    String? serverId,
+    AiAuthenticityResult? aiAuthenticity,
+    AiAnalysisStatus? aiAnalysisStatus,
+  });
   Future<void> upvoteComplaint(String id);
   Future<List<ComplaintModel>> getNearbyHazards();
 
@@ -246,6 +254,8 @@ class MockComplaintRepository implements ComplaintRepository {
     String complaintId,
     SyncStatus status, {
     String? serverId,
+    AiAuthenticityResult? aiAuthenticity,
+    AiAnalysisStatus? aiAnalysisStatus,
   }) async {
     final index = _dataSource.complaints.indexWhere(
       (c) => c.id == complaintId || c.localId == complaintId || c.ticketNumber == complaintId,
@@ -256,6 +266,8 @@ class MockComplaintRepository implements ComplaintRepository {
       _dataSource.complaints[index] = current.copyWith(
         syncStatus: status,
         serverId: serverId ?? current.serverId,
+        aiAuthenticity: aiAuthenticity ?? current.aiAuthenticity,
+        aiAnalysisStatus: aiAnalysisStatus ?? current.aiAnalysisStatus,
       );
       _notifyListeners();
     }

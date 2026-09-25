@@ -1,3 +1,5 @@
+import '../../ai/models/ai_analysis_status.dart';
+import '../../ai/models/ai_authenticity_result.dart';
 import '../../models/category_model.dart';
 import '../../models/complaint_model.dart';
 import 'location_local_model.dart';
@@ -29,6 +31,8 @@ class ComplaintLocalModel {
   final String syncStatus;
   final String? localId;
   final String? serverId;
+  final String? aiAuthenticityJson;
+  final String aiAnalysisStatus;
 
   const ComplaintLocalModel({
     required this.id,
@@ -55,6 +59,8 @@ class ComplaintLocalModel {
     this.syncStatus = 'synced',
     this.localId,
     this.serverId,
+    this.aiAuthenticityJson,
+    this.aiAnalysisStatus = 'pending',
   });
 
   /// Map from Domain Model [ComplaintModel] -> [ComplaintLocalModel]
@@ -84,6 +90,8 @@ class ComplaintLocalModel {
       syncStatus: complaint.syncStatus.name,
       localId: complaint.localId,
       serverId: complaint.serverId,
+      aiAuthenticityJson: complaint.aiAuthenticity?.toJson(),
+      aiAnalysisStatus: complaint.aiAnalysisStatus.name,
     );
   }
 
@@ -160,6 +168,10 @@ class ComplaintLocalModel {
       syncStatus: parsedSyncStatus,
       localId: localId,
       serverId: serverId,
+      aiAuthenticity: aiAuthenticityJson != null && aiAuthenticityJson!.isNotEmpty
+          ? AiAuthenticityResult.fromJsonString(aiAuthenticityJson!)
+          : null,
+      aiAnalysisStatus: AiAnalysisStatus.fromString(aiAnalysisStatus),
     );
   }
 
@@ -188,6 +200,8 @@ class ComplaintLocalModel {
     String? syncStatus,
     String? localId,
     String? serverId,
+    String? aiAuthenticityJson,
+    String? aiAnalysisStatus,
   }) {
     return ComplaintLocalModel(
       id: id ?? this.id,
@@ -214,6 +228,8 @@ class ComplaintLocalModel {
       syncStatus: syncStatus ?? this.syncStatus,
       localId: localId ?? this.localId,
       serverId: serverId ?? this.serverId,
+      aiAuthenticityJson: aiAuthenticityJson ?? this.aiAuthenticityJson,
+      aiAnalysisStatus: aiAnalysisStatus ?? this.aiAnalysisStatus,
     );
   }
 }

@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import '../ai/models/ai_analysis_status.dart';
+import '../ai/models/ai_authenticity_result.dart';
 import '../auth/auth_service_locator.dart';
 import '../firebase/firestore/firebase_complaint_data_source.dart';
 import '../location/location_model.dart';
@@ -256,8 +258,16 @@ class OfflineFirstComplaintRepository implements ComplaintRepository {
     String complaintId,
     SyncStatus status, {
     String? serverId,
+    AiAuthenticityResult? aiAuthenticity,
+    AiAnalysisStatus? aiAnalysisStatus,
   }) async {
-    await _localRepo.updateSyncStatus(complaintId, status, serverId: serverId);
+    await _localRepo.updateSyncStatus(
+      complaintId,
+      status,
+      serverId: serverId,
+      aiAuthenticity: aiAuthenticity,
+      aiAnalysisStatus: aiAnalysisStatus,
+    );
   }
 
   @override
