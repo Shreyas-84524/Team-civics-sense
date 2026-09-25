@@ -52,7 +52,7 @@ class CivicAchievement {
           description: 'Submitted your first civic issue.',
           howToUnlock: 'Report any verified road, water, waste, or light issue to unlock.',
           icon: Icons.flag_rounded,
-          isUnlocked: true,
+          isUnlocked: false,
           pointsRequired: 20,
         ),
         CivicAchievement(
@@ -61,7 +61,7 @@ class CivicAchievement {
           description: 'Reported civic issues that help authorities identify problems in your area.',
           howToUnlock: 'Submit 5 verified civic complaints across your municipality.',
           icon: Icons.volunteer_activism_rounded,
-          isUnlocked: true,
+          isUnlocked: false,
           pointsRequired: 150,
         ),
         CivicAchievement(
@@ -70,7 +70,7 @@ class CivicAchievement {
           description: 'Confirmed and verified community resolutions in your neighborhood.',
           howToUnlock: 'Help verify or upvote nearby civic issues reported by fellow citizens.',
           icon: Icons.groups_rounded,
-          isUnlocked: true,
+          isUnlocked: false,
           pointsRequired: 350,
         ),
         CivicAchievement(

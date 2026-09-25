@@ -20,9 +20,8 @@ class HiveUserRepository implements UserRepository {
     MockDataSource? dataSource,
   })  : _storage = storage ?? HiveStorageService.instance,
         _dataSource = dataSource ?? MockDataSource(),
-        _userNotifier = ValueNotifier<UserModel>(
-          (dataSource ?? MockDataSource()).currentUser,
-        ) {
+        _userNotifier = ValueNotifier<UserModel>(UserModel.empty) {
+    _dataSource.currentUser = UserModel.empty;
     _initFromCache();
   }
 
@@ -78,6 +77,8 @@ class HiveUserRepository implements UserRepository {
         debugPrint('Warning: HiveUserRepository.clearUserCache: $e');
       }
     }
+    _dataSource.currentUser = UserModel.empty;
+    _userNotifier.value = UserModel.empty;
   }
 
   @override
@@ -97,7 +98,7 @@ class HiveUserRepository implements UserRepository {
         debugPrint('Warning: HiveUserRepository.getCurrentUser fallback to memory: $e');
       }
     }
-    return _dataSource.currentUser;
+    return _userNotifier.value;
   }
 
   @override

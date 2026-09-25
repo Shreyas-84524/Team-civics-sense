@@ -19,6 +19,7 @@ class HiveNotificationRepository implements NotificationRepository {
     MockDataSource? dataSource,
   })  : _storage = storage ?? HiveStorageService.instance,
         _dataSource = dataSource ?? MockDataSource() {
+    _dataSource.notifications.clear();
     _initFromCache();
   }
 
@@ -37,9 +38,6 @@ class HiveNotificationRepository implements NotificationRepository {
             ..clear()
             ..addAll(domainList);
           _lastCachedAt = DateTime.now();
-        } else {
-          // Seed with default notifications
-          await cacheNotifications(_dataSource.notifications);
         }
       } catch (e) {
         debugPrint('Warning: HiveNotificationRepository failed reading cache: $e');

@@ -25,7 +25,6 @@ class OfflineFirstGovtComplaintRepository implements GovtComplaintRepository {
   final SyncManager _syncManager;
   final ConnectivityService _connectivity;
   final SupabaseNotificationService _notificationService;
-  final MockGovtComplaintRepository _mockFallback;
 
   OfflineFirstGovtComplaintRepository({
     HiveComplaintRepository? localRepository,
@@ -39,8 +38,7 @@ class OfflineFirstGovtComplaintRepository implements GovtComplaintRepository {
         _deptDataSource = deptDataSource ?? FirebaseDepartmentDataSource(),
         _syncManager = syncManager ?? SyncManager(),
         _connectivity = connectivity ?? AppConnectivityService(),
-        _notificationService = notificationService ?? HttpSupabaseNotificationService(),
-        _mockFallback = MockGovtComplaintRepository();
+        _notificationService = notificationService ?? HttpSupabaseNotificationService();
 
   @override
   Future<List<ComplaintModel>> getComplaints({
@@ -72,10 +70,6 @@ class OfflineFirstGovtComplaintRepository implements GovtComplaintRepository {
       } catch (e) {
         debugPrint('[OfflineFirstGovtComplaintRepository] Remote fetch failed (fallback to cache): $e');
       }
-    }
-
-    if (list.isEmpty) {
-      list = List<ComplaintModel>.from(await _mockFallback.getComplaints());
     }
 
     // 3. Apply in-memory filters for instant UI responsiveness
@@ -169,7 +163,7 @@ class OfflineFirstGovtComplaintRepository implements GovtComplaintRepository {
       } catch (_) {}
     }
 
-    return _mockFallback.getComplaintById(id);
+    return null;
   }
 
   @override
@@ -232,8 +226,8 @@ class OfflineFirstGovtComplaintRepository implements GovtComplaintRepository {
     return CivicCategory.defaultCategories.map((cat) {
       final count = counts[cat.name.toLowerCase()] ??
           counts[cat.id.toLowerCase()] ??
-          (cat.id == 'roads' ? 2 : cat.id == 'water' ? 1 : 0);
-      final percentage = (count / total) * 100.0;
+          0;
+      final percentage = list.isEmpty ? 0.0 : (count / total) * 100.0;
       return CategoryDistributionItem(
         category: cat,
         count: count,
@@ -261,7 +255,7 @@ class OfflineFirstGovtComplaintRepository implements GovtComplaintRepository {
     }
 
     return counts.entries.map((entry) {
-      final percentage = (entry.value / total) * 100.0;
+      final percentage = list.isEmpty ? 0.0 : (entry.value / total) * 100.0;
       return StatusDistributionItem(
         status: entry.key,
         count: entry.value,
@@ -349,7 +343,6 @@ class OfflineFirstGovtComplaintRepository implements GovtComplaintRepository {
     );
 
     await _localRepo.cacheComplaints([updated]);
-    await _mockFallback.flagComplaint(complaintId: complaintId, reason: reason, officerName: officerName);
 
     if (_connectivity.isOnline) {
       try {
@@ -435,12 +428,6 @@ class OfflineFirstGovtComplaintRepository implements GovtComplaintRepository {
 
     // 1. Update local cache
     await _localRepo.cacheComplaints([updated]);
-    await _mockFallback.updateStatus(
-      complaintId: complaintId,
-      nextStatus: nextStatus,
-      updateMessage: updateMessage,
-      officerName: officerName,
-    );
 
     // 2. If online, sync directly to Firestore; otherwise enqueue in SyncManager
     if (_connectivity.isOnline) {
@@ -508,12 +495,6 @@ class OfflineFirstGovtComplaintRepository implements GovtComplaintRepository {
 
     // 1. Update local cache
     await _localRepo.cacheComplaints([updated]);
-    await _mockFallback.assignComplaint(
-      complaintId: complaintId,
-      departmentId: departmentId,
-      officerName: officerName,
-      assignmentNote: assignmentNote,
-    );
 
     // 2. If online, push to Firestore
     if (_connectivity.isOnline) {
@@ -610,7 +591,12 @@ class OfflineFirstGovtComplaintRepository implements GovtComplaintRepository {
 
   @override
   Future<List<GovtOfficerModel>> getOfficers({String? departmentId}) async {
-    return _mockFallback.getOfficers(departmentId: departmentId);
+    if (departmentId == null || departmentId.isEmpty) {
+      return GovtOfficerModel.defaultOfficers;
+    }
+    return GovtOfficerModel.defaultOfficers
+        .where((o) => o.departmentId == departmentId)
+        .toList();
   }
 
   // ===========================================================================

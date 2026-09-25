@@ -530,7 +530,7 @@ class _GovtDashboardScreenState extends State<GovtDashboardScreen> {
               Expanded(
                 flex: 3,
                 child: GovtMapPanel(
-                  activeHazardsCount: _metrics?.criticalHazardsCount ?? 4,
+                  activeHazardsCount: _metrics?.criticalHazardsCount ?? 0,
                   onOpenFullMap: widget.onNavigateToMap,
                 ),
               ),
@@ -545,7 +545,7 @@ class _GovtDashboardScreenState extends State<GovtDashboardScreen> {
           return Column(
             children: [
               GovtMapPanel(
-                activeHazardsCount: _metrics?.criticalHazardsCount ?? 4,
+                activeHazardsCount: _metrics?.criticalHazardsCount ?? 0,
                 onOpenFullMap: widget.onNavigateToMap,
               ),
               CivicFixSpacing.vSpaceLg,

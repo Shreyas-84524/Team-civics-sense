@@ -5,6 +5,8 @@ import 'package:civic_app/core/location/location_model.dart';
 import 'package:civic_app/core/models/category_model.dart';
 import 'package:civic_app/core/models/complaint_model.dart';
 import 'package:civic_app/core/models/hazard_model.dart';
+import 'package:civic_app/core/models/notification_model.dart';
+import 'package:civic_app/core/models/user_model.dart';
 import 'package:civic_app/core/network/connectivity_service.dart';
 import 'package:civic_app/core/repositories/hive_complaint_repository.dart';
 import 'package:civic_app/core/repositories/hive_hazard_repository.dart';
@@ -140,13 +142,19 @@ void main() {
     late TestConnService connectivity;
     late OfflineFirstUserRepository userRepo;
 
-    setUp(() {
+    setUp(() async {
       localUserRepo = HiveUserRepository();
       connectivity = TestConnService();
       userRepo = OfflineFirstUserRepository(
         localRepository: localUserRepo,
         connectivity: connectivity,
       );
+      await localUserRepo.cacheUser(const UserModel(
+        id: 'usr_test_companion',
+        fullName: 'Civic User',
+        email: 'civic@example.com',
+        phone: '+91 99999 00000',
+      ));
     });
 
     tearDown(() {
@@ -175,13 +183,27 @@ void main() {
     late TestConnService connectivity;
     late OfflineFirstHazardRepository hazardRepo;
 
-    setUp(() {
+    setUp(() async {
       localHazardRepo = HiveHazardRepository();
       connectivity = TestConnService();
       hazardRepo = OfflineFirstHazardRepository(
         localRepository: localHazardRepo,
         connectivity: connectivity,
       );
+      await localHazardRepo.cacheHazards([
+        HazardModel(
+          id: 'haz_test_1',
+          title: 'Pothole on Main Road',
+          category: CivicCategory.defaultCategories[0],
+          status: ComplaintStatus.reported,
+          latitude: 12.9716,
+          longitude: 77.5946,
+          address: 'Main Road',
+          severity: HazardSeverity.high,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      ]);
     });
 
     tearDown(() {
@@ -206,13 +228,24 @@ void main() {
     late TestConnService connectivity;
     late OfflineFirstNotificationRepository notifRepo;
 
-    setUp(() {
+    setUp(() async {
       localNotifRepo = HiveNotificationRepository();
       connectivity = TestConnService();
       notifRepo = OfflineFirstNotificationRepository(
         localRepository: localNotifRepo,
         connectivity: connectivity,
       );
+      await localNotifRepo.cacheNotifications([
+        NotificationModel(
+          id: 'notif_test_1',
+          userId: 'user_citizen_001',
+          title: 'Update on Complaint',
+          message: 'Status transitioned',
+          type: NotificationType.statusUpdate,
+          isRead: false,
+          createdAt: DateTime.now(),
+        ),
+      ]);
     });
 
     tearDown(() {

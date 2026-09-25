@@ -39,43 +39,69 @@ class GovtMapPanel extends StatelessWidget {
               painter: _MapGridPainter(),
             ),
 
-            // Mock Map Pins / Clusters
-            Positioned(
-              left: 120,
-              top: 80,
-              child: _buildMapPin(
-                label: 'Road Hazard (P1)',
-                color: GovtThemeTokens.error,
-                icon: Icons.warning_amber_rounded,
+            // Dynamic Hazard Status Overlay or Empty State
+            if (activeHazardsCount == 0)
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: CivicFixSpacing.lg,
+                    vertical: CivicFixSpacing.md,
+                  ),
+                  decoration: BoxDecoration(
+                    color: GovtThemeTokens.surface.withValues(alpha: 0.95),
+                    borderRadius: GovtThemeTokens.cardRadius,
+                    border: Border.all(color: GovtThemeTokens.border),
+                    boxShadow: GovtThemeTokens.cardShadow,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.check_circle_outline_rounded, color: GovtThemeTokens.secondary, size: 36),
+                      CivicFixSpacing.vSpaceSm,
+                      Text(
+                        'No Active Civic Hazards',
+                        style: CivicFixTypography.bodySmallMedium.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      CivicFixSpacing.vSpaceXs,
+                      Text(
+                        'No critical geographic hazards reported in this area.',
+                        style: CivicFixTypography.caption.copyWith(color: GovtThemeTokens.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: CivicFixSpacing.lg,
+                    vertical: CivicFixSpacing.md,
+                  ),
+                  decoration: BoxDecoration(
+                    color: GovtThemeTokens.surface.withValues(alpha: 0.95),
+                    borderRadius: GovtThemeTokens.cardRadius,
+                    border: Border.all(color: GovtThemeTokens.border),
+                    boxShadow: GovtThemeTokens.cardShadow,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.warning_amber_rounded, color: GovtThemeTokens.error, size: 36),
+                      CivicFixSpacing.vSpaceSm,
+                      Text(
+                        '$activeHazardsCount Critical Hazards Active',
+                        style: CivicFixTypography.bodySmallMedium.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      CivicFixSpacing.vSpaceXs,
+                      Text(
+                        'Open live GIS map to inspect coordinates & dispatch teams.',
+                        style: CivicFixTypography.caption.copyWith(color: GovtThemeTokens.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
-            Positioned(
-              right: 140,
-              top: 130,
-              child: _buildMapPin(
-                label: 'Water Leak',
-                color: GovtThemeTokens.info,
-                icon: Icons.water_drop_rounded,
-              ),
-            ),
-            Positioned(
-              left: 220,
-              bottom: 100,
-              child: _buildMapPin(
-                label: 'Drainage Block',
-                color: GovtThemeTokens.alert,
-                icon: Icons.waves_rounded,
-              ),
-            ),
-            Positioned(
-              right: 80,
-              bottom: 90,
-              child: _buildMapPin(
-                label: 'Waste Cluster',
-                color: GovtThemeTokens.secondary,
-                icon: Icons.delete_outline_rounded,
-              ),
-            ),
 
             // Top Status Overlay
             Positioned(
@@ -98,14 +124,16 @@ class GovtMapPanel extends StatelessWidget {
                     Container(
                       width: 8,
                       height: 8,
-                      decoration: const BoxDecoration(
-                        color: GovtThemeTokens.error,
+                      decoration: BoxDecoration(
+                        color: activeHazardsCount > 0 ? GovtThemeTokens.error : GovtThemeTokens.secondary,
                         shape: BoxShape.circle,
                       ),
                     ),
                     CivicFixSpacing.hSpaceSm,
                     Text(
-                      '$activeHazardsCount Active Geo-Hazards in Ward 14',
+                      activeHazardsCount > 0
+                          ? '$activeHazardsCount Active Geo-Hazards'
+                          : '0 Active Geo-Hazards',
                       style: CivicFixTypography.captionMedium.copyWith(
                         fontWeight: FontWeight.w700,
                         color: GovtThemeTokens.textPrimary,
@@ -152,52 +180,6 @@ class GovtMapPanel extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildMapPin({
-    required String label,
-    required Color color,
-    required IconData icon,
-  }) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-          decoration: BoxDecoration(
-            color: GovtThemeTokens.surface,
-            borderRadius: BorderRadius.circular(4),
-            border: Border.all(color: GovtThemeTokens.border),
-            boxShadow: GovtThemeTokens.cardShadow,
-          ),
-          child: Text(
-            label,
-            style: CivicFixTypography.caption.copyWith(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              color: GovtThemeTokens.textPrimary,
-            ),
-          ),
-        ),
-        const SizedBox(height: 2),
-        Container(
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.white, width: 2),
-            boxShadow: [
-              BoxShadow(
-                color: color.withValues(alpha: 0.4),
-                blurRadius: 6,
-                offset: const Offset(0, 3),
-              ),
-            ],
-          ),
-          child: Icon(icon, color: Colors.white, size: 14),
-        ),
-      ],
     );
   }
 }

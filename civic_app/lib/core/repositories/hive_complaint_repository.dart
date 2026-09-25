@@ -25,7 +25,9 @@ class HiveComplaintRepository implements ComplaintRepository {
     LocalStorageService? storage,
     MockDataSource? dataSource,
   })  : _storage = storage ?? HiveStorageService.instance,
-        _dataSource = dataSource ?? MockDataSource();
+        _dataSource = dataSource ?? MockDataSource() {
+    _dataSource.complaints.clear();
+  }
 
   @override
   Future<ComplaintModel> saveOfflineComplaint(ComplaintModel complaint) async {
@@ -159,8 +161,9 @@ class HiveComplaintRepository implements ComplaintRepository {
         debugPrint('Warning: Failed reading pending complaints from Hive: $e');
       }
     }
-
-    return _dataSource.complaints.where((c) => c.syncStatus == SyncStatus.pending).toList();
+    return _dataSource.complaints
+        .where((c) => c.syncStatus == SyncStatus.pending)
+        .toList();
   }
 
   @override
@@ -257,13 +260,14 @@ class HiveComplaintRepository implements ComplaintRepository {
       }
     }
 
-    // Fallback to in-memory dataSource
-    return List.unmodifiable(
-      _dataSource.complaints.where((c) {
+    if (_dataSource.complaints.isNotEmpty) {
+      return _dataSource.complaints.where((c) {
         if (citizenId.isEmpty) return true;
         return c.citizenId == citizenId;
-      }).toList(),
-    );
+      }).toList();
+    }
+
+    return const [];
   }
 
   @override
@@ -281,7 +285,13 @@ class HiveComplaintRepository implements ComplaintRepository {
       }
     }
 
-    return List.unmodifiable(_dataSource.complaints);
+    if (_dataSource.complaints.isNotEmpty) {
+      final list = List<ComplaintModel>.from(_dataSource.complaints);
+      list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return list;
+    }
+
+    return const [];
   }
 
   @override
@@ -307,7 +317,7 @@ class HiveComplaintRepository implements ComplaintRepository {
 
     try {
       return _dataSource.complaints.firstWhere(
-        (c) => c.id == id || c.ticketNumber == id || c.localId == id,
+        (c) => c.id == id || c.ticketNumber == id || (c.localId != null && c.localId == id),
       );
     } catch (_) {
       return null;
@@ -335,7 +345,7 @@ class HiveComplaintRepository implements ComplaintRepository {
       return _dataSource.complaints.firstWhere(
         (c) =>
             c.ticketNumber.toLowerCase() == ticketId.toLowerCase() ||
-            c.id == ticketId ||
+            c.id.toLowerCase() == ticketId.toLowerCase() ||
             (c.localId != null && c.localId!.toLowerCase() == ticketId.toLowerCase()),
       );
     } catch (_) {
@@ -543,12 +553,7 @@ class HiveComplaintRepository implements ComplaintRepository {
               c.priority == ComplaintPriority.high)
           .toList();
     } catch (_) {
-      return _dataSource.complaints
-          .where((c) =>
-              c.isHazard ||
-              c.priority == ComplaintPriority.emergency ||
-              c.priority == ComplaintPriority.high)
-          .toList();
+      return const [];
     }
   }
 

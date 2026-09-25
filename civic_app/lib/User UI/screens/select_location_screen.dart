@@ -4,6 +4,7 @@ import '../../core/constants/app_radius.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/constants/app_typography.dart';
 import '../../core/location/location_model.dart';
+import '../../core/map/map_constants.dart';
 import '../../core/repositories/repository_locator.dart';
 import '../../core/widgets/civic_fix_app_bar.dart';
 import '../../core/widgets/civic_fix_button.dart';
@@ -44,13 +45,13 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> {
     _locationService = widget.locationService ?? RepositoryLocator.locationService;
     _currentLocation = widget.initialLocation ??
         const CivicLocation(
-          latitude: 12.9716,
-          longitude: 77.5946,
-          address: '4th Main Road, Near Metro Pillar 142',
-          landmark: 'Opposite Central Supermarket',
-          ward: 'Ward 14 (Central Ward)',
-          city: 'Bengaluru',
-          pincode: '560001',
+          latitude: MapConstants.mumbaiLatitude,
+          longitude: MapConstants.mumbaiLongitude,
+          address: 'Dr. Dadabhai Naoroji Road, Fort',
+          landmark: 'Opposite CST Station',
+          ward: 'Ward A (Colaba / Fort)',
+          city: 'Mumbai',
+          pincode: '400001',
           source: LocationSource.manual,
         );
     _searchController.text = _currentLocation.address;
