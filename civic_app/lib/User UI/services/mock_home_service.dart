@@ -1,12 +1,12 @@
 import 'dart:async';
 import '../../core/auth/auth_service.dart';
+import '../../core/auth/auth_service_locator.dart';
 import '../../core/local/mock_data_source.dart';
 import '../../core/location/location_model.dart';
 import '../../core/models/category_model.dart';
 import '../../core/models/complaint_model.dart';
 import '../../core/utils/greeting_helper.dart';
 import '../models/home_data_model.dart';
-import 'mock_auth_service.dart';
 
 /// Abstract service contract for fetching Home screen data.
 abstract class HomeService {
@@ -19,7 +19,7 @@ class MockHomeService implements HomeService {
   factory MockHomeService() => _instance;
   MockHomeService._internal();
 
-  final AuthService _authService = MockAuthService();
+  AuthService get _authService => AuthServiceLocator.citizenAuth;
   final MockDataSource _dataSource = MockDataSource();
 
   List<ComplaintModel>? _overrideComplaints;

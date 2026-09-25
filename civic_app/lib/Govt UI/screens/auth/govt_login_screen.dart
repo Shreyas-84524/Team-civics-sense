@@ -7,11 +7,13 @@ import '../../../core/routing/app_routes.dart';
 import '../../../core/widgets/civic_fix_button.dart';
 import '../../../core/widgets/civic_fix_text_field.dart';
 import '../../../core/widgets/responsive_container.dart';
-import '../../models/department_model.dart';
 import '../../services/govt_auth_service.dart';
 import '../../theme/govt_theme_tokens.dart';
 
 /// Official Government & Municipal Administration Login Portal.
+///
+/// Authentication is strictly restricted to authorized Municipal Officers
+/// using their Government ID and Password.
 class GovtLoginScreen extends StatefulWidget {
   final GovtAuthService? authService;
 
@@ -23,13 +25,11 @@ class GovtLoginScreen extends StatefulWidget {
 
 class _GovtLoginScreenState extends State<GovtLoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
+  final _govtIdController = TextEditingController();
   final _passwordController = TextEditingController();
   late final GovtAuthService _authService;
 
-  String _selectedDepartmentId = 'dept_roads';
   bool _isPasswordVisible = false;
-  bool _rememberMe = true;
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -41,7 +41,7 @@ class _GovtLoginScreenState extends State<GovtLoginScreen> {
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _govtIdController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -56,11 +56,9 @@ class _GovtLoginScreenState extends State<GovtLoginScreen> {
 
     setState(() => _isLoading = true);
 
-    final result = await _authService.login(
-      emailOrEmployeeId: _emailController.text,
+    final result = await _authService.loginWithGovernmentId(
+      governmentId: _govtIdController.text.trim(),
       password: _passwordController.text,
-      departmentId: _selectedDepartmentId,
-      rememberMe: _rememberMe,
     );
 
     if (!mounted) return;
@@ -70,7 +68,8 @@ class _GovtLoginScreenState extends State<GovtLoginScreen> {
       Navigator.pushReplacementNamed(context, AppRoutes.govtDashboard);
     } else {
       setState(() {
-        _errorMessage = result.errorMessage ?? 'Authentication failed. Please verify credentials.';
+        _errorMessage = result.errorMessage ??
+            'Invalid Government ID or password. Please verify your municipal credentials.';
       });
     }
   }
@@ -83,7 +82,7 @@ class _GovtLoginScreenState extends State<GovtLoginScreen> {
         child: Center(
           child: SingleChildScrollView(
             child: ResponsiveContainer(
-              maxWidth: 520,
+              maxWidth: 480,
               padding: const EdgeInsets.symmetric(
                 horizontal: CivicFixSpacing.xl,
                 vertical: CivicFixSpacing.xxl,
@@ -169,7 +168,11 @@ class _GovtLoginScreenState extends State<GovtLoginScreen> {
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Icon(Icons.error_outline_rounded, color: GovtThemeTokens.error, size: 20),
+                              const Icon(
+                                Icons.error_outline_rounded,
+                                color: GovtThemeTokens.error,
+                                size: 20,
+                              ),
                               CivicFixSpacing.hSpaceSm,
                               Expanded(
                                 child: Text(
@@ -186,86 +189,31 @@ class _GovtLoginScreenState extends State<GovtLoginScreen> {
                         CivicFixSpacing.vSpaceMd,
                       ],
 
-                      // Department Selection Dropdown
+                      // 1. Government ID Field
                       Text(
-                        'Department / Wing',
-                        style: CivicFixTypography.bodySmallMedium.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      CivicFixSpacing.vSpaceXs,
-                      DropdownButtonFormField<String>(
-                        initialValue: _selectedDepartmentId,
-                        isExpanded: true,
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: GovtThemeTokens.surface,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: CivicFixSpacing.md,
-                            vertical: CivicFixSpacing.sm + 2,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: GovtThemeTokens.chipRadius,
-                            borderSide: const BorderSide(color: GovtThemeTokens.border),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: GovtThemeTokens.chipRadius,
-                            borderSide: const BorderSide(color: GovtThemeTokens.border),
-                          ),
-                        ),
-                        items: GovtDepartmentModel.defaultDepartments.map((dept) {
-                          return DropdownMenuItem<String>(
-                            value: dept.id,
-                            child: Row(
-                              children: [
-                                Icon(dept.icon, size: 16, color: GovtThemeTokens.primary),
-                                CivicFixSpacing.hSpaceSm,
-                                Expanded(
-                                  child: Text(
-                                    dept.name,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: CivicFixTypography.bodySmall,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (val) {
-                          if (val != null) {
-                            setState(() => _selectedDepartmentId = val);
-                          }
-                        },
-                      ),
-                      CivicFixSpacing.vSpaceMd,
-
-                      // Official Email / Employee ID
-                      Text(
-                        'Official Email / Employee ID',
+                        'Government ID',
                         style: CivicFixTypography.bodySmallMedium.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                       CivicFixSpacing.vSpaceXs,
                       CivicFixTextField(
-                        hintText: 'e.g. officer@civicfix.gov.in',
-                        controller: _emailController,
-                        keyboardType: TextInputType.emailAddress,
+                        hintText: 'e.g. MUMHQ00001',
+                        controller: _govtIdController,
                         prefixIcon: const Icon(Icons.badge_outlined, size: 20),
                         validator: (v) {
                           final text = v?.trim() ?? '';
                           if (text.isEmpty) {
-                            return 'Please enter official ID or email.';
+                            return 'Please enter your Government ID.';
                           }
                           return null;
                         },
                       ),
                       CivicFixSpacing.vSpaceMd,
 
-                      // Password
+                      // 2. Password Field
                       Text(
-                        'Security Passcode',
+                        'Password',
                         style: CivicFixTypography.bodySmallMedium.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
@@ -276,11 +224,13 @@ class _GovtLoginScreenState extends State<GovtLoginScreen> {
                         obscureText: !_isPasswordVisible,
                         style: CivicFixTypography.body,
                         decoration: InputDecoration(
-                          hintText: 'Enter access passcode',
+                          hintText: 'Enter password',
                           prefixIcon: const Icon(Icons.lock_outline_rounded, size: 20),
                           suffixIcon: IconButton(
                             icon: Icon(
-                              _isPasswordVisible ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                              _isPasswordVisible
+                                  ? Icons.visibility_off_rounded
+                                  : Icons.visibility_rounded,
                               size: 18,
                             ),
                             tooltip: _isPasswordVisible ? 'Hide password' : 'Show password',
@@ -299,99 +249,21 @@ class _GovtLoginScreenState extends State<GovtLoginScreen> {
                             borderSide: const BorderSide(color: GovtThemeTokens.border),
                           ),
                         ),
-                        validator: (v) => v?.isEmpty == true ? 'Please enter your password.' : null,
-                      ),
-                      CivicFixSpacing.vSpaceSm,
-
-                      // Remember Me & Forgot Password Row
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Flexible(
-                            child: InkWell(
-                              onTap: () {
-                                setState(() => _rememberMe = !_rememberMe);
-                              },
-                              borderRadius: BorderRadius.circular(4),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 4),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: Checkbox(
-                                        value: _rememberMe,
-                                        activeColor: GovtThemeTokens.primary,
-                                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                        onChanged: (val) {
-                                          setState(() => _rememberMe = val ?? false);
-                                        },
-                                      ),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Flexible(
-                                      child: Text(
-                                        'Remember session',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: CivicFixTypography.caption.copyWith(
-                                          color: GovtThemeTokens.textPrimary,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                          CivicFixSpacing.hSpaceSm,
-                          TextButton(
-                            onPressed: () {
-                              Navigator.pushNamed(context, AppRoutes.govtForgotPassword);
-                            },
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                              minimumSize: const Size(0, 30),
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            ),
-                            child: Text(
-                              'Forgot Password?',
-                              style: CivicFixTypography.captionMedium.copyWith(
-                                color: GovtThemeTokens.primary,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ],
+                        validator: (v) {
+                          if (v == null || v.isEmpty) {
+                            return 'Please enter your password.';
+                          }
+                          return null;
+                        },
                       ),
                       CivicFixSpacing.vSpaceXl,
 
-                      // Login Button
+                      // 3. Login Button
                       CivicFixButton(
-                        text: 'Enter Government Portal',
+                        text: 'Login',
                         icon: Icons.login_rounded,
                         isLoading: _isLoading,
                         onPressed: _isLoading ? null : _handleLogin,
-                      ),
-                      CivicFixSpacing.vSpaceLg,
-
-                      // Switch Portal Link
-                      Center(
-                        child: TextButton(
-                          onPressed: () {
-                            Navigator.pushReplacementNamed(context, AppRoutes.login);
-                          },
-                          child: Text(
-                            'Switch to Citizen App',
-                            style: CivicFixTypography.captionMedium.copyWith(
-                              color: GovtThemeTokens.textSecondary,
-                              decoration: TextDecoration.underline,
-                            ),
-                          ),
-                        ),
                       ),
                     ],
                   ),

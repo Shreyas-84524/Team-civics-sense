@@ -35,6 +35,11 @@ abstract class GovtAuthService {
   ValueListenable<GovtUserModel?> get userListenable;
   ValueListenable<GovtAuthState> get authStateListenable;
 
+  Future<GovtAuthResult> loginWithGovernmentId({
+    required String governmentId,
+    required String password,
+  });
+
   Future<GovtAuthResult> login({
     required String emailOrEmployeeId,
     required String password,
@@ -112,6 +117,17 @@ class MockGovtAuthService implements GovtAuthService {
   }
 
   @override
+  Future<GovtAuthResult> loginWithGovernmentId({
+    required String governmentId,
+    required String password,
+  }) async {
+    return login(
+      emailOrEmployeeId: governmentId,
+      password: password,
+    );
+  }
+
+  @override
   Future<GovtAuthResult> login({
     required String emailOrEmployeeId,
     required String password,
@@ -120,21 +136,27 @@ class MockGovtAuthService implements GovtAuthService {
   }) async {
     _authStateNotifier.value = GovtAuthState.authenticating;
 
-    final trimmedInput = emailOrEmployeeId.trim().toLowerCase();
+    final rawInput = emailOrEmployeeId.trim();
 
-    if (trimmedInput.isEmpty || password.isEmpty) {
+    if (rawInput.isEmpty || password.isEmpty) {
       _authStateNotifier.value = GovtAuthState.authenticationError;
-      return const GovtAuthResult.failure('Please provide your official ID and password.');
+      return const GovtAuthResult.failure('Please enter your Government ID and password.');
     }
 
-    if (password == 'WrongPassword' || password == 'wrongpassword' || trimmedInput.contains('invalid') || trimmedInput.contains('bad_officer')) {
+    final trimmedInput = rawInput.toLowerCase();
+
+    if (password == 'WrongPassword' ||
+        password == 'wrongpassword' ||
+        trimmedInput.contains('invalid') ||
+        trimmedInput.contains('bad_officer')) {
       _authStateNotifier.value = GovtAuthState.authenticationError;
       return const GovtAuthResult.failure(
-        'Invalid government officer credentials. Please check your official email and security token.',
+        'Invalid Government ID or password. Please verify your municipal credentials.',
       );
     }
 
     final user = _defaultOfficer.copyWith(
+      employeeId: rawInput.toUpperCase(),
       email: trimmedInput.contains('@') ? trimmedInput : '$trimmedInput@civicfix.gov.in',
       departmentId: departmentId ?? _defaultOfficer.departmentId,
     );

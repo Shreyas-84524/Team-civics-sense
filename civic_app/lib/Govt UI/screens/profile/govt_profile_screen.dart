@@ -65,7 +65,10 @@ class _GovtProfileScreenState extends State<GovtProfileScreen> {
         onConfirm: () async {
           await _authService.logout();
           if (mounted) {
-            Navigator.of(context, rootNavigator: true).pushReplacementNamed(AppRoutes.govtLogin);
+            Navigator.of(context, rootNavigator: true).pushNamedAndRemoveUntil(
+              AppRoutes.govtLogin,
+              (route) => false,
+            );
           }
         },
       ),

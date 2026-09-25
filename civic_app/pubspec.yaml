@@ -41,6 +41,8 @@ dependencies:
   firebase_auth: ^6.6.1
   firebase_storage: ^13.5.0
   firebase_messaging: ^16.6.0
+  google_sign_in: ^6.2.2
+  sendotp_flutter_sdk: ^0.0.2
   image_picker: ^1.1.2
   geolocator: ^13.0.2
   http: ^1.2.0

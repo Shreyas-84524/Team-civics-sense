@@ -77,9 +77,10 @@ service cloud.firestore {
       // A user can read their own profile; government personnel can read for routing/audit
       allow read: if isSignedIn() && (isOwner(userId) || isGovernment());
 
-      // Citizen registration: cannot self-assign government role, points initialized safely
+      // Citizen registration: cannot self-assign government role or verified phone, points initialized safely
       allow create: if isOwner(userId) &&
         request.resource.data.role == 'citizen' &&
+        (!('phoneVerified' in request.resource.data) || request.resource.data.phoneVerified == false) &&
         request.resource.data.fullName is string &&
         request.resource.data.fullName.size() > 0 &&
         request.resource.data.fullName.size() <= 100 &&
@@ -88,7 +89,7 @@ service cloud.firestore {
         request.resource.data.reportsSubmitted == 0 &&
         request.resource.data.reportsResolved == 0;
 
-      // Profile updates: strictly prevents privilege escalation and modifying authoritative counters
+      // Profile updates: strictly prevents privilege escalation, modifying authoritative counters, or self-verifying phone
       allow update: if isOwner(userId) &&
         !request.resource.data.diff(resource.data).affectedKeys().hasAny([
           'role',
@@ -100,7 +101,9 @@ service cloud.firestore {
           'departmentId',
           'permissions',
           'organization',
-          'createdAt'
+          'createdAt',
+          'phoneVerified',
+          'phoneVerifiedAt'
         ]);
 
       // Users cannot be hard-deleted from client apps
@@ -298,6 +301,15 @@ service cloud.firestore {
 
       // Deletion: government personnel only
       allow delete: if isGovernment();
+    }
+
+    // =========================================================================
+    // 8. PHONE INDEX COLLECTION (phoneIndex/{phone})
+    // =========================================================================
+    match /phoneIndex/{phone} {
+      // Strictly server-authoritative via Cloud Functions Admin SDK.
+      // Direct client read or write is prohibited to protect citizen privacy and enforce uniqueness.
+      allow read, write: if false;
     }
   }
 }

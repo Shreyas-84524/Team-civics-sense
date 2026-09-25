@@ -12,6 +12,8 @@ class UserModel {
   final String languageCode;
   final String wardNumber;
   final String role;
+  final bool phoneVerified;
+  final DateTime? phoneVerifiedAt;
 
   const UserModel({
     required this.id,
@@ -26,6 +28,8 @@ class UserModel {
     this.languageCode = 'en',
     this.wardNumber = 'Ward 14 (Central)',
     this.role = 'citizen',
+    this.phoneVerified = false,
+    this.phoneVerifiedAt,
   });
 
   /// Derives user initials for avatar fallback (e.g. "Shreyas Shigwan" -> "SS").
@@ -67,6 +71,8 @@ class UserModel {
     String? languageCode,
     String? wardNumber,
     String? role,
+    bool? phoneVerified,
+    DateTime? phoneVerifiedAt,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -81,6 +87,8 @@ class UserModel {
       languageCode: languageCode ?? this.languageCode,
       wardNumber: wardNumber ?? this.wardNumber,
       role: role ?? this.role,
+      phoneVerified: phoneVerified ?? this.phoneVerified,
+      phoneVerifiedAt: phoneVerifiedAt ?? this.phoneVerifiedAt,
     );
   }
 }

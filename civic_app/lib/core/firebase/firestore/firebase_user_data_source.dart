@@ -93,6 +93,33 @@ class FirebaseUserDataSource {
     }
   }
 
+  /// Updates citizen phone and verification status in Firestore.
+  Future<UserModel> updatePhoneVerification({
+    required String userId,
+    required String phone,
+    required bool phoneVerified,
+    DateTime? phoneVerifiedAt,
+  }) async {
+    try {
+      final updates = <String, dynamic>{
+        'phone': phone,
+        'phoneVerified': phoneVerified,
+        'phoneVerifiedAt': phoneVerified
+            ? (phoneVerifiedAt != null
+                ? Timestamp.fromDate(phoneVerifiedAt)
+                : FieldValue.serverTimestamp())
+            : null,
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+      await _usersRef.doc(userId).update(updates);
+      final updated = await getUserById(userId);
+      if (updated != null) return updated;
+      throw Exception('User profile not found after updating phone verification.');
+    } catch (e, st) {
+      throw FirestoreErrorHandler.handle(e, st);
+    }
+  }
+
   // ===========================================================================
   // FCM DEVICE TOKEN MANAGEMENT (Prompt 9)
   // ===========================================================================

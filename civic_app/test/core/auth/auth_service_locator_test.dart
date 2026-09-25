@@ -31,6 +31,11 @@ class CustomTestAuthService implements AuthService {
   }
 
   @override
+  Future<AuthResult> signInWithGoogle() async {
+    return AuthResult.success(user: testUser);
+  }
+
+  @override
   Future<AuthResult> register({
     required String fullName,
     required String email,
@@ -44,6 +49,11 @@ class CustomTestAuthService implements AuthService {
   @override
   Future<AuthResult> sendPasswordResetEmail({required String email}) async {
     return const AuthResult.success();
+  }
+
+  @override
+  Future<AuthResult> markPhoneVerified({required String phoneNumber, String? accessToken}) async {
+    return AuthResult.success(user: testUser);
   }
 
   @override
@@ -81,6 +91,14 @@ class CustomTestGovtAuthService implements GovtAuthService {
 
   @override
   Future<bool> checkAuthState() async => isAuthenticated;
+
+  @override
+  Future<GovtAuthResult> loginWithGovernmentId({
+    required String governmentId,
+    required String password,
+  }) async {
+    return GovtAuthResult.success(testGovtUser);
+  }
 
   @override
   Future<GovtAuthResult> login({
