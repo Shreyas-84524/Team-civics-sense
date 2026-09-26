@@ -2,7 +2,6 @@
 ///
 /// Ensures compliance with Indian telecom numbering formats:
 /// - 10 digits starting with 6, 7, 8, or 9
-/// - MSG91 format: '91XXXXXXXXXX' (no leading '+')
 /// - E.164 standard format: '+91XXXXXXXXXX' (persisted in user profile)
 class PhoneNormalizer {
   PhoneNormalizer._();
@@ -64,16 +63,6 @@ class PhoneNormalizer {
       return 'Please enter a valid 10-digit Indian mobile number.';
     }
     return null;
-  }
-
-  /// Converts the input to MSG91 required format: '91XXXXXXXXXX' (country code without '+').
-  /// Throws [FormatException] if the number is not a valid Indian mobile number.
-  static String toMsg91Identifier(String input) {
-    final tenDigit = extract10Digit(input);
-    if (tenDigit == null) {
-      throw FormatException('Invalid Indian mobile phone number: "$input"');
-    }
-    return '91$tenDigit';
   }
 
   /// Converts the input to standard E.164 format: '+91XXXXXXXXXX'.

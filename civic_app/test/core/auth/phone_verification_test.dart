@@ -1,8 +1,6 @@
 import 'package:civic_app/User UI/services/mock_auth_service.dart';
 import 'package:civic_app/core/auth/auth_service_locator.dart';
 import 'package:civic_app/core/auth/mock_phone_verification_service.dart';
-import 'package:civic_app/core/auth/msg91_config.dart';
-import 'package:civic_app/core/auth/msg91_phone_verification_service.dart';
 import 'package:civic_app/core/auth/phone_normalizer.dart';
 import 'package:civic_app/core/auth/phone_verification_service_locator.dart';
 import 'package:civic_app/core/auth/supabase_phone_verification_service.dart';
@@ -43,19 +41,16 @@ void main() {
       expect(PhoneNormalizer.isValidIndianMobile('   '), isFalse);
     });
 
-    test('Formats correctly for MSG91 (91XXXXXXXXXX) and E.164 (+91XXXXXXXXXX)', () {
+    test('Formats correctly for E.164 (+91XXXXXXXXXX) and display', () {
       const raw = '9876543210';
-      expect(PhoneNormalizer.toMsg91Identifier(raw), '919876543210');
       expect(PhoneNormalizer.toE164(raw), '+919876543210');
       expect(PhoneNormalizer.toDisplay(raw), '+91 98765 43210');
 
-      expect(PhoneNormalizer.toMsg91Identifier('+91 98765 43210'), '919876543210');
       expect(PhoneNormalizer.toE164('+91 98765 43210'), '+919876543210');
       expect(PhoneNormalizer.toDisplay('09876543210'), '+91 98765 43210');
     });
 
     test('Throws FormatException on formatting invalid numbers', () {
-      expect(() => PhoneNormalizer.toMsg91Identifier('12345'), throwsFormatException);
       expect(() => PhoneNormalizer.toE164('invalid'), throwsFormatException);
     });
 
@@ -67,15 +62,6 @@ void main() {
       expect(PhoneNormalizer.validate('98765abcde'), contains('digits only'));
       expect(PhoneNormalizer.validate('9876543210'), isNull);
       expect(PhoneNormalizer.validate('+91 98765 43210'), isNull);
-    });
-  });
-
-  group('Msg91Config Environment Safety Tests', () {
-    test('Default values do not embed secrets and report unconfigured safely', () {
-      // In testing without --dart-define, widgetId and tokenAuth are empty strings
-      expect(Msg91Config.widgetId, isA<String>());
-      expect(Msg91Config.tokenAuth, isA<String>());
-      // Master AuthKey is intentionally absent from client codebase
     });
   });
 
@@ -186,14 +172,9 @@ void main() {
       expect(mock.expectedOtp, '112233');
     });
 
-    test('useMsg91Service switches to Msg91PhoneVerificationService emergency fallback', () {
-      PhoneVerificationServiceLocator.useMsg91Service();
-      expect(PhoneVerificationServiceLocator.instance, isA<Msg91PhoneVerificationService>());
-    });
-
     test('useSupabaseService explicitly switches to SupabasePhoneVerificationService', () {
-      PhoneVerificationServiceLocator.useMsg91Service();
-      expect(PhoneVerificationServiceLocator.instance, isA<Msg91PhoneVerificationService>());
+      PhoneVerificationServiceLocator.useMockService();
+      expect(PhoneVerificationServiceLocator.instance, isA<MockPhoneVerificationService>());
       PhoneVerificationServiceLocator.useSupabaseService();
       expect(PhoneVerificationServiceLocator.instance, isA<SupabasePhoneVerificationService>());
     });
