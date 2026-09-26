@@ -1,4 +1,4 @@
-﻿# Miscellaneous
+# Miscellaneous
 *.class
 *.log
 *.pyc
@@ -36,3 +36,22 @@ coverage/
 Thumbs.db
 Desktop.ini
 *.tmp
+.temp/
+*.test_session.json
+.test_session.json
+
+# Node & Package Managers
+node_modules/
+package-lock.json
+
+# Secrets & Environment
+.env*
+*.env
+*.pem
+*.key
+service_account*.json
+firebase-service-account*.json
+
+# Supabase CLI
+supabase/.temp/
+supabase/.branches/

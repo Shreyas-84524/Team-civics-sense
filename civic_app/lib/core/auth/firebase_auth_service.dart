@@ -1,9 +1,7 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:http/http.dart' as http;
 import '../firebase/firestore/firebase_user_data_source.dart';
 import '../models/user_model.dart';
 import '../notifications/notification_service_locator.dart';
@@ -22,7 +20,6 @@ class FirebaseAuthService implements AuthService {
   final FirebaseUserDataSource _userDataSource;
   final HiveUserRepository _userRepository;
   final GoogleSignIn? _googleSignIn;
-  final http.Client _httpClient;
 
   UserModel? _currentUser;
   StreamSubscription<User?>? _authSubscription;
@@ -32,12 +29,11 @@ class FirebaseAuthService implements AuthService {
     FirebaseUserDataSource? userDataSource,
     HiveUserRepository? userRepository,
     GoogleSignIn? googleSignIn,
-    http.Client? httpClient,
+    dynamic httpClient,
   })  : _auth = auth,
         _userDataSource = userDataSource ?? FirebaseUserDataSource(),
         _userRepository = userRepository ?? HiveUserRepository(),
-        _googleSignIn = googleSignIn,
-        _httpClient = httpClient ?? http.Client() {
+        _googleSignIn = googleSignIn {
     _initAuthStateListener();
   }
 
@@ -402,102 +398,33 @@ class FirebaseAuthService implements AuthService {
 
     try {
       final normalizedPhone = PhoneNormalizer.toE164(phoneNumber);
-      final now = DateTime.now();
 
-      // 1. If active Firebase Auth user is present, invoke server-authoritative Cloud Function
-      // to atomically enforce phone uniqueness in /phoneIndex and update /users/{uid}.
-      final firebaseUser = _authInstance.currentUser;
-      if (firebaseUser != null) {
-        try {
-          final idToken = await firebaseUser.getIdToken();
-          final callableUri = Uri.parse(
-            'https://us-central1-civicfix-38d53.cloudfunctions.net/verifyCitizenPhoneMsg91',
-          );
-
-          final response = await _httpClient.post(
-            callableUri,
-            headers: {
-              'Content-Type': 'application/json',
-              if (idToken != null) 'Authorization': 'Bearer $idToken',
-            },
-            body: jsonEncode({
-              'data': {
-                'phone': normalizedPhone,
-                if (accessToken != null && accessToken.isNotEmpty) 'accessToken': accessToken,
-              },
-            }),
-          );
-
-          if (response.statusCode != 200) {
-            try {
-              final decoded = jsonDecode(response.body);
-              final errorObj = decoded['error'];
-              final status = errorObj?['status'];
-              final message = errorObj?['message'] as String?;
-
-              if (status == 'ALREADY_EXISTS' || (message != null && message.contains('already associated'))) {
-                return const AuthResult.failure(
-                  'This phone number is already associated with another CivicFix account.',
-                );
-              }
-              if (message != null && message.isNotEmpty) {
-                return AuthResult.failure(message);
-              }
-            } catch (_) {}
-            return const AuthResult.failure('Failed to verify phone number. Please try again.');
-          }
-
-          // Check if response contains nested error
-          final decoded = jsonDecode(response.body);
-          if (decoded['error'] != null) {
-            final msg = decoded['error']['message'] as String?;
-            if (msg != null && msg.contains('already associated')) {
-              return const AuthResult.failure(
-                'This phone number is already associated with another CivicFix account.',
-              );
-            }
-            return AuthResult.failure(msg ?? 'Failed to verify phone number.');
-          }
-        } catch (callErr) {
-          debugPrint('[FirebaseAuthService] Cloud Function invocation notice: $callErr');
-          if (callErr.toString().contains('already associated')) {
-            return const AuthResult.failure(
-              'This phone number is already associated with another CivicFix account.',
-            );
-          }
-          // If offline or function error, fallback to data source update
-        }
-      }
-
-      // 2. Fetch or update user profile and cache locally
+      // Server-authoritative sync: Supabase verify-otp has already verified the code
+      // and atomically updated Firestore server-side.
+      // Flutter reloads the updated citizen profile from Firestore and refreshes local cache.
       UserModel? updatedUser;
       try {
         updatedUser = await _userDataSource.getUserById(uid);
-      } catch (_) {}
+      } catch (fetchErr) {
+        debugPrint('[FirebaseAuthService] Profile reload error: $fetchErr');
+      }
 
-      if (updatedUser == null || updatedUser.phone != normalizedPhone || !updatedUser.phoneVerified) {
-        updatedUser = await _userDataSource.updatePhoneVerification(
-          userId: uid,
-          phone: normalizedPhone,
-          phoneVerified: true,
-          phoneVerifiedAt: now,
+      if (updatedUser != null) {
+        if (updatedUser.phone != normalizedPhone) {
+          updatedUser = updatedUser.copyWith(phone: normalizedPhone, phoneVerified: true);
+        }
+        await _userRepository.cacheUser(updatedUser);
+        _currentUser = updatedUser;
+
+        return AuthResult.success(
+          user: updatedUser,
+          successMessage: 'Phone number verified successfully.',
         );
       }
 
-      await _userRepository.cacheUser(updatedUser);
-      _currentUser = updatedUser;
-
-      return AuthResult.success(
-        user: updatedUser,
-        successMessage: 'Phone number verified successfully.',
-      );
+      return const AuthResult.failure('Unable to load citizen profile. Please refresh.');
     } catch (e) {
       debugPrint('[FirebaseAuthService] markPhoneVerified error: $e');
-      if (e.toString().contains('already associated')) {
-        return const AuthResult.failure(
-          'This phone number is already associated with another CivicFix account.',
-        );
-      }
       return AuthResult.failure(FirebaseAuthErrorHandler.getMessage(e));
     }
   }

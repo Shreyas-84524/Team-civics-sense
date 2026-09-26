@@ -261,3 +261,116 @@ Content-Type: application/json
 4. **Multi-Device & Stale Token Pruning**:
    - Push notifications are delivered to all registered citizen device tokens.
    - If FCM returns `UNREGISTERED`, `INVALID_ARGUMENT`, or HTTP `404`/`410`, the stale device document is automatically pruned from `users/{citizenId}/devices`.
+
+---
+
+## 7. Self-Hosted Phone Verification (OTP) Pipeline
+
+CivicFix uses self-hosted Supabase Edge Functions coupled with an on-premise Android SMS Gateway (`SMS-Gateway-Free`) over Cloudflare Quick Tunnel to deliver carrier SMS OTPs with zero third-party SMS vendor dependency (replacing MSG91).
+
+```text
+CivicFix Flutter App
+        │
+        │ 1. Firebase ID Token + E.164 Phone
+        ▼
+Supabase Edge Function: `send-otp`
+        │
+        ├─ Verify Firebase ID Token (RS256 JWKS)
+        ├─ Validate E.164 (+91 format) & Check Duplicate Phone in Firestore (/phoneIndex)
+        ├─ Enforce Rate Limits (30s cooldown, 5 sends/hour)
+        ├─ Invalidate Previous Active Challenges for Citizen
+        ├─ Generate 6-digit CSPRNG OTP & Salted SHA-256 Hash
+        ├─ Persist Challenge in Supabase Database (`phone_verification_otps`)
+        │
+        ▼
+GatewaySmsTransport (7s timeout, no retry loop)
+        │
+        ▼ POST /message
+Cloudflare Quick Tunnel (`https://*.trycloudflare.com`)
+        │
+        ▼
+SMS-Gateway-Free Android Device (Local Gateway Server)
+        │
+        ▼ SmsManager
+Physical Cellular SIM / Carrier Network
+        │
+        ▼ Physical SMS
+Citizen Mobile Device (Receives OTP: 361047)
+        │
+        │ 2. Submit OTP + RequestId + Firebase ID Token
+        ▼
+Supabase Edge Function: `verify-otp`
+        │
+        ├─ Verify Firebase ID Token (RS256 JWKS)
+        ├─ Retrieve Active Challenge by UUID
+        ├─ Check Lockout (attempts >= 3 -> MAX_ATTEMPTS_EXCEEDED)
+        ├─ Check Expiry (now > expires_at -> OTP_EXPIRED)
+        ├─ Check Consumed (consumed_at IS NOT NULL -> OTP_ALREADY_USED)
+        ├─ Constant-time Cryptographic Hash Comparison
+        ├─ If Mismatch: Increment attempts, decrement remaining attempts
+        ├─ If Valid: Atomically mark consumed in Supabase DB
+        │
+        ▼
+Firestore Authority Update (Service Account OAuth 2.0)
+        ├─ Atomically claim `/phoneIndex/{phone}` -> `{ uid, verifiedAt }`
+        ├─ Update `/users/{uid}` -> `{ phoneNumber, phoneVerified: true, phoneVerifiedAt }`
+        │
+        ▼ 200 OK
+Flutter App reloads user profile & unlocks citizen navigation
+```
+
+---
+
+## 8. OTP Cryptographic Security & Abuse Protection
+
+| Protection Layer | Parameter / Rule | Enforcement Point | Behavior on Violation |
+| :--- | :--- | :--- | :--- |
+| **Hashing Algorithm** | SHA-256 (`crypto.subtle.digest`) | Server (`send-otp`, `verify-otp`) | Plaintext OTP is NEVER stored in database or logged |
+| **Salt & Pepper** | 16-byte CSPRNG salt + `OTP_PEPPER` | Server (`send-otp`, `verify-otp`) | Prevents rainbow table & cross-phone precomputation |
+| **Phone Binding** | Salt + Phone + OTP bound into hash | Server (`send-otp`, `verify-otp`) | Challenge cannot be used for a different phone number |
+| **OTP Lifetime** | 300 seconds (5 minutes) | Server (`verify-otp`) | Returns `400 Bad Request` (`OTP_EXPIRED`) |
+| **Attempt Lockout** | Maximum 3 attempts | Server (`verify-otp`) | Returns `400 Bad Request` (`MAX_ATTEMPTS_EXCEEDED`), locks challenge |
+| **Resend Cooldown** | 30 seconds | Server (`send-otp`) | Returns `429 Too Many Requests` (`RESEND_COOLDOWN_ACTIVE`) |
+| **Hourly Rate Limit**| 5 requests / hour / citizen | Server (`send-otp`) | Returns `429 Too Many Requests` (`HOURLY_LIMIT_EXCEEDED`) |
+| **Replay Protection**| `consumed_at` timestamp | Server (`verify-otp`) | Returns `400 Bad Request` (`OTP_ALREADY_USED`) |
+| **Duplicate Phone**  | `/phoneIndex/{phone}` check | Server (`send-otp`, `verify-otp`) | Returns `409 Conflict` (`PHONE_ALREADY_REGISTERED`) |
+| **Constant-Time Eq** | XOR byte comparison | Server (`verify-otp`) | Eliminates timing side-channel attacks |
+
+---
+
+## 9. SMS Gateway Transport & Cloudflare Quick Tunnel Operations
+
+### Gateway Endpoint Configuration
+- **Transport**: `GatewaySmsTransport`
+- **Request Format**: `POST {SMS_GATEWAY_URL}/message`
+- **Headers**: `X-API-Key: {SMS_GATEWAY_TOKEN}`, `Content-Type: application/json`
+- **Payload**: `{"phone_number": "+91XXXXXXXXXX", "message": "...", "request_id": "<UUID>"}`
+- **Accepted Responses**: HTTP 200 with `status: "PENDING"`, `"QUEUED"`, `"SENT"`, or `"DELIVERED"`
+- **Timeout**: 7000ms strict timeout with automatic challenge rollback on network failure.
+
+### Quick Tunnel Recovery Workflow
+Cloudflare Quick Tunnels generate ephemeral URLs (`https://<subdomain>.trycloudflare.com`) on restart. To update Supabase secrets with the new URL without service disruption:
+
+#### PowerShell (Windows):
+```powershell
+.\scripts\update_gateway_tunnel.ps1 -TunnelUrl "https://new-subdomain.trycloudflare.com" -GatewayToken "your-gateway-token"
+```
+
+#### Bash (Linux/macOS):
+```bash
+./scripts\update_gateway_tunnel.sh "https://new-subdomain.trycloudflare.com" "your-gateway-token"
+```
+
+---
+
+## 10. Supabase Production Secrets Inventory
+
+The following secrets are configured in Supabase Project `hkgwsqasmboadvpjckbj`:
+
+| Secret Name | Purpose | Sensitivity |
+| :--- | :--- | :--- |
+| `FIREBASE_SERVICE_ACCOUNT_KEY` | Firebase Admin OAuth 2.0 minting for Firestore & FCM | Critical (Private Key) |
+| `SMS_TRANSPORT` | SMS provider selector (`gateway` for production, `mock` for local tests) | Standard |
+| `SMS_GATEWAY_URL` | Cloudflare HTTPS tunnel URL to Android SMS Gateway | High |
+| `SMS_GATEWAY_TOKEN` | Bearer API Key for Android SMS Gateway authentication | High |
+| `OTP_PEPPER` | Cryptographic HMAC pepper for OTP hash binding | Critical |

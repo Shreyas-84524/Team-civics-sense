@@ -1,10 +1,10 @@
 import 'mock_phone_verification_service.dart';
-import 'msg91_phone_verification_service.dart';
 import 'phone_verification_service.dart';
+import 'supabase_phone_verification_service.dart';
 
 /// Centralized Service Locator for Citizen Phone Number Verification services.
 ///
-/// Production runtime resolves to [Msg91PhoneVerificationService].
+/// Production runtime resolves to [SupabasePhoneVerificationService].
 /// Tests can override with [MockPhoneVerificationService] via [useMockService].
 class PhoneVerificationServiceLocator {
   PhoneVerificationServiceLocator._();
@@ -13,9 +13,9 @@ class PhoneVerificationServiceLocator {
 
   /// Active Phone Verification Service instance.
   ///
-  /// Defaults to production [Msg91PhoneVerificationService].
+  /// Defaults to production [SupabasePhoneVerificationService].
   static PhoneVerificationService get instance {
-    _instance ??= Msg91PhoneVerificationService();
+    _instance ??= SupabasePhoneVerificationService();
     return _instance!;
   }
 
@@ -33,9 +33,14 @@ class PhoneVerificationServiceLocator {
     return mock;
   }
 
-  /// Switches back to production MSG91 implementation.
+  /// Switches to production Supabase OTP implementation.
+  static void useSupabaseService() {
+    _instance = SupabasePhoneVerificationService();
+  }
+
+  /// Switches back to default production service (Supabase).
   static void useProductionService() {
-    _instance = Msg91PhoneVerificationService();
+    _instance = SupabasePhoneVerificationService();
   }
 
   /// Resets cached instance to default lazy production resolution.

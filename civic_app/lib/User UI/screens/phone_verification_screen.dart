@@ -16,7 +16,7 @@ import '../widgets/auth_error_banner.dart';
 import '../widgets/auth_header.dart';
 import '../widgets/auth_text_field.dart';
 
-/// Screen guiding citizens through MSG91 SMS OTP Phone Verification.
+/// Screen guiding citizens through SMS OTP Phone Verification.
 ///
 /// Features:
 /// - Pre-populates phone number from registration if available
