@@ -404,10 +404,10 @@ class FirebaseAuthService implements AuthService {
       final normalizedPhone = PhoneNormalizer.toE164(phoneNumber);
       final now = DateTime.now();
 
-      // 1. If active Firebase Auth user is present, invoke server-authoritative Cloud Function
-      // to atomically enforce phone uniqueness in /phoneIndex and update /users/{uid}.
+      // 1. If legacy MSG91 accessToken is present, invoke server-authoritative Cloud Function.
+      // With Supabase OTP, verify-otp has already verified the code and atomically updated Firestore.
       final firebaseUser = _authInstance.currentUser;
-      if (firebaseUser != null) {
+      if (firebaseUser != null && accessToken != null && accessToken.isNotEmpty) {
         try {
           final idToken = await firebaseUser.getIdToken();
           final callableUri = Uri.parse(
@@ -423,7 +423,7 @@ class FirebaseAuthService implements AuthService {
             body: jsonEncode({
               'data': {
                 'phone': normalizedPhone,
-                if (accessToken != null && accessToken.isNotEmpty) 'accessToken': accessToken,
+                'accessToken': accessToken,
               },
             }),
           );

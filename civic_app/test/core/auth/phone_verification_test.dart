@@ -5,6 +5,7 @@ import 'package:civic_app/core/auth/msg91_config.dart';
 import 'package:civic_app/core/auth/msg91_phone_verification_service.dart';
 import 'package:civic_app/core/auth/phone_normalizer.dart';
 import 'package:civic_app/core/auth/phone_verification_service_locator.dart';
+import 'package:civic_app/core/auth/supabase_phone_verification_service.dart';
 import 'package:civic_app/core/firebase/mappers/user_firestore_mapper.dart';
 import 'package:civic_app/core/models/user_model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -174,9 +175,9 @@ void main() {
       PhoneVerificationServiceLocator.reset();
     });
 
-    test('Defaults to Msg91PhoneVerificationService in production', () {
+    test('Defaults to SupabasePhoneVerificationService in production', () {
       final service = PhoneVerificationServiceLocator.instance;
-      expect(service, isA<Msg91PhoneVerificationService>());
+      expect(service, isA<SupabasePhoneVerificationService>());
     });
 
     test('useMockService switches to MockPhoneVerificationService', () {
@@ -185,10 +186,22 @@ void main() {
       expect(mock.expectedOtp, '112233');
     });
 
-    test('reset clears cached service instance', () {
+    test('useMsg91Service switches to Msg91PhoneVerificationService emergency fallback', () {
+      PhoneVerificationServiceLocator.useMsg91Service();
+      expect(PhoneVerificationServiceLocator.instance, isA<Msg91PhoneVerificationService>());
+    });
+
+    test('useSupabaseService explicitly switches to SupabasePhoneVerificationService', () {
+      PhoneVerificationServiceLocator.useMsg91Service();
+      expect(PhoneVerificationServiceLocator.instance, isA<Msg91PhoneVerificationService>());
+      PhoneVerificationServiceLocator.useSupabaseService();
+      expect(PhoneVerificationServiceLocator.instance, isA<SupabasePhoneVerificationService>());
+    });
+
+    test('reset clears cached service instance and defaults back to Supabase', () {
       PhoneVerificationServiceLocator.useMockService();
       PhoneVerificationServiceLocator.reset();
-      expect(PhoneVerificationServiceLocator.instance, isA<Msg91PhoneVerificationService>());
+      expect(PhoneVerificationServiceLocator.instance, isA<SupabasePhoneVerificationService>());
     });
   });
 
