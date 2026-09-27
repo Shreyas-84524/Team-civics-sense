@@ -1,0 +1,39 @@
+﻿Resolving dependencies...
+Downloading packages...
+  clock 1.1.2 (1.1.3 available)
+  cloud_firestore 6.9.0 (6.10.0 available)
+  cross_file 0.3.5+5 (0.4.0 available)
+  firebase_auth 6.6.1 (6.7.0 available)
+  firebase_auth_platform_interface 9.0.7 (9.1.0 available)
+  firebase_auth_web 6.2.7 (6.3.0 available)
+  firebase_core 4.14.0 (4.15.0 available)
+  firebase_core_web 3.11.0 (3.12.0 available)
+  firebase_messaging 16.6.0 (16.7.0 available)
+  firebase_storage 13.5.0 (13.6.0 available)
+  geolocator 13.0.4 (14.1.0 available)
+  geolocator_android 4.6.2 (5.1.0 available)
+  geolocator_platform_interface 4.3.0 (4.4.0 available)
+  google_sign_in 6.3.0 (7.2.0 available)
+  google_sign_in_android 6.2.1 (7.2.17 available)
+  google_sign_in_ios 5.9.0 (6.3.5 available)
+  google_sign_in_platform_interface 2.5.0 (3.1.0 available)
+  google_sign_in_web 0.12.4+4 (1.1.3 available)
+  image_picker_android 0.8.13+22 (0.8.13+23 available)
+  image_picker_ios 0.8.13+7 (0.8.13+8 available)
+  material_color_utilities 0.13.0 (0.13.1 available)
+! path_provider_foundation 2.4.0 (overridden) (2.6.0 available)
+  stack_trace 1.12.1 (1.12.2 available)
+  test_api 0.7.12 (0.7.14 available)
+  vector_math 2.4.2 (2.4.3 available)
+  vm_service 15.2.0 (15.3.0 available)
+Got dependencies!
+26 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+Analyzing civic_app...                                          
+
+warning - Unused import: '../../models/government_session.dart'. Try removing the import directive - lib\Govt UI\screens\dashboard\city_command_center_screen.dart:6:8 - unused_import
+warning - Unused import: '../../widgets/common/government_alert.dart'. Try removing the import directive - lib\Govt UI\screens\dashboard\city_command_center_screen.dart:11:8 - unused_import
+warning - Unused import: '../../widgets/common/govt_loading_states.dart'. Try removing the import directive - lib\Govt UI\screens\dashboard\city_command_center_screen.dart:17:8 - unused_import
+warning - Unused import: '../models/govt_user_model.dart'. Try removing the import directive - lib\Govt UI\services\government_city_dashboard_service.dart:16:8 - unused_import
+   info - The private field _searchQuery could be 'final'. Try making the field 'final' - lib\Govt UI\widgets\dashboard\sections\department_performance_section.dart:31:10 - prefer_final_fields
+

@@ -4,99 +4,66 @@ import '../../theme/govt_theme_tokens.dart';
 import '../../theme/govt_typography.dart';
 
 /// Skeleton loader card for Government KPI cards during asynchronous fetches.
-class GovtKpiSkeleton extends StatefulWidget {
+class GovtKpiSkeleton extends StatelessWidget {
   const GovtKpiSkeleton({super.key});
 
   @override
-  State<GovtKpiSkeleton> createState() => _GovtKpiSkeletonState();
-}
-
-class _GovtKpiSkeletonState extends State<GovtKpiSkeleton>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<double> _animation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    )..repeat(reverse: true);
-    _animation = Tween<double>(begin: 0.3, end: 0.7).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _animation,
-      builder: (context, _) {
-        final shimmerColor =
-            GovtThemeTokens.surfaceMuted.withValues(alpha: _animation.value);
+    const shimmerColor = GovtThemeTokens.surfaceMuted;
 
-        return Container(
-          padding: const EdgeInsets.all(CivicFixSpacing.lg),
-          decoration: BoxDecoration(
-            color: GovtThemeTokens.surface,
-            borderRadius: GovtThemeTokens.cardRadius,
-            border: Border.all(color: GovtThemeTokens.border),
-            boxShadow: GovtThemeTokens.cardShadow,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return Container(
+      padding: const EdgeInsets.all(CivicFixSpacing.lg),
+      decoration: BoxDecoration(
+        color: GovtThemeTokens.surface,
+        borderRadius: GovtThemeTokens.cardRadius,
+        border: Border.all(color: GovtThemeTokens.border),
+        boxShadow: GovtThemeTokens.cardShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(
-                    width: 90,
-                    height: 12,
-                    decoration: BoxDecoration(
-                      color: shimmerColor,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: shimmerColor,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                  ),
-                ],
-              ),
-              CivicFixSpacing.vSpaceSm,
               Container(
-                width: 70,
-                height: 24,
+                width: 90,
+                height: 12,
                 decoration: BoxDecoration(
                   color: shimmerColor,
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
-              CivicFixSpacing.vSpaceSm,
               Container(
-                width: 110,
-                height: 10,
+                width: 32,
+                height: 32,
                 decoration: BoxDecoration(
                   color: shimmerColor,
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(6),
                 ),
               ),
             ],
           ),
-        );
-      },
+          CivicFixSpacing.vSpaceSm,
+          Container(
+            width: 70,
+            height: 24,
+            decoration: BoxDecoration(
+              color: shimmerColor,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+          CivicFixSpacing.vSpaceSm,
+          Container(
+            width: 110,
+            height: 10,
+            decoration: BoxDecoration(
+              color: shimmerColor,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

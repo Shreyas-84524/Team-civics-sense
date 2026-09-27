@@ -6,6 +6,7 @@ import '../../theme/govt_theme_tokens.dart';
 import '../../theme/govt_typography.dart';
 import 'government_confirmation_dialog.dart';
 import 'govt_jurisdiction_badge.dart';
+import '../../services/government_jurisdiction_resolver.dart';
 
 /// Reusable user profile dropdown menu for top app bars and headers.
 class GovtProfileMenu extends StatelessWidget {
@@ -53,11 +54,15 @@ class GovtProfileMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final displayName = user?.fullName ?? 'Officer Session';
-    final designation = user?.displayDesignation ?? 'Municipal Personnel';
+    final designation = (user?.displayDesignation != null && user!.displayDesignation.isNotEmpty)
+        ? user!.displayDesignation
+        : (user?.designation != null && user!.designation.isNotEmpty
+            ? user!.designation
+            : user?.govtRole.displayName ?? 'Municipal Personnel');
     final roleName = user?.govtRole.displayName ?? 'Government Officer';
-    final jurisdiction = user?.wardId != null && user!.wardId!.isNotEmpty
-        ? user!.wardId!
-        : (user?.zoneId != null ? 'Zone ${user!.zoneId}' : 'Citywide');
+    final jurisdiction = user != null
+        ? GovernmentJurisdictionResolver.resolveContextSummary(user!)
+        : 'Citywide';
 
     return PopupMenuButton<String>(
       tooltip: 'Officer Profile & Options',
@@ -69,8 +74,8 @@ class GovtProfileMenu extends StatelessWidget {
       elevation: 6,
       color: GovtThemeTokens.surface,
       child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: CivicFixSpacing.sm + 2,
+        padding: EdgeInsets.symmetric(
+          horizontal: isCompact ? CivicFixSpacing.xs + 2 : CivicFixSpacing.sm + 2,
           vertical: CivicFixSpacing.xs,
         ),
         decoration: BoxDecoration(
@@ -177,7 +182,9 @@ class GovtProfileMenu extends StatelessWidget {
                 label: jurisdiction,
                 type: user?.wardId != null
                     ? GovtJurisdictionType.ward
-                    : GovtJurisdictionType.zone,
+                    : (user?.zoneId != null
+                        ? GovtJurisdictionType.zone
+                        : GovtJurisdictionType.department),
                 isCompact: true,
               ),
               CivicFixSpacing.vSpaceSm,

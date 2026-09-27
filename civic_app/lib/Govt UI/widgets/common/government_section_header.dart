@@ -32,19 +32,18 @@ class GovernmentSectionHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: CivicFixSpacing.sm,
+                  runSpacing: 2,
                   children: [
-                    Flexible(
-                      child: Text(
-                        title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GovtTypography.sectionTitle,
-                      ),
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GovtTypography.sectionTitle,
                     ),
-                    if (count != null) ...[
-                      CivicFixSpacing.hSpaceSm,
+                    if (count != null)
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
@@ -61,11 +60,7 @@ class GovernmentSectionHeader extends StatelessWidget {
                           ),
                         ),
                       ),
-                    ],
-                    if (badge != null) ...[
-                      CivicFixSpacing.hSpaceSm,
-                      badge!,
-                    ],
+                    ?badge,
                   ],
                 ),
                 if (subtitle != null) ...[

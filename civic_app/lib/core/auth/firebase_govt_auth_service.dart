@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import '../../Govt UI/models/govt_user_model.dart';
+import '../../Govt UI/services/government_account_validator.dart';
 import '../../Govt UI/services/govt_auth_service.dart';
 import '../firebase/firestore/firebase_user_data_source.dart';
 import '../notifications/notification_service_locator.dart';
@@ -189,6 +190,17 @@ class FirebaseGovtAuthService implements GovtAuthService {
         officer = officer.copyWith(departmentId: departmentId);
       }
 
+      // 4. Validate Account Integrity (active, valid role, required jurisdiction, supervisor)
+      final validation = GovernmentAccountValidator.validate(officer);
+      if (!validation.isValid) {
+        await _authInstance.signOut();
+        _userNotifier.value = null;
+        _authStateNotifier.value = GovtAuthState.authenticationError;
+        return GovtAuthResult.failure(
+          validation.message ?? 'Government account validation failed.',
+        );
+      }
+
       _userNotifier.value = officer;
       _authStateNotifier.value = GovtAuthState.authenticated;
 
@@ -308,7 +320,7 @@ class FirebaseGovtAuthService implements GovtAuthService {
 
     if (!isGovt) return false;
 
-    _userNotifier.value = remoteProfile ??
+    final officer = remoteProfile ??
         GovtUserModel(
           id: firebaseUser.uid,
           fullName: firebaseUser.displayName ?? 'Municipal Officer',
@@ -318,8 +330,15 @@ class FirebaseGovtAuthService implements GovtAuthService {
           departmentName: 'Roads & Infrastructure',
           designation: 'Senior Municipal Nodal Officer',
           assignedWard: 'Ward 14 (Central)',
-          role: 'government',
+          wardId: 'ward_14',
+          zoneId: 'zone_04',
+          role: 'ward_department_lead',
         );
+
+    final validation = GovernmentAccountValidator.validate(officer);
+    if (!validation.isValid) return false;
+
+    _userNotifier.value = officer;
 
     try {
       await NotificationServiceLocator.instance.registerDeviceToken(firebaseUser.uid);

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_spacing.dart';
-import '../../theme/govt_responsive.dart';
 import '../../theme/govt_theme_tokens.dart';
 import '../../theme/govt_typography.dart';
 import 'govt_breadcrumbs.dart';
@@ -28,34 +27,38 @@ class GovernmentPageHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = GovtResponsive.isMobile(context);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isNarrow = constraints.maxWidth < 700;
 
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.symmetric(
-        horizontal: isMobile ? CivicFixSpacing.md : CivicFixSpacing.xl,
-        vertical: isMobile ? CivicFixSpacing.md : CivicFixSpacing.lg,
-      ),
-      decoration: const BoxDecoration(
-        color: GovtThemeTokens.surface,
-        border: GovtThemeTokens.bottomBorder,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Breadcrumbs
-          if (breadcrumbs != null && breadcrumbs!.isNotEmpty) ...[
-            GovtBreadcrumbs(items: breadcrumbs!),
-            CivicFixSpacing.vSpaceSm,
-          ],
+        return Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: isNarrow ? CivicFixSpacing.md : CivicFixSpacing.xl,
+            vertical: isNarrow ? CivicFixSpacing.md : CivicFixSpacing.lg,
+          ),
+          decoration: const BoxDecoration(
+            color: GovtThemeTokens.surface,
+            border: GovtThemeTokens.bottomBorder,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Breadcrumbs
+              if (breadcrumbs != null && breadcrumbs!.isNotEmpty) ...[
+                GovtBreadcrumbs(items: breadcrumbs!),
+                CivicFixSpacing.vSpaceSm,
+              ],
 
-          // Title & Action Row
-          if (isMobile)
-            _buildMobileLayout(context)
-          else
-            _buildDesktopLayout(context),
-        ],
-      ),
+              // Title & Action Row
+              if (isNarrow)
+                _buildMobileLayout(context)
+              else
+                _buildDesktopLayout(context),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -67,26 +70,19 @@ class GovernmentPageHeader extends StatelessWidget {
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: CivicFixSpacing.sm,
+                runSpacing: CivicFixSpacing.xs,
                 children: [
-                  Flexible(
-                    child: Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GovtTypography.pageTitle,
-                    ),
+                  Text(
+                    title,
+                    style: GovtTypography.pageTitle,
                   ),
-                  if (jurisdictionBadge != null) ...[
-                    CivicFixSpacing.hSpaceSm,
-                    jurisdictionBadge!,
-                  ],
-                  if (statusWidget != null) ...[
-                    CivicFixSpacing.hSpaceSm,
-                    statusWidget!,
-                  ],
+                  ?jurisdictionBadge,
+                  ?statusWidget,
                 ],
               ),
               if (subtitle != null) ...[
@@ -107,19 +103,17 @@ class GovernmentPageHeader extends StatelessWidget {
         // Actions
         if (secondaryActions != null || primaryAction != null) ...[
           CivicFixSpacing.hSpaceLg,
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (secondaryActions != null) ...[
-                ...secondaryActions!.map(
-                  (action) => Padding(
-                    padding: const EdgeInsets.only(right: CivicFixSpacing.sm),
-                    child: action,
-                  ),
-                ),
+          Flexible(
+            fit: FlexFit.loose,
+            child: Wrap(
+              spacing: CivicFixSpacing.sm,
+              runSpacing: CivicFixSpacing.xs,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                ...?secondaryActions,
+                ?primaryAction,
               ],
-              ?primaryAction,
-            ],
+            ),
           ),
         ],
       ],
@@ -130,23 +124,16 @@ class GovernmentPageHeader extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Expanded(
-              child: Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: GovtTypography.pageTitle.copyWith(fontSize: 20),
-              ),
-            ),
-            if (jurisdictionBadge != null) ...[
-              CivicFixSpacing.hSpaceSm,
-              jurisdictionBadge!,
-            ],
-          ],
+        Text(
+          title,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: GovtTypography.pageTitle.copyWith(fontSize: 20),
         ),
+        if (jurisdictionBadge != null) ...[
+          CivicFixSpacing.vSpaceXs,
+          jurisdictionBadge!,
+        ],
         if (statusWidget != null) ...[
           CivicFixSpacing.vSpaceXs,
           statusWidget!,

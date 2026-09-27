@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/auth/auth_service_locator.dart';
 import '../../../core/models/government_role.dart';
 import '../../models/govt_user_model.dart';
 
@@ -28,18 +29,19 @@ class GovtRoleVisibility extends StatelessWidget {
     List<GovernmentRole>? allowedRoles,
     String? requiredPermission,
   }) {
-    if (user == null) return false;
+    final activeUser = user ?? AuthServiceLocator.govtAuth.currentUser;
+    if (activeUser == null) return false;
 
     // Check Role
     if (allowedRoles != null && allowedRoles.isNotEmpty) {
-      if (!allowedRoles.contains(user.govtRole)) {
+      if (!allowedRoles.contains(activeUser.govtRole)) {
         return false;
       }
     }
 
     // Check Permission
     if (requiredPermission != null && requiredPermission.isNotEmpty) {
-      if (!user.hasPermission(requiredPermission)) {
+      if (!activeUser.hasPermission(requiredPermission)) {
         return false;
       }
     }

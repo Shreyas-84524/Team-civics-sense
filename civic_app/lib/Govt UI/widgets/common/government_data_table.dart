@@ -216,7 +216,7 @@ class GovernmentDataTable extends StatelessWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          headerLabel,
+                          Flexible(child: headerLabel),
                           const SizedBox(width: 4),
                           Icon(
                             isSorted

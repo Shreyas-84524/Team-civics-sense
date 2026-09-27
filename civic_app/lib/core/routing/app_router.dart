@@ -30,6 +30,10 @@ import '../../Govt UI/screens/complaints/govt_complaint_details_screen.dart';
 import '../../Govt UI/screens/complaints/govt_status_update_screen.dart';
 import '../../Govt UI/screens/govt_shell_screen.dart';
 import '../../Govt UI/screens/showcase/government_ui_showcase_screen.dart';
+import '../../Govt UI/models/government_session.dart';
+import '../../Govt UI/screens/auth/government_access_denied_screen.dart';
+import '../../Govt UI/screens/landing/government_role_landing_screens.dart';
+import '../../Govt UI/services/government_account_validator.dart';
 import '../auth/auth_service_locator.dart';
 import '../location/location_model.dart';
 import '../models/complaint_model.dart';
@@ -148,7 +152,23 @@ class AppRouter {
 
       // Government Routes
       case AppRoutes.govtLogin:
-        return MaterialPageRoute(builder: (_) => const GovtLoginScreen());
+      case AppRoutes.governmentLogin:
+        final govtAuth = AuthServiceLocator.govtAuth;
+        if (govtAuth.isAuthenticated && govtAuth.currentUser != null) {
+          final user = govtAuth.currentUser!;
+          final validation = GovernmentAccountValidator.validate(user);
+          if (validation.isValid) {
+            final session = GovernmentSession.fromUser(user);
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => _resolveLandingScreen(session.landingRoute),
+            );
+          }
+        }
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => const GovtLoginScreen(),
+        );
 
       case AppRoutes.govtForgotPassword:
         return MaterialPageRoute(builder: (_) => const GovtForgotPasswordScreen());
@@ -196,13 +216,55 @@ class AppRouter {
           GovtStatusUpdateScreen(complaint: complaint),
         );
 
-      // Phase 1 Canonical Government Routes
+      // Phase 1 & 2 Canonical Government Routes
       case AppRoutes.government:
       case AppRoutes.governmentDashboard:
-        return _protectedGovtRoute(const GovtShellScreen(initialIndex: 0));
+        return _protectedGovtRoute(
+          const CityCommandCenterLanding(),
+          settings: settings,
+        );
+
+      case AppRoutes.governmentZone:
+        return _protectedGovtRoute(
+          const ZoneCommandCenterLanding(),
+          settings: settings,
+        );
+
+      case AppRoutes.governmentDepartment:
+        return _protectedGovtRoute(
+          const DepartmentCommandCenterLanding(),
+          settings: settings,
+        );
+
+      case AppRoutes.governmentWard:
+        return _protectedGovtRoute(
+          const WardCommandCenterLanding(),
+          settings: settings,
+        );
+
+      case AppRoutes.governmentDepartmentOperations:
+        return _protectedGovtRoute(
+          const DepartmentOperationsLanding(),
+          settings: settings,
+        );
+
+      case AppRoutes.governmentWork:
+        return _protectedGovtRoute(
+          const CrewWorkdeskLanding(),
+          settings: settings,
+        );
+
+      case AppRoutes.governmentAccessDenied:
+        return MaterialPageRoute(
+          builder: (_) => const GovernmentAccessDeniedScreen(),
+          settings: settings,
+        );
 
       case AppRoutes.governmentComplaints:
-        return _protectedGovtRoute(const GovtShellScreen(initialIndex: 1));
+        return _protectedGovtRoute(
+          const GovtShellScreen(initialIndex: 1),
+          settings: settings,
+        );
 
       case AppRoutes.governmentOperations:
         return _protectedGovtRoute(
@@ -213,10 +275,14 @@ class AppRouter {
             moduleName: 'Operations',
             navIndex: 5,
           ),
+          settings: settings,
         );
 
       case AppRoutes.governmentAnalytics:
-        return _protectedGovtRoute(const GovtShellScreen(initialIndex: 3));
+        return _protectedGovtRoute(
+          const GovtShellScreen(initialIndex: 3),
+          settings: settings,
+        );
 
       case AppRoutes.governmentEscalations:
         return _protectedGovtRoute(
@@ -227,6 +293,7 @@ class AppRouter {
             moduleName: 'Escalations',
             navIndex: 6,
           ),
+          settings: settings,
         );
 
       case AppRoutes.governmentStaff:
@@ -238,6 +305,7 @@ class AppRouter {
             moduleName: 'Staff',
             navIndex: 7,
           ),
+          settings: settings,
         );
 
       case AppRoutes.governmentAudit:
@@ -249,13 +317,20 @@ class AppRouter {
             moduleName: 'Audit Logs',
             navIndex: 8,
           ),
+          settings: settings,
         );
 
       case AppRoutes.governmentSettings:
-        return _protectedGovtRoute(const GovtShellScreen(initialIndex: 4));
+        return _protectedGovtRoute(
+          const GovtShellScreen(initialIndex: 4),
+          settings: settings,
+        );
 
       case AppRoutes.govtShowcase:
-        return MaterialPageRoute(builder: (_) => const GovernmentUiShowcaseScreen());
+        return MaterialPageRoute(
+          builder: (_) => const GovernmentUiShowcaseScreen(),
+          settings: settings,
+        );
 
       default:
         return _errorRoute(settings.name);
@@ -298,20 +373,79 @@ class AppRouter {
     return MaterialPageRoute(builder: (_) => verificationScreen);
   }
 
-  /// Helper to enforce Government authentication on protected routes.
-  static Route<dynamic> _protectedGovtRoute(Widget authenticatedScreen) {
+  /// Helper to enforce Government authentication, account validity, and role route permissions.
+  static Route<dynamic> _protectedGovtRoute(
+    Widget authenticatedScreen, {
+    RouteSettings? settings,
+    List<GovernmentRole>? allowedRoles,
+  }) {
     final govtAuth = AuthServiceLocator.govtAuth;
     final isAuth = govtAuth.isAuthenticated;
-    final role = govtAuth.currentUser?.role;
-    final isAuthorizedGovt = isAuth &&
-        (role == 'government' ||
-            role == 'admin' ||
-            GovernmentRole.allRoleIds.contains(role));
+    final user = govtAuth.currentUser;
 
-    if (!isAuthorizedGovt) {
-      return MaterialPageRoute(builder: (_) => const GovtLoginScreen());
+    if (!isAuth || user == null) {
+      return MaterialPageRoute(
+        builder: (_) => const GovtLoginScreen(),
+        settings: settings,
+      );
     }
-    return MaterialPageRoute(builder: (_) => authenticatedScreen);
+
+    // Security invariant: strictly reject non-government / citizen accounts
+    if (user.role == 'citizen') {
+      return MaterialPageRoute(
+        builder: (_) => const GovtLoginScreen(),
+        settings: settings,
+      );
+    }
+
+    // Account validation (active status, role validity, jurisdiction, supervisor)
+    final validation = GovernmentAccountValidator.validate(user);
+    if (!validation.isValid) {
+      return MaterialPageRoute(
+        builder: (_) => const GovtLoginScreen(),
+        settings: settings,
+      );
+    }
+
+    // Route-level permission & role jurisdiction checks
+    final routeName = settings?.name;
+    if (routeName != null) {
+      final session = GovernmentSession.fromUser(user);
+      if (!session.isAuthorizedForRoute(routeName)) {
+        return MaterialPageRoute(
+          builder: (_) => GovernmentAccessDeniedScreen(user: user),
+          settings: settings,
+        );
+      }
+    } else if (allowedRoles != null && !allowedRoles.contains(user.govtRole)) {
+      if (!user.isSuperAdmin) {
+        return MaterialPageRoute(
+          builder: (_) => GovernmentAccessDeniedScreen(user: user),
+          settings: settings,
+        );
+      }
+    }
+
+    return MaterialPageRoute(builder: (_) => authenticatedScreen, settings: settings);
+  }
+
+  static Widget _resolveLandingScreen(String landingRoute) {
+    switch (landingRoute) {
+      case AppRoutes.governmentDashboard:
+        return const CityCommandCenterLanding();
+      case AppRoutes.governmentZone:
+        return const ZoneCommandCenterLanding();
+      case AppRoutes.governmentDepartment:
+        return const DepartmentCommandCenterLanding();
+      case AppRoutes.governmentWard:
+        return const WardCommandCenterLanding();
+      case AppRoutes.governmentDepartmentOperations:
+        return const DepartmentOperationsLanding();
+      case AppRoutes.governmentWork:
+        return const CrewWorkdeskLanding();
+      default:
+        return const CityCommandCenterLanding();
+    }
   }
 
   static Route<dynamic> _errorRoute(String? routeName) {

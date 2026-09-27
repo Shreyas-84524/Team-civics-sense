@@ -193,6 +193,14 @@ class GovtNavigationConfig {
     }).toList();
   }
 
+  /// Filters items based on the given government role.
+  static List<GovtNavItem> getItemsForRole(GovernmentRole role, {bool useExtended = true}) {
+    final source = useExtended ? allNavItems : defaultNavItems;
+    return source.where((item) {
+      return item.isVisibleFor(role: role);
+    }).toList();
+  }
+
   /// Groups items by their designated group title.
   static Map<String, List<GovtNavItem>> groupItems(List<GovtNavItem> items) {
     final Map<String, List<GovtNavItem>> grouped = {};

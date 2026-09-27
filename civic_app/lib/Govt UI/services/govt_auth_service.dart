@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../models/govt_user_model.dart';
+import 'government_account_validator.dart';
 
 /// Distinct authentication lifecycle states for the Government Portal.
 enum GovtAuthState {
@@ -67,7 +68,7 @@ class MockGovtAuthService implements GovtAuthService {
     _authStateNotifier = ValueNotifier<GovtAuthState>(GovtAuthState.authenticated);
   }
 
-  // Canonical Mock Government Officer for testing
+  // Canonical Mock Government Officer for testing (Ward Department Lead with valid jurisdiction)
   static const GovtUserModel _defaultOfficer = GovtUserModel(
     id: 'govt_off_001',
     fullName: 'Shreyas S. (Executive Officer)',
@@ -86,6 +87,128 @@ class MockGovtAuthService implements GovtAuthService {
       'view_analytics',
       'view_hazard_map',
     ],
+  );
+
+  // Standard Test Fixtures across BMC Role Matrix
+  static const GovtUserModel mockSuperAdmin = GovtUserModel(
+    id: 'GOV-SA-001',
+    fullName: 'Bhushan Gagrani, IAS',
+    email: 'commissioner@mcgm.gov.in',
+    employeeId: 'MUMHQ00001',
+    role: 'government_super_admin',
+    displayDesignation: 'Municipal Commissioner & Apex Super Admin',
+    organization: 'Brihanmumbai Municipal Corporation',
+    permissions: [
+      'all',
+      'view_complaints',
+      'update_status',
+      'assign_officer',
+      'view_analytics',
+    ],
+  );
+
+  static const GovtUserModel mockZonalDmc = GovtUserModel(
+    id: 'GOV-DMC-Z04',
+    fullName: 'Dr. Sudhir Patil',
+    email: 'dmc.zone4@mcgm.gov.in',
+    employeeId: 'GOV-DMC-Z04',
+    role: 'zonal_dmc',
+    zoneId: 'zone_04',
+    displayDesignation: 'Deputy Municipal Commissioner (Zone 4)',
+    organization: 'Brihanmumbai Municipal Corporation',
+  );
+
+  static const GovtUserModel mockCentralHod = GovtUserModel(
+    id: 'GOV-HOD-SWM',
+    fullName: 'Priya Shah',
+    email: 'hod.swm@mcgm.gov.in',
+    employeeId: 'GOV-HOD-SWM',
+    role: 'central_department_hod',
+    departmentId: 'dept_swm',
+    departmentName: 'Solid Waste Management',
+    displayDesignation: 'Chief Engineer (SWM)',
+    organization: 'Brihanmumbai Municipal Corporation',
+  );
+
+  static const GovtUserModel mockWardOfficer = GovtUserModel(
+    id: 'GOV-WO-W14',
+    fullName: 'Amit Deshmukh',
+    email: 'ac.ward14@mcgm.gov.in',
+    employeeId: 'GOV-WO-W14',
+    role: 'ward_officer',
+    wardId: 'N',
+    zoneId: 'zone_04',
+    displayDesignation: 'Assistant Commissioner (N Ward)',
+    organization: 'Brihanmumbai Municipal Corporation',
+  );
+
+  static const GovtUserModel mockWardLead = GovtUserModel(
+    id: 'GOV-WDL-W14-RDS',
+    fullName: 'Rajesh Kulkarni',
+    email: 'lead.roads.ward14@mcgm.gov.in',
+    employeeId: 'GOV-WDL-W14-RDS',
+    role: 'ward_department_lead',
+    wardId: 'N',
+    zoneId: 'zone_04',
+    departmentId: 'dept_roads',
+    departmentName: 'Roads & Infrastructure',
+    displayDesignation: 'Executive Engineer (Roads)',
+    organization: 'Brihanmumbai Municipal Corporation',
+  );
+
+  static const GovtUserModel mockDepartmentCrew = GovtUserModel(
+    id: 'GOV-CRW-W14-RDS-01',
+    fullName: 'Rahul Patil',
+    email: 'crew.roads.ward14@mcgm.gov.in',
+    employeeId: 'GOV-CRW-W14-RDS-01',
+    role: 'department_crew',
+    wardId: 'N',
+    zoneId: 'zone_04',
+    departmentId: 'dept_roads',
+    departmentName: 'Roads & Infrastructure',
+    displayDesignation: 'Sub-Engineer & Ground Crew Lead',
+    administrativeSupervisorId: 'GOV-WDL-W14-RDS',
+    organization: 'Brihanmumbai Municipal Corporation',
+  );
+
+  static const GovtUserModel mockInactiveOfficer = GovtUserModel(
+    id: 'GOV-INACTIVE-01',
+    fullName: 'Inactive Officer',
+    email: 'inactive@civicfix.gov.in',
+    employeeId: 'GOV-INACTIVE',
+    role: 'ward_officer',
+    wardId: 'ward_14',
+    active: false,
+  );
+
+  static const GovtUserModel mockMissingWardOfficer = GovtUserModel(
+    id: 'GOV-BAD-WO-01',
+    fullName: 'Incomplete Ward Officer',
+    email: 'bad_wo@civicfix.gov.in',
+    employeeId: 'GOV-BAD-WO',
+    role: 'ward_officer',
+    wardId: null,
+  );
+
+  static const GovtUserModel mockMissingDepartmentHod = GovtUserModel(
+    id: 'GOV-BAD-HOD-01',
+    fullName: 'Incomplete Central HOD',
+    email: 'bad_hod@civicfix.gov.in',
+    employeeId: 'GOV-BAD-HOD',
+    role: 'central_department_hod',
+    departmentId: null,
+  );
+
+  static const GovtUserModel mockMissingSupervisorCrew = GovtUserModel(
+    id: 'GOV-BAD-CRW-01',
+    fullName: 'Orphaned Crew',
+    email: 'orphan_crew@civicfix.gov.in',
+    employeeId: 'GOV-BAD-CRW',
+    role: 'department_crew',
+    wardId: 'ward_14',
+    departmentId: 'dept_roads',
+    administrativeSupervisorId: null,
+    technicalSupervisorId: null,
   );
 
   late final ValueNotifier<GovtUserModel?> _userNotifier;
@@ -143,6 +266,7 @@ class MockGovtAuthService implements GovtAuthService {
       return const GovtAuthResult.failure('Please enter your Government ID and password.');
     }
 
+    final rawUpper = rawInput.toUpperCase();
     final trimmedInput = rawInput.toLowerCase();
 
     if (password == 'WrongPassword' ||
@@ -155,15 +279,73 @@ class MockGovtAuthService implements GovtAuthService {
       );
     }
 
-    final user = _defaultOfficer.copyWith(
-      employeeId: rawInput.toUpperCase(),
-      email: trimmedInput.contains('@') ? trimmedInput : '$trimmedInput@civicfix.gov.in',
-      departmentId: departmentId ?? _defaultOfficer.departmentId,
-    );
+    if (trimmedInput.contains('citizen')) {
+      _authStateNotifier.value = GovtAuthState.authenticationError;
+      return const GovtAuthResult.failure(
+        'Access denied. This account does not possess authorized Municipal Government Officer credentials.',
+      );
+    }
 
-    _userNotifier.value = user;
+    if (trimmedInput.contains('not_found') || trimmedInput.contains('missing_user')) {
+      _authStateNotifier.value = GovtAuthState.authenticationError;
+      return const GovtAuthResult.failure('Government profile could not be found.');
+    }
+
+    GovtUserModel candidate;
+    if (rawUpper == 'MUMHQ00001' ||
+        rawUpper == 'GOV-SA-001' ||
+        trimmedInput.contains('super_admin')) {
+      candidate = mockSuperAdmin;
+    } else if (rawUpper == 'GOV-DMC-Z04' ||
+        rawUpper == 'GOV-DMC-Z01' ||
+        trimmedInput.contains('dmc')) {
+      candidate = mockZonalDmc;
+    } else if (rawUpper == 'GOV-HOD-SWM' ||
+        rawUpper == 'GOV-HOD-RDS' ||
+        trimmedInput.contains('hod')) {
+      candidate = mockCentralHod;
+    } else if (rawUpper == 'GOV-WO-W14' ||
+        rawUpper == 'GOV-WO-W01' ||
+        trimmedInput.contains('ward_officer') ||
+        rawUpper.contains('GOV-WO')) {
+      candidate = mockWardOfficer;
+    } else if (rawUpper == 'GOV-WDL-W14-RDS' ||
+        rawUpper == 'GOV-WDL-W01-RDS' ||
+        trimmedInput.contains('wdl') ||
+        trimmedInput.contains('lead')) {
+      candidate = mockWardLead;
+    } else if (rawUpper == 'GOV-CRW-W14-RDS-01' ||
+        rawUpper == 'GOV-CRW-W01-RDS' ||
+        trimmedInput.contains('crew')) {
+      candidate = mockDepartmentCrew;
+    } else if (rawUpper == 'GOV-INACTIVE' || trimmedInput.contains('inactive')) {
+      candidate = mockInactiveOfficer;
+    } else if (rawUpper == 'GOV-BAD-WO' || trimmedInput.contains('missing_ward')) {
+      candidate = mockMissingWardOfficer;
+    } else if (rawUpper == 'GOV-BAD-HOD' || trimmedInput.contains('missing_dept')) {
+      candidate = mockMissingDepartmentHod;
+    } else if (rawUpper == 'GOV-BAD-CRW' || trimmedInput.contains('missing_supervisor')) {
+      candidate = mockMissingSupervisorCrew;
+    } else {
+      candidate = _defaultOfficer.copyWith(
+        employeeId: rawUpper,
+        email: trimmedInput.contains('@') ? trimmedInput : '$trimmedInput@civicfix.gov.in',
+        departmentId: departmentId ?? _defaultOfficer.departmentId,
+      );
+    }
+
+    // Account validation
+    final validation = GovernmentAccountValidator.validate(candidate);
+    if (!validation.isValid) {
+      _authStateNotifier.value = GovtAuthState.authenticationError;
+      return GovtAuthResult.failure(
+        validation.message ?? 'Government account validation failed.',
+      );
+    }
+
+    _userNotifier.value = candidate;
     _authStateNotifier.value = GovtAuthState.authenticated;
-    return GovtAuthResult.success(user);
+    return GovtAuthResult.success(candidate);
   }
 
   @override
@@ -211,5 +393,10 @@ class MockGovtAuthService implements GovtAuthService {
   void resetForTesting({bool authenticated = true}) {
     _userNotifier.value = authenticated ? _defaultOfficer : null;
     _authStateNotifier.value = authenticated ? GovtAuthState.authenticated : GovtAuthState.unauthenticated;
+  }
+
+  void setCurrentUser(GovtUserModel? user) {
+    _userNotifier.value = user;
+    _authStateNotifier.value = user != null ? GovtAuthState.authenticated : GovtAuthState.unauthenticated;
   }
 }
