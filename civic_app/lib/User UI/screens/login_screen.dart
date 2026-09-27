@@ -86,15 +86,7 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = false);
 
     if (result.isSuccess) {
-      if (result.user != null && !result.user!.phoneVerified) {
-        Navigator.pushReplacementNamed(
-          context,
-          AppRoutes.verifyPhone,
-          arguments: result.user?.phone,
-        );
-      } else {
-        Navigator.pushReplacementNamed(context, AppRoutes.home);
-      }
+      Navigator.pushReplacementNamed(context, AppRoutes.home);
     } else {
       setState(() {
         _errorMessage = result.errorMessage ?? 'Incorrect email or password.';
@@ -117,15 +109,7 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isGoogleLoading = false);
 
     if (result.isSuccess) {
-      if (result.user != null && !result.user!.phoneVerified) {
-        Navigator.pushReplacementNamed(
-          context,
-          AppRoutes.verifyPhone,
-          arguments: result.user?.phone,
-        );
-      } else {
-        Navigator.pushReplacementNamed(context, AppRoutes.home);
-      }
+      Navigator.pushReplacementNamed(context, AppRoutes.home);
     } else if (result.isCancelled) {
       // User cancelled account selection - keep quiet without error banner
     } else {

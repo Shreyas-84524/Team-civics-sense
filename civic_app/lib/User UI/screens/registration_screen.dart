@@ -149,15 +149,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       // Brief pause to allow user to see success state, then navigate
       await Future.delayed(const Duration(milliseconds: 700));
       if (mounted) {
-        if (result.user != null && !result.user!.phoneVerified) {
-          Navigator.pushReplacementNamed(
-            context,
-            AppRoutes.verifyPhone,
-            arguments: result.user?.phone,
-          );
-        } else {
-          Navigator.pushReplacementNamed(context, AppRoutes.home);
-        }
+        Navigator.pushReplacementNamed(context, AppRoutes.home);
       }
     } else {
       setState(() {
@@ -183,15 +175,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     setState(() => _isGoogleLoading = false);
 
     if (result.isSuccess) {
-      if (result.user != null && !result.user!.phoneVerified) {
-        Navigator.pushReplacementNamed(
-          context,
-          AppRoutes.verifyPhone,
-          arguments: result.user?.phone,
-        );
-      } else {
-        Navigator.pushReplacementNamed(context, AppRoutes.home);
-      }
+      Navigator.pushReplacementNamed(context, AppRoutes.home);
     } else if (result.isCancelled) {
       // User cancelled Google selection
     } else {

@@ -61,7 +61,7 @@ class UserFirestoreMapper {
       languageCode: data['languageCode'] as String? ?? 'en',
       wardNumber: data['wardNumber'] as String? ?? 'Ward 14 (Central)',
       role: data['role'] as String? ?? 'citizen',
-      phoneVerified: data['phoneVerified'] as bool? ?? false,
+      phoneVerified: true,
       phoneVerifiedAt: phoneVerifiedAt,
     );
   }

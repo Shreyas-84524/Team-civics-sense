@@ -43,15 +43,20 @@ class AchievementLocalModel {
 
   /// Map from [AchievementLocalModel] -> Domain Model [CivicAchievement]
   CivicAchievement toDomain() {
+    IconData resolvedIcon = Icons.military_tech_rounded;
+    for (final def in CivicAchievement.defaultAchievements()) {
+      if (def.id == id || def.icon.codePoint == iconCodePoint) {
+        resolvedIcon = def.icon;
+        break;
+      }
+    }
+
     return CivicAchievement(
       id: id,
       title: title,
       description: description,
       howToUnlock: howToUnlock,
-      icon: IconData(
-        iconCodePoint,
-        fontFamily: iconFontFamily ?? 'MaterialIcons',
-      ),
+      icon: resolvedIcon,
       isUnlocked: isUnlocked,
       pointsRequired: pointsRequired,
       unlockedAt: unlockedAtEpochMs != null
@@ -99,6 +104,19 @@ class RewardItemLocalModel {
 
   /// Map from [RewardItemLocalModel] -> Domain Model [CivicRewardItem]
   CivicRewardItem toDomain() {
+    IconData resolvedIcon = Icons.card_giftcard_rounded;
+    if (iconCodePoint == Icons.local_offer_rounded.codePoint) {
+      resolvedIcon = Icons.local_offer_rounded;
+    } else if (iconCodePoint == Icons.local_cafe_rounded.codePoint) {
+      resolvedIcon = Icons.local_cafe_rounded;
+    } else if (iconCodePoint == Icons.directions_bus_rounded.codePoint) {
+      resolvedIcon = Icons.directions_bus_rounded;
+    } else if (iconCodePoint == Icons.confirmation_number_rounded.codePoint) {
+      resolvedIcon = Icons.confirmation_number_rounded;
+    } else if (iconCodePoint == Icons.shopping_bag_rounded.codePoint) {
+      resolvedIcon = Icons.shopping_bag_rounded;
+    }
+
     return CivicRewardItem(
       id: id,
       title: title,
@@ -106,10 +124,7 @@ class RewardItemLocalModel {
       description: description,
       pointsCost: pointsCost,
       expiryDate: expiryDate,
-      icon: IconData(
-        iconCodePoint,
-        fontFamily: iconFontFamily ?? 'MaterialIcons',
-      ),
+      icon: resolvedIcon,
     );
   }
 }

@@ -352,7 +352,7 @@ class AppRouter {
     }
   }
 
-  /// Helper to enforce Citizen authentication and phone verification on protected citizen routes.
+  /// Helper to enforce Citizen authentication on protected citizen routes.
   static Route<dynamic> _protectedCitizenRoute(Widget authenticatedScreen) {
     final citizenAuth = AuthServiceLocator.citizenAuth;
     final isAuth = citizenAuth.isAuthenticated;
@@ -362,30 +362,12 @@ class AppRouter {
       return MaterialPageRoute(builder: (_) => const LoginScreen());
     }
 
-    if (!user.phoneVerified) {
-      return MaterialPageRoute(
-        builder: (_) => PhoneVerificationScreen(initialPhone: user.phone),
-      );
-    }
-
     return MaterialPageRoute(builder: (_) => authenticatedScreen);
   }
 
-  /// Helper to guard Phone Verification screen against unauthenticated or already-verified access.
+  /// Helper to guard Phone Verification screen.
   static Route<dynamic> _protectedVerifyPhoneRoute(Widget verificationScreen) {
-    final citizenAuth = AuthServiceLocator.citizenAuth;
-    final isAuth = citizenAuth.isAuthenticated;
-    final user = citizenAuth.currentUser;
-
-    if (!isAuth || user == null) {
-      return MaterialPageRoute(builder: (_) => const LoginScreen());
-    }
-
-    if (user.phoneVerified) {
-      return MaterialPageRoute(builder: (_) => const MainNavigationScreen(initialIndex: 0));
-    }
-
-    return MaterialPageRoute(builder: (_) => verificationScreen);
+    return MaterialPageRoute(builder: (_) => const MainNavigationScreen(initialIndex: 0));
   }
 
   /// Helper to enforce Government authentication, account validity, and role route permissions.

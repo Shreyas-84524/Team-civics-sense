@@ -253,6 +253,10 @@ class _PhoneVerificationScreenState extends State<PhoneVerificationScreen> {
     }
   }
 
+  void _handleSkip() {
+    Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (route) => false);
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -379,6 +383,13 @@ class _PhoneVerificationScreenState extends State<PhoneVerificationScreen> {
                             onPressed: _handleSendOtp,
                             isLoading: _isLoading,
                           ),
+                          CivicFixSpacing.vSpaceMd,
+                          Center(
+                            child: TextButton(
+                              onPressed: _handleSkip,
+                              child: const Text('Skip Verification & Continue'),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -424,7 +435,7 @@ class _PhoneVerificationScreenState extends State<PhoneVerificationScreen> {
                         children: [
                           AuthTextField(
                             label: 'Verification Code',
-                            hintText: 'Enter 6-digit OTP',
+                            hintText: 'Enter 6-digit OTP (or use 123456)',
                             controller: _otpController,
                             keyboardType: TextInputType.number,
                             maxLength: 6,
@@ -447,6 +458,14 @@ class _PhoneVerificationScreenState extends State<PhoneVerificationScreen> {
                             isLoading: _isLoading,
                           ),
                           CivicFixSpacing.vSpaceMd,
+
+                          Center(
+                            child: TextButton(
+                              onPressed: _handleSkip,
+                              child: const Text('Skip Verification & Continue'),
+                            ),
+                          ),
+                          CivicFixSpacing.vSpaceSm,
 
                           // Resend OTP Action & Cooldown
                           Center(

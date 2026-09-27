@@ -13,9 +13,9 @@ class PhoneVerificationServiceLocator {
 
   /// Active Phone Verification Service instance.
   ///
-  /// Defaults to production [SupabasePhoneVerificationService].
+  /// Defaults to MockPhoneVerificationService on testing branch.
   static PhoneVerificationService get instance {
-    _instance ??= SupabasePhoneVerificationService();
+    _instance ??= MockPhoneVerificationService();
     return _instance!;
   }
 

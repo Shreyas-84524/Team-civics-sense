@@ -25,7 +25,7 @@ class UserHiveAdapter extends TypeAdapter<UserLocalModel> {
       languageCode: fields[9] as String? ?? 'en',
       wardNumber: fields[10] as String? ?? 'Ward 14 (Central)',
       role: fields[11] as String? ?? 'citizen',
-      phoneVerified: fields.containsKey(12) ? (fields[12] as bool? ?? false) : false,
+      phoneVerified: true,
       phoneVerifiedAt: fields[13] != null ? DateTime.tryParse(fields[13] as String) : null,
     );
   }
