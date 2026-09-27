@@ -24,13 +24,16 @@ import '../../User UI/screens/splash_screen.dart';
 import '../../User UI/widgets/settings/language_selector_sheet.dart';
 import '../../Govt UI/screens/auth/govt_forgot_password_screen.dart';
 import '../../Govt UI/screens/auth/govt_login_screen.dart';
+import '../../Govt UI/screens/common/govt_placeholder_screen.dart';
 import '../../Govt UI/screens/complaints/govt_complaint_assignment_screen.dart';
 import '../../Govt UI/screens/complaints/govt_complaint_details_screen.dart';
 import '../../Govt UI/screens/complaints/govt_status_update_screen.dart';
 import '../../Govt UI/screens/govt_shell_screen.dart';
+import '../../Govt UI/screens/showcase/government_ui_showcase_screen.dart';
 import '../auth/auth_service_locator.dart';
 import '../location/location_model.dart';
 import '../models/complaint_model.dart';
+import '../models/government_role.dart';
 import 'app_routes.dart';
 
 /// Centralized route generator for CivicFix application.
@@ -193,6 +196,67 @@ class AppRouter {
           GovtStatusUpdateScreen(complaint: complaint),
         );
 
+      // Phase 1 Canonical Government Routes
+      case AppRoutes.government:
+      case AppRoutes.governmentDashboard:
+        return _protectedGovtRoute(const GovtShellScreen(initialIndex: 0));
+
+      case AppRoutes.governmentComplaints:
+        return _protectedGovtRoute(const GovtShellScreen(initialIndex: 1));
+
+      case AppRoutes.governmentOperations:
+        return _protectedGovtRoute(
+          const GovtPlaceholderScreen(
+            title: 'Municipal Operations & Field Crew',
+            subtitle: 'Dispatch and workload tracking for departmental crew members',
+            icon: Icons.engineering_rounded,
+            moduleName: 'Operations',
+            navIndex: 5,
+          ),
+        );
+
+      case AppRoutes.governmentAnalytics:
+        return _protectedGovtRoute(const GovtShellScreen(initialIndex: 3));
+
+      case AppRoutes.governmentEscalations:
+        return _protectedGovtRoute(
+          const GovtPlaceholderScreen(
+            title: 'Statutory SLA Escalations',
+            subtitle: 'Supervisory review queue for grievances exceeding statutory deadlines',
+            icon: Icons.priority_high_rounded,
+            moduleName: 'Escalations',
+            navIndex: 6,
+          ),
+        );
+
+      case AppRoutes.governmentStaff:
+        return _protectedGovtRoute(
+          const GovtPlaceholderScreen(
+            title: 'Municipal Officers & Field Roster',
+            subtitle: 'Departmental staff, designations, and supervisory hierarchies',
+            icon: Icons.people_rounded,
+            moduleName: 'Staff',
+            navIndex: 7,
+          ),
+        );
+
+      case AppRoutes.governmentAudit:
+        return _protectedGovtRoute(
+          const GovtPlaceholderScreen(
+            title: 'Administrative Audit & Security Logs',
+            subtitle: 'Immutable record of municipal actions, reassignments, and state transitions',
+            icon: Icons.receipt_long_rounded,
+            moduleName: 'Audit Logs',
+            navIndex: 8,
+          ),
+        );
+
+      case AppRoutes.governmentSettings:
+        return _protectedGovtRoute(const GovtShellScreen(initialIndex: 4));
+
+      case AppRoutes.govtShowcase:
+        return MaterialPageRoute(builder: (_) => const GovernmentUiShowcaseScreen());
+
       default:
         return _errorRoute(settings.name);
     }
@@ -239,7 +303,10 @@ class AppRouter {
     final govtAuth = AuthServiceLocator.govtAuth;
     final isAuth = govtAuth.isAuthenticated;
     final role = govtAuth.currentUser?.role;
-    final isAuthorizedGovt = isAuth && (role == 'government' || role == 'admin');
+    final isAuthorizedGovt = isAuth &&
+        (role == 'government' ||
+            role == 'admin' ||
+            GovernmentRole.allRoleIds.contains(role));
 
     if (!isAuthorizedGovt) {
       return MaterialPageRoute(builder: (_) => const GovtLoginScreen());
