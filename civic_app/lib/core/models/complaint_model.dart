@@ -193,6 +193,85 @@ extension SyncStatusExt on SyncStatus {
   bool get isFailed => this == SyncStatus.failed;
 }
 
+enum ComplaintRoutingStatus {
+  unassigned,
+  assigned,
+  reassignmentRequested,
+  transferred,
+  inProgress,
+  resolved;
+
+  String get id {
+    switch (this) {
+      case ComplaintRoutingStatus.unassigned:
+        return 'unassigned';
+      case ComplaintRoutingStatus.assigned:
+        return 'assigned';
+      case ComplaintRoutingStatus.reassignmentRequested:
+        return 'reassignment_requested';
+      case ComplaintRoutingStatus.transferred:
+        return 'transferred';
+      case ComplaintRoutingStatus.inProgress:
+        return 'in_progress';
+      case ComplaintRoutingStatus.resolved:
+        return 'resolved';
+    }
+  }
+
+  static ComplaintRoutingStatus fromString(String? val) {
+    if (val == null) return ComplaintRoutingStatus.assigned;
+    switch (val.toLowerCase().trim()) {
+      case 'unassigned':
+        return ComplaintRoutingStatus.unassigned;
+      case 'reassignment_requested':
+      case 'reassignmentrequested':
+        return ComplaintRoutingStatus.reassignmentRequested;
+      case 'transferred':
+        return ComplaintRoutingStatus.transferred;
+      case 'in_progress':
+      case 'inprogress':
+        return ComplaintRoutingStatus.inProgress;
+      case 'resolved':
+        return ComplaintRoutingStatus.resolved;
+      case 'assigned':
+      default:
+        return ComplaintRoutingStatus.assigned;
+    }
+  }
+}
+
+enum ComplaintAssignmentStatus {
+  unassigned,
+  leadAssigned,
+  crewAssigned;
+
+  String get id {
+    switch (this) {
+      case ComplaintAssignmentStatus.unassigned:
+        return 'unassigned';
+      case ComplaintAssignmentStatus.leadAssigned:
+        return 'lead_assigned';
+      case ComplaintAssignmentStatus.crewAssigned:
+        return 'crew_assigned';
+    }
+  }
+
+  static ComplaintAssignmentStatus fromString(String? val) {
+    if (val == null) return ComplaintAssignmentStatus.unassigned;
+    switch (val.toLowerCase().trim()) {
+      case 'lead_assigned':
+      case 'leadassigned':
+        return ComplaintAssignmentStatus.leadAssigned;
+      case 'crew_assigned':
+      case 'crewassigned':
+        return ComplaintAssignmentStatus.crewAssigned;
+      case 'unassigned':
+      default:
+        return ComplaintAssignmentStatus.unassigned;
+    }
+  }
+}
+
 class TimelineEvent {
   final String title;
   final String description;
@@ -235,12 +314,26 @@ class ComplaintModel {
   final AiAuthenticityResult? aiAuthenticity;
   final AiAnalysisStatus aiAnalysisStatus;
 
-  String get effectiveDepartment => departmentName ?? DepartmentHelper.getDepartmentName(category);
+  // Phase 2 BMC Matrix Hierarchical Fields
+  final String? wardId;
+  final String? assignedDepartmentId;
+  final String? assignedDepartmentLeadId;
+  final String? assignedCrewMemberId;
+  final ComplaintRoutingStatus routingStatus;
+  final ComplaintAssignmentStatus assignmentStatus;
+  final DateTime slaStartedAt;
+  final DateTime originalCreatedAt;
+  final DateTime? currentDepartmentAssignedAt;
+  final DateTime? lastReassignedAt;
+  final int reassignmentCount;
+
+  String get effectiveDepartment =>
+      departmentName ?? assignedDepartmentId ?? DepartmentHelper.getDepartmentName(category);
 
   bool get isOfflineDraft => syncStatus == SyncStatus.pending;
   bool get hasAiAuthenticity => aiAuthenticity != null;
 
-  const ComplaintModel({
+  ComplaintModel({
     required this.id,
     this.citizenId = 'user_citizen_001',
     required this.ticketNumber,
@@ -265,7 +358,29 @@ class ComplaintModel {
     this.serverId,
     this.aiAuthenticity,
     this.aiAnalysisStatus = AiAnalysisStatus.pending,
-  });
+    this.wardId,
+    this.assignedDepartmentId,
+    this.assignedDepartmentLeadId,
+    this.assignedCrewMemberId,
+    ComplaintRoutingStatus? routingStatus,
+    ComplaintAssignmentStatus? assignmentStatus,
+    DateTime? slaStartedAt,
+    DateTime? originalCreatedAt,
+    this.currentDepartmentAssignedAt,
+    this.lastReassignedAt,
+    this.reassignmentCount = 0,
+  })  : routingStatus = routingStatus ??
+            (assignedTo != null || assignedDepartmentLeadId != null
+                ? ComplaintRoutingStatus.assigned
+                : ComplaintRoutingStatus.unassigned),
+        assignmentStatus = assignmentStatus ??
+            (assignedCrewMemberId != null
+                ? ComplaintAssignmentStatus.crewAssigned
+                : (assignedDepartmentLeadId != null || assignedTo != null
+                    ? ComplaintAssignmentStatus.leadAssigned
+                    : ComplaintAssignmentStatus.unassigned)),
+        slaStartedAt = slaStartedAt ?? createdAt,
+        originalCreatedAt = originalCreatedAt ?? createdAt;
 
   ComplaintModel copyWith({
     String? id,
@@ -292,6 +407,18 @@ class ComplaintModel {
     String? serverId,
     AiAuthenticityResult? aiAuthenticity,
     AiAnalysisStatus? aiAnalysisStatus,
+    String? wardId,
+    String? assignedDepartmentId,
+    String? assignedDepartmentLeadId,
+    String? assignedCrewMemberId,
+    bool clearAssignedCrew = false,
+    ComplaintRoutingStatus? routingStatus,
+    ComplaintAssignmentStatus? assignmentStatus,
+    DateTime? slaStartedAt,
+    DateTime? originalCreatedAt,
+    DateTime? currentDepartmentAssignedAt,
+    DateTime? lastReassignedAt,
+    int? reassignmentCount,
   }) {
     return ComplaintModel(
       id: id ?? this.id,
@@ -318,6 +445,20 @@ class ComplaintModel {
       serverId: serverId ?? this.serverId,
       aiAuthenticity: aiAuthenticity ?? this.aiAuthenticity,
       aiAnalysisStatus: aiAnalysisStatus ?? this.aiAnalysisStatus,
+      wardId: wardId ?? this.wardId,
+      assignedDepartmentId: assignedDepartmentId ?? this.assignedDepartmentId,
+      assignedDepartmentLeadId: assignedDepartmentLeadId ?? this.assignedDepartmentLeadId,
+      assignedCrewMemberId:
+          clearAssignedCrew ? null : (assignedCrewMemberId ?? this.assignedCrewMemberId),
+      routingStatus: routingStatus ?? this.routingStatus,
+      assignmentStatus: assignmentStatus ?? this.assignmentStatus,
+      slaStartedAt: slaStartedAt ?? this.slaStartedAt,
+      originalCreatedAt: originalCreatedAt ?? this.originalCreatedAt,
+      currentDepartmentAssignedAt:
+          currentDepartmentAssignedAt ?? this.currentDepartmentAssignedAt,
+      lastReassignedAt: lastReassignedAt ?? this.lastReassignedAt,
+      reassignmentCount: reassignmentCount ?? this.reassignmentCount,
     );
   }
 }
+

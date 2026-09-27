@@ -100,39 +100,36 @@ class _GovtComplaintAssignmentScreenState extends State<GovtComplaintAssignmentS
     final officers = await _repository.getOfficers(departmentId: _selectedDeptId);
     if (mounted) {
       setState(() {
-        _officers = officers.isNotEmpty ? officers : GovtOfficerModel.defaultOfficers;
-        if (_officers.isNotEmpty) {
-          _selectedOfficerId = _officers.first.id;
-        }
+        _officers = officers;
+        _selectedOfficerId = _officers.isNotEmpty ? _officers.first.id : null;
       });
     }
   }
 
   void _promptAssignConfirmation() {
     final c = _complaint;
-    if (c == null || _selectedOfficerId == null) return;
+    if (c == null) return;
 
-    final selectedOfficer = _officers.firstWhere(
-      (o) => o.id == _selectedOfficerId,
-      orElse: () => _officers.first,
-    );
     final dept = GovtDepartmentModel.defaultDepartments.firstWhere(
       (d) => d.id == _selectedDeptId,
       orElse: () => GovtDepartmentModel.defaultDepartments.first,
     );
+    final officerName = _selectedOfficerId != null && _officers.any((o) => o.id == _selectedOfficerId)
+        ? _officers.firstWhere((o) => o.id == _selectedOfficerId).name
+        : '${dept.name} Operations Crew';
 
     showDialog(
       context: context,
       builder: (ctx) => GovtConfirmationDialog(
         title: 'Confirm Crew Dispatch',
-        message: 'Are you sure you want to assign grievance ${c.ticketNumber} to ${selectedOfficer.name} in ${dept.name}?',
+        message: 'Are you sure you want to assign grievance ${c.ticketNumber} to $officerName in ${dept.name}?',
         confirmLabel: 'Confirm & Dispatch',
-        onConfirm: () => _executeAssign(selectedOfficer),
+        onConfirm: () => _executeAssign(officerName),
       ),
     );
   }
 
-  Future<void> _executeAssign(GovtOfficerModel selectedOfficer) async {
+  Future<void> _executeAssign(String assignedTarget) async {
     final c = _complaint;
     if (c == null) return;
 
@@ -141,7 +138,7 @@ class _GovtComplaintAssignmentScreenState extends State<GovtComplaintAssignmentS
     await _repository.assignComplaint(
       complaintId: c.id,
       departmentId: _selectedDeptId,
-      officerName: selectedOfficer.name,
+      officerName: assignedTarget,
       assignmentNote: _noteController.text.trim(),
     );
 
@@ -150,7 +147,7 @@ class _GovtComplaintAssignmentScreenState extends State<GovtComplaintAssignmentS
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Assigned grievance ${c.ticketNumber} to ${selectedOfficer.name}.'),
+        content: Text('Assigned grievance ${c.ticketNumber} to $assignedTarget.'),
         backgroundColor: GovtThemeTokens.secondary,
       ),
     );
@@ -263,7 +260,7 @@ class _GovtComplaintAssignmentScreenState extends State<GovtComplaintAssignmentS
                     style: CivicFixTypography.bodySmallMedium.copyWith(fontWeight: FontWeight.w700),
                   ),
                   CivicFixSpacing.vSpaceXs,
-                  DropdownButtonFormField<String>(
+                  DropdownButtonFormField<String?>(
                     initialValue: _selectedOfficerId,
                     isExpanded: true,
                     decoration: InputDecoration(
@@ -274,16 +271,21 @@ class _GovtComplaintAssignmentScreenState extends State<GovtComplaintAssignmentS
                         borderSide: const BorderSide(color: GovtThemeTokens.border),
                       ),
                     ),
-                    items: _officers.map((off) {
-                      return DropdownMenuItem<String>(
-                        value: off.id,
-                        child: Text('${off.name} (${off.designation})', maxLines: 1, overflow: TextOverflow.ellipsis, style: CivicFixTypography.bodySmall),
-                      );
-                    }).toList(),
+                    items: _officers.isEmpty
+                        ? const [
+                            DropdownMenuItem<String?>(
+                              value: null,
+                              child: Text('Department Operations Crew', maxLines: 1, overflow: TextOverflow.ellipsis, style: CivicFixTypography.bodySmall),
+                            ),
+                          ]
+                        : _officers.map((off) {
+                            return DropdownMenuItem<String?>(
+                              value: off.id,
+                              child: Text('${off.name} (${off.designation})', maxLines: 1, overflow: TextOverflow.ellipsis, style: CivicFixTypography.bodySmall),
+                            );
+                          }).toList(),
                     onChanged: (val) {
-                      if (val != null) {
-                        setState(() => _selectedOfficerId = val);
-                      }
+                      setState(() => _selectedOfficerId = val);
                     },
                   ),
                   CivicFixSpacing.vSpaceMd,

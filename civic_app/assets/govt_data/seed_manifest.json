@@ -1,0 +1,17 @@
+{
+  "generatedAt": "2026-09-27T05:08:42.023Z",
+  "version": "2.0.0",
+  "city": "Mumbai",
+  "organization": "Brihanmumbai Municipal Corporation (BMC)",
+  "governmentSuperAdmins": 1,
+  "zonalDMCs": 7,
+  "centralDepartmentHODs": 18,
+  "wardOfficers": 24,
+  "wardDepartmentLeads": 432,
+  "departmentCrew": 2160,
+  "totalGovernmentUsers": 2642,
+  "wards": 24,
+  "zones": 7,
+  "departments": 18,
+  "wardDepartments": 432
+}

@@ -4,6 +4,121 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // =========================================================================
+    // ASSUMED DATA MODEL & ARCHITECTURE: PHASE 2 BMC GOVERNMENT HIERARCHY
+    // =========================================================================
+    //
+    // Collections:
+    // 1. users/{userId}
+    //    - role: 'citizen' (immutable by client)
+    //    - fullName: string (1-100)
+    //    - email: string
+    //    - civicPoints: int (0 or 20 upon registration, server-authoritative)
+    //    - reportsSubmitted: int (0 initially)
+    //    - reportsResolved: int (0 initially)
+    //    - phoneVerified: bool (server-authoritative)
+    //    - phoneVerifiedAt: timestamp (server-authoritative)
+    //    - Subcollection: devices/{deviceId} (FCM tokens, owner read/write)
+    //
+    // 2. government_users/{userId}
+    //    - role: 'government_super_admin' | 'zonal_dmc' | 'central_department_hod' |
+    //            'ward_officer' | 'ward_department_lead' | 'department_crew'
+    //    - employeeId: string
+    //    - fullName: string
+    //    - email: string
+    //    - phone: string
+    //    - wardId: string (optional)
+    //    - zoneId: string (optional)
+    //    - departmentId: string (optional)
+    //    - active: bool
+    //    - permissions: list of string
+    //
+    // 3. complaints/{complaintId}
+    //    - citizenId: string (immutable owner UID)
+    //    - ticketNumber: string (immutable)
+    //    - title: string (1-200)
+    //    - description: string (1-2000)
+    //    - status: 'reported' | 'verified' | 'assigned' | 'inProgress' | 'resolved' | 'rejected'
+    //    - priority: 'low' | 'medium' | 'high' | 'emergency'
+    //    - location: map (latitude, longitude, address)
+    //    - createdAt: timestamp (immutable)
+    //    - updatedAt: timestamp
+    //    - originalCreatedAt: timestamp (strictly immutable)
+    //    - slaStartedAt: timestamp (strictly immutable)
+    //    - assignedDepartmentId: string (optional)
+    //    - assignedDepartmentLeadId: string (optional)
+    //    - assignedCrewMemberId: string (optional)
+    //    - routingStatus: string (optional)
+    //    - Subcollections:
+    //      - updates/{updateId} (immutable audit timeline)
+    //      - upvotes/{userId} (citizen upvote tracking)
+    //
+    // 4. zones/{zoneId}
+    //    - zoneId: string (Zone 1 through Zone 7)
+    //    - name: string
+    //    - administrativeOffice: string
+    //
+    // 5. wards/{wardId}
+    //    - wardId: string (Ward A through Ward T)
+    //    - zoneId: string
+    //    - name: string
+    //    - officeAddress: string
+    //
+    // 6. departments/{departmentId}
+    //    - departmentId: string (18 BMC civic departments)
+    //    - name: string
+    //    - displayName: string
+    //
+    // 7. ward_departments/{wardDeptId}
+    //    - wardId: string
+    //    - departmentId: string
+    //    - departmentLeadId: string
+    //    - crewIds: list of string
+    //
+    // 8. complaint_routing_tickets/{ticketId}
+    //    - complaintId: string (immutable)
+    //    - ticketNumber: string (immutable)
+    //    - wardId: string (immutable)
+    //    - sourceDepartmentId: string (immutable)
+    //    - sourceLeadId: string (immutable)
+    //    - suggestedDepartmentId: string (immutable)
+    //    - reason: string (immutable)
+    //    - status: 'pending' -> 'approved' | 'rejected' | 'cancelled'
+    //    - reviewedBy: string (optional)
+    //    - reviewNotes: string (optional)
+    //    - createdAt: timestamp (immutable)
+    //    - reviewedAt: timestamp (optional)
+    //
+    // 9. government_audit_logs/{logId}
+    //    - complaintId: string
+    //    - action: string
+    //    - actorId: string
+    //    - actorRole: string
+    //    - actorName: string
+    //    - wardId: string (optional)
+    //    - departmentId: string (optional)
+    //    - details: map
+    //    - timestamp: timestamp
+    //
+    // 10. notifications/{notificationId}
+    //     - userId: string (owner UID)
+    //     - isRead: bool
+    //
+    // 11. rewards/{userId}
+    //     - Server-authoritative gamification points and rewards catalog
+    //
+    // 12. hazards/{hazardId}
+    //     - complaintId: string
+    //     - title: string
+    //     - latitude: number
+    //     - longitude: number
+    //     - severity: 'low' | 'medium' | 'high' | 'critical'
+    //     - upvotes: int
+    //
+    // 13. phoneIndex/{phone}
+    //     - Server-authoritative uniqueness index (read/write: false)
+    // =========================================================================
+
+    // =========================================================================
     // AUTHENTICATION & ROLE HELPER FUNCTIONS
     // =========================================================================
 
@@ -17,13 +132,28 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    /// Resolves the user's role from auth token custom claims first, falling back to the user document.
+    /// Checks if a given role string is a recognized Phase 2 BMC government role or legacy role.
+    function isGovernmentRole(role) {
+      return role in [
+        'government',
+        'government_super_admin',
+        'zonal_dmc',
+        'central_department_hod',
+        'ward_officer',
+        'ward_department_lead',
+        'department_crew'
+      ];
+    }
+
+    /// Resolves the user's role from auth token custom claims first, falling back to user documents.
     function userRole() {
       return request.auth.token.role != null
         ? request.auth.token.role
         : (exists(/databases/$(database)/documents/users/$(request.auth.uid))
             ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
-            : 'citizen');
+            : (exists(/databases/$(database)/documents/government_users/$(request.auth.uid))
+                ? get(/databases/$(database)/documents/government_users/$(request.auth.uid)).data.role
+                : 'citizen'));
     }
 
     /// Checks if the user has the citizen role.
@@ -31,14 +161,20 @@ service cloud.firestore {
       return isSignedIn() && userRole() == 'citizen';
     }
 
-    /// Checks if the user is an authorized government officer or administrator.
+    /// Checks if the user is an authorized government officer across any hierarchical tier.
     function isGovernment() {
       return isSignedIn() && (
-        request.auth.token.role == 'government' ||
-        request.auth.token.role == 'admin' ||
+        (request.auth.token.role != null && isGovernmentRole(request.auth.token.role)) ||
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'government')
+         isGovernmentRole(get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role)) ||
+        (exists(/databases/$(database)/documents/government_users/$(request.auth.uid)) &&
+         isGovernmentRole(get(/databases/$(database)/documents/government_users/$(request.auth.uid)).data.role))
       );
+    }
+
+    /// Checks if the authenticated user has the apex super admin role.
+    function isSuperAdmin() {
+      return isSignedIn() && request.auth.token.role == 'government_super_admin';
     }
 
     // =========================================================================
@@ -119,7 +255,18 @@ service cloud.firestore {
     }
 
     // =========================================================================
-    // 2. COMPLAINTS COLLECTION (complaints/{complaintId})
+    // 2. GOVERNMENT USERS COLLECTION (government_users/{userId})
+    // =========================================================================
+    match /government_users/{userId} {
+      // Government personnel can read officer profiles; officers can read their own profile
+      allow read: if isSignedIn() && (isGovernment() || isOwner(userId));
+
+      // Government user profiles and permissions can only be provisioned/updated by Super Admin
+      allow write: if isSignedIn() && request.auth.token.role == 'government_super_admin';
+    }
+
+    // =========================================================================
+    // 3. COMPLAINTS COLLECTION (complaints/{complaintId})
     // =========================================================================
     match /complaints/{complaintId} {
       // Citizen can read their own; government can read all; public can read active hazard complaints
@@ -169,13 +316,16 @@ service cloud.firestore {
             'createdAt'
           ])
         ) ||
-        // Case C: Government officer updating workflow, status, assignment, and notes
+        // Case C: Government officer updating workflow, status, assignment, routing, and notes
+        // Strict Invariant: citizenId, ticketNumber, createdAt, originalCreatedAt, slaStartedAt are immutable
         (
           isGovernment() &&
           !request.resource.data.diff(resource.data).affectedKeys().hasAny([
             'citizenId',
             'ticketNumber',
-            'createdAt'
+            'createdAt',
+            'originalCreatedAt',
+            'slaStartedAt'
           ])
         )
       );
@@ -184,7 +334,7 @@ service cloud.firestore {
       allow delete: if isGovernment();
 
       // =======================================================================
-      // 3. COMPLAINT UPDATES (complaints/{complaintId}/updates/{updateId})
+      // 3.1 COMPLAINT UPDATES (complaints/{complaintId}/updates/{updateId})
       // =======================================================================
       match /updates/{updateId} {
         // Read timeline: complaint owner or government personnel
@@ -215,7 +365,7 @@ service cloud.firestore {
       }
 
       // =======================================================================
-      // 3.1 COMPLAINT UPVOTES (complaints/{complaintId}/upvotes/{userId})
+      // 3.2 COMPLAINT UPVOTES (complaints/{complaintId}/upvotes/{userId})
       // =======================================================================
       match /upvotes/{userId} {
         // Authenticated users can read upvotes
@@ -228,18 +378,97 @@ service cloud.firestore {
     }
 
     // =========================================================================
-    // 4. DEPARTMENTS COLLECTION (departments/{departmentId})
+    // 4. BMC ZONES COLLECTION (zones/{zoneId})
+    // =========================================================================
+    match /zones/{zoneId} {
+      // Authenticated users can read BMC zone topology
+      allow read: if isSignedIn();
+
+      // Administrative reference metadata: Super Admin managed
+      allow write: if isSignedIn() && request.auth.token.role == 'government_super_admin';
+    }
+
+    // =========================================================================
+    // 5. BMC WARDS COLLECTION (wards/{wardId})
+    // =========================================================================
+    match /wards/{wardId} {
+      // Authenticated users can read BMC ward definitions
+      allow read: if isSignedIn();
+
+      // Administrative reference metadata: Super Admin managed
+      allow write: if isSignedIn() && request.auth.token.role == 'government_super_admin';
+    }
+
+    // =========================================================================
+    // 6. DEPARTMENTS COLLECTION (departments/{departmentId})
     // =========================================================================
     match /departments/{departmentId} {
       // Authenticated users (citizens & govt) can read department metadata
       allow read: if isSignedIn();
 
-      // Department configuration is server/admin managed
-      allow write: if false;
+      // Department configuration is server/admin managed (super admin only)
+      allow write: if isSignedIn() && request.auth.token.role == 'government_super_admin';
     }
 
     // =========================================================================
-    // 5. NOTIFICATIONS COLLECTION (notifications/{notificationId})
+    // 7. BMC WARD DEPARTMENTS (ward_departments/{wardDeptId})
+    // =========================================================================
+    match /ward_departments/{wardDeptId} {
+      // Authenticated users can read ward-department operational units
+      allow read: if isSignedIn();
+
+      // Administrative reference metadata: Super Admin managed
+      allow write: if isSignedIn() && request.auth.token.role == 'government_super_admin';
+    }
+
+    // =========================================================================
+    // 8. COMPLAINT ROUTING TICKETS (complaint_routing_tickets/{ticketId})
+    // =========================================================================
+    match /complaint_routing_tickets/{ticketId} {
+      // Read: authorized government personnel only
+      allow read: if isSignedIn() && isGovernment();
+
+      // Create: Ward Department Leads / Government officers raising reassignment tickets with pending status
+      allow create: if isSignedIn() &&
+        isGovernment() &&
+        request.resource.data.status == 'pending';
+
+      // Update: Ward Officer of the ward, Super Admin, or legacy government role reviewing pending tickets
+      allow update: if isSignedIn() &&
+        isGovernment() &&
+        (
+          request.auth.token.role == 'government_super_admin' ||
+          (request.auth.token.role == 'ward_officer' && (
+            !('wardId' in request.auth.token) ||
+            request.auth.token.wardId == null ||
+            request.auth.token.wardId == resource.data.wardId
+          )) ||
+          request.auth.token.role == 'government'
+        ) &&
+        resource.data.status == 'pending' &&
+        request.resource.data.status in ['approved', 'rejected', 'cancelled'];
+
+      // Deletion is strictly prohibited (immutable audit history)
+      allow delete: if false;
+    }
+
+    // =========================================================================
+    // 9. GOVERNMENT AUDIT LOGS (government_audit_logs/{logId})
+    // =========================================================================
+    match /government_audit_logs/{logId} {
+      // Read: authorized government personnel only
+      allow read: if isSignedIn() && isGovernment();
+
+      // Create: authorized government personnel logging administrative actions
+      allow create: if isSignedIn() && isGovernment();
+
+      // Update / Delete: strictly prohibited to guarantee tamper-proof audit trail
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // =========================================================================
+    // 10. NOTIFICATIONS COLLECTION (notifications/{notificationId})
     // =========================================================================
     match /notifications/{notificationId} {
       // Users can only access their own notifications
@@ -259,7 +488,7 @@ service cloud.firestore {
     }
 
     // =========================================================================
-    // 6. REWARDS COLLECTION (rewards/{userId})
+    // 11. REWARDS COLLECTION (rewards/{userId})
     // =========================================================================
     match /rewards/{userId} {
       // Citizens can only view their own rewards and achievements
@@ -270,7 +499,7 @@ service cloud.firestore {
     }
 
     // =========================================================================
-    // 7. HAZARDS COLLECTION (hazards/{hazardId})
+    // 12. HAZARDS COLLECTION (hazards/{hazardId})
     // =========================================================================
     match /hazards/{hazardId} {
       // Live Hazard Map: all authenticated users can read sanitized hazard points (no citizen PII)
@@ -304,7 +533,7 @@ service cloud.firestore {
     }
 
     // =========================================================================
-    // 8. PHONE INDEX COLLECTION (phoneIndex/{phone})
+    // 13. PHONE INDEX COLLECTION (phoneIndex/{phone})
     // =========================================================================
     match /phoneIndex/{phone} {
       // Strictly server-authoritative via Cloud Functions Admin SDK.

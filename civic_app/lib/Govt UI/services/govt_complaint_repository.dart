@@ -600,12 +600,8 @@ class MockGovtComplaintRepository implements GovtComplaintRepository {
 
   @override
   Future<List<GovtOfficerModel>> getOfficers({String? departmentId}) async {
-    if (departmentId == null || departmentId.isEmpty) {
-      return GovtOfficerModel.defaultOfficers;
-    }
-    return GovtOfficerModel.defaultOfficers
-        .where((o) => o.departmentId == departmentId)
-        .toList();
+    // Dynamic personnel will be retrieved from the hierarchical BMC backend in Phase 2
+    return const [];
   }
 
   void _notify() {

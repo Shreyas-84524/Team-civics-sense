@@ -106,6 +106,10 @@ class GovtDepartmentModel {
 }
 
 /// Assigned Field Officer / Maintenance Crew Model.
+///
+/// NOTE: Legacy hardcoded mock officer records (off_101..off_109) have been removed
+/// in Phase 1 cleanup. In Phase 2, dynamic municipal personnel will be loaded from
+/// the new hierarchical BMC backend.
 class GovtOfficerModel {
   final String id;
   final String name;
@@ -125,87 +129,6 @@ class GovtOfficerModel {
     this.isAvailable = true,
   });
 
-  static const List<GovtOfficerModel> defaultOfficers = [
-    GovtOfficerModel(
-      id: 'off_101',
-      name: 'Officer A (Ramesh Patel)',
-      departmentId: 'dept_roads',
-      designation: 'Assistant Executive Engineer',
-      phone: '+91 98201 11223',
-      assignedZone: 'Ward 14 (Central)',
-      isAvailable: true,
-    ),
-    GovtOfficerModel(
-      id: 'off_102',
-      name: 'Officer B (Suresh More)',
-      departmentId: 'dept_drainage',
-      designation: 'Junior Engineer',
-      phone: '+91 98202 33445',
-      assignedZone: 'Ward 14 (Central)',
-      isAvailable: true,
-    ),
-    GovtOfficerModel(
-      id: 'off_103',
-      name: 'Officer C (Pooja Kulkarni)',
-      departmentId: 'dept_sanitation',
-      designation: 'Sanitary Inspector',
-      phone: '+91 98203 55667',
-      assignedZone: 'Ward 14 (Central)',
-      isAvailable: true,
-    ),
-    GovtOfficerModel(
-      id: 'off_104',
-      name: 'Officer D (Vijay Rane)',
-      departmentId: 'dept_water',
-      designation: 'Sub-Divisional Officer',
-      phone: '+91 98204 77889',
-      assignedZone: 'Ward 14 (Central)',
-      isAvailable: true,
-    ),
-    GovtOfficerModel(
-      id: 'off_105',
-      name: 'Officer E (Anil Jadhav)',
-      departmentId: 'dept_electrical',
-      designation: 'Field Technician Lead',
-      phone: '+91 98205 99001',
-      assignedZone: 'Ward 14 (Central)',
-      isAvailable: true,
-    ),
-    GovtOfficerModel(
-      id: 'off_106',
-      name: 'Officer F (Meera Joshi)',
-      departmentId: 'dept_waste',
-      designation: 'Waste Logistics Supervisor',
-      phone: '+91 98206 12345',
-      assignedZone: 'Ward 14 (Central)',
-      isAvailable: true,
-    ),
-    GovtOfficerModel(
-      id: 'off_107',
-      name: 'Officer G (Karan Verma)',
-      departmentId: 'dept_public_works',
-      designation: 'Civil Superintendent',
-      phone: '+91 98207 23456',
-      assignedZone: 'Ward 14 (Central)',
-      isAvailable: true,
-    ),
-    GovtOfficerModel(
-      id: 'off_108',
-      name: 'Officer H (Sunil Shinde)',
-      departmentId: 'dept_traffic',
-      designation: 'Traffic Safety Officer',
-      phone: '+91 98208 34567',
-      assignedZone: 'Ward 14 (Central)',
-      isAvailable: true,
-    ),
-    GovtOfficerModel(
-      id: 'off_109',
-      name: 'Officer I (Dr. N. Deshmukh)',
-      departmentId: 'dept_manual_review',
-      designation: 'Senior Triage Officer',
-      phone: '+91 98209 45678',
-      assignedZone: 'Central Headquarters',
-      isAvailable: true,
-    ),
-  ];
+  /// Deprecated: legacy mock records removed in Phase 1 cleanup.
+  static const List<GovtOfficerModel> defaultOfficers = [];
 }

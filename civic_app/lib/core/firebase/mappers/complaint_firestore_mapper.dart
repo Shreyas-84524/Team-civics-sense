@@ -29,6 +29,18 @@ class ComplaintFirestoreMapper {
       if (complaint.aiAuthenticity != null)
         'aiAuthenticity': complaint.aiAuthenticity!.toMap(),
       'aiAnalysisStatus': complaint.aiAnalysisStatus.name,
+      // Phase 2 BMC Matrix Hierarchical Fields
+      'wardId': complaint.wardId,
+      'assignedDepartmentId': complaint.assignedDepartmentId,
+      'assignedDepartmentLeadId': complaint.assignedDepartmentLeadId,
+      'assignedCrewMemberId': complaint.assignedCrewMemberId,
+      'routingStatus': complaint.routingStatus.id,
+      'assignmentStatus': complaint.assignmentStatus.id,
+      'slaStartedAt': FirestoreMapperHelpers.dateTimeToTimestamp(complaint.slaStartedAt),
+      'originalCreatedAt': FirestoreMapperHelpers.dateTimeToTimestamp(complaint.originalCreatedAt),
+      'currentDepartmentAssignedAt': FirestoreMapperHelpers.dateTimeToTimestamp(complaint.currentDepartmentAssignedAt),
+      'lastReassignedAt': FirestoreMapperHelpers.dateTimeToTimestamp(complaint.lastReassignedAt),
+      'reassignmentCount': complaint.reassignmentCount,
     };
 
     if (isCreate) {
@@ -54,6 +66,8 @@ class ComplaintFirestoreMapper {
       parsedAuthenticity = AiAuthenticityResult.fromMap(Map<String, dynamic>.from(data['aiAuthenticity'] as Map));
     }
 
+    final createdAt = FirestoreMapperHelpers.timestampToDateTime(data['createdAt']) ?? DateTime.now();
+
     return ComplaintModel(
       id: documentId,
       citizenId: data['citizenId'] as String? ?? '',
@@ -65,7 +79,7 @@ class ComplaintFirestoreMapper {
       priority: FirestoreMapperHelpers.parseComplaintPriority(data['priority'] as String?),
       location: FirestoreMapperHelpers.locationFromMap(data['location']),
       imageUrls: List<String>.from(data['imageUrls'] as List<dynamic>? ?? const []),
-      createdAt: FirestoreMapperHelpers.timestampToDateTime(data['createdAt']) ?? DateTime.now(),
+      createdAt: createdAt,
       updatedAt: FirestoreMapperHelpers.timestampToDateTime(data['updatedAt']) ?? DateTime.now(),
       timeline: timeline,
       upvotes: data['upvotes'] as int? ?? 0,
@@ -79,8 +93,21 @@ class ComplaintFirestoreMapper {
       localId: data['localId'] as String?,
       aiAuthenticity: parsedAuthenticity,
       aiAnalysisStatus: AiAnalysisStatus.fromString(data['aiAnalysisStatus'] as String?),
+      // Phase 2 BMC Matrix Hierarchical Fields
+      wardId: data['wardId'] as String?,
+      assignedDepartmentId: data['assignedDepartmentId'] as String? ?? data['departmentId'] as String?,
+      assignedDepartmentLeadId: data['assignedDepartmentLeadId'] as String?,
+      assignedCrewMemberId: data['assignedCrewMemberId'] as String?,
+      routingStatus: ComplaintRoutingStatus.fromString(data['routingStatus'] as String?),
+      assignmentStatus: ComplaintAssignmentStatus.fromString(data['assignmentStatus'] as String?),
+      slaStartedAt: FirestoreMapperHelpers.timestampToDateTime(data['slaStartedAt']) ?? createdAt,
+      originalCreatedAt: FirestoreMapperHelpers.timestampToDateTime(data['originalCreatedAt']) ?? createdAt,
+      currentDepartmentAssignedAt: FirestoreMapperHelpers.timestampToDateTime(data['currentDepartmentAssignedAt']),
+      lastReassignedAt: FirestoreMapperHelpers.timestampToDateTime(data['lastReassignedAt']),
+      reassignmentCount: data['reassignmentCount'] as int? ?? 0,
     );
   }
+
 
   /// Converts a [TimelineEvent] into a Firestore update subcollection document map.
   static Map<String, dynamic> timelineEventToFirestore(TimelineEvent event) {

@@ -1,0 +1,46 @@
+{
+  "zones": [
+    {
+      "zoneId": "ZONE_1",
+      "zoneNumber": 1,
+      "displayName": "Zone 1 (City South)",
+      "active": true
+    },
+    {
+      "zoneId": "ZONE_2",
+      "zoneNumber": 2,
+      "displayName": "Zone 2 (City Central)",
+      "active": true
+    },
+    {
+      "zoneId": "ZONE_3",
+      "zoneNumber": 3,
+      "displayName": "Zone 3 (Western Suburbs South & Central)",
+      "active": true
+    },
+    {
+      "zoneId": "ZONE_4",
+      "zoneNumber": 4,
+      "displayName": "Zone 4 (Western Suburbs North)",
+      "active": true
+    },
+    {
+      "zoneId": "ZONE_5",
+      "zoneNumber": 5,
+      "displayName": "Zone 5 (Eastern Suburbs South)",
+      "active": true
+    },
+    {
+      "zoneId": "ZONE_6",
+      "zoneNumber": 6,
+      "displayName": "Zone 6 (Eastern Suburbs North)",
+      "active": true
+    },
+    {
+      "zoneId": "ZONE_7",
+      "zoneNumber": 7,
+      "displayName": "Zone 7 (Northern Suburbs)",
+      "active": true
+    }
+  ]
+}

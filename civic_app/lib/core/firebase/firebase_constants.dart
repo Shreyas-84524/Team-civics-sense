@@ -29,6 +29,24 @@ class FirestoreCollections {
 
   /// Municipal officers and maintenance personnel collection.
   static const String officers = 'officers';
+
+  /// BMC Administrative zones collection.
+  static const String zones = 'zones';
+
+  /// BMC Administrative wards collection.
+  static const String wards = 'wards';
+
+  /// BMC Operational ward-department units collection.
+  static const String wardDepartments = 'ward_departments';
+
+  /// Wrong-department routing and reassignment tickets.
+  static const String complaintRoutingTickets = 'complaint_routing_tickets';
+
+  /// Municipal and administrative audit logs.
+  static const String governmentAuditLogs = 'government_audit_logs';
+
+  /// Full BMC hierarchical government users collection.
+  static const String governmentUsers = 'government_users';
 }
 
 /// Firebase Cloud Storage path prefixes, limits, and directory hierarchies.

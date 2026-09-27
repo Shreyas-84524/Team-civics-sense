@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../Govt UI/models/govt_user_model.dart';
 import '../../models/user_model.dart';
+import 'firestore_mapper_helpers.dart';
 
 /// Bidirectional mapper for [UserModel] and [GovtUserModel] to/from Cloud Firestore documents.
 class UserFirestoreMapper {
@@ -74,12 +75,19 @@ class UserFirestoreMapper {
       'departmentId': user.departmentId,
       'departmentName': user.departmentName,
       'designation': user.designation,
+      'displayDesignation': user.displayDesignation,
       'assignedWard': user.assignedWard,
+      'wardId': user.wardId,
+      'zoneId': user.zoneId,
+      'administrativeSupervisorId': user.administrativeSupervisorId,
+      'technicalSupervisorId': user.technicalSupervisorId,
       'phone': user.phone,
       'organization': user.organization,
       'avatarUrl': user.avatarUrl,
-      'role': 'government',
+      'role': user.role,
       'permissions': user.permissions,
+      'active': user.active,
+      'isSynthetic': user.isSynthetic,
     };
 
     if (isCreate) {
@@ -105,11 +113,19 @@ class UserFirestoreMapper {
       departmentId: data['departmentId'] as String? ?? '',
       departmentName: data['departmentName'] as String? ?? '',
       designation: data['designation'] as String? ?? '',
+      displayDesignation: data['displayDesignation'] as String? ?? data['designation'] as String?,
       assignedWard: data['assignedWard'] as String? ?? '',
+      wardId: data['wardId'] as String? ?? (data['assignedWard'] as String?),
+      zoneId: data['zoneId'] as String?,
+      administrativeSupervisorId: data['administrativeSupervisorId'] as String? ??
+          data['supervisorId'] as String?,
+      technicalSupervisorId: data['technicalSupervisorId'] as String?,
+      active: data['active'] as bool? ?? true,
+      isSynthetic: data['isSynthetic'] as bool? ?? false,
       phone: data['phone'] as String? ?? '+91 98765 43210',
       organization: data['organization'] as String? ?? 'Municipal Civic Administration',
       avatarUrl: data['avatarUrl'] as String?,
-      role: 'government',
+      role: data['role'] as String? ?? 'government',
       permissions: List<String>.from(data['permissions'] as List<dynamic>? ?? const [
         'view_complaints',
         'update_status',
@@ -117,6 +133,9 @@ class UserFirestoreMapper {
         'view_analytics',
         'view_hazard_map',
       ]),
+      createdAt: FirestoreMapperHelpers.timestampToDateTime(data['createdAt']),
+      updatedAt: FirestoreMapperHelpers.timestampToDateTime(data['updatedAt']),
     );
   }
 }
+
