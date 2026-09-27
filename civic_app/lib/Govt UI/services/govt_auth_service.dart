@@ -68,7 +68,7 @@ class MockGovtAuthService implements GovtAuthService {
     _authStateNotifier = ValueNotifier<GovtAuthState>(GovtAuthState.authenticated);
   }
 
-  // Canonical Mock Government Officer for testing (Ward Department Lead with valid jurisdiction)
+  // Canonical Mock Government Officer for testing (Government Officer with admin override permission)
   static const GovtUserModel _defaultOfficer = GovtUserModel(
     id: 'govt_off_001',
     fullName: 'Shreyas S. (Executive Officer)',
@@ -79,8 +79,10 @@ class MockGovtAuthService implements GovtAuthService {
     departmentId: 'dept_roads',
     departmentName: 'Roads & Infrastructure',
     designation: 'Senior Municipal Nodal Officer',
+    role: 'government',
     assignedWard: 'Ward 14 (Central Zone)',
     permissions: [
+      'admin_override',
       'view_complaints',
       'update_status',
       'assign_officer',

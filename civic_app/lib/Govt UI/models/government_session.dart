@@ -168,6 +168,10 @@ class GovernmentSession {
         ];
 
       default:
+        if (routeName.startsWith('/government/complaints/') ||
+            routeName.startsWith('/govt/complaints/')) {
+          return GovernmentRole.values;
+        }
         return null; // Public or uncategorized
     }
   }

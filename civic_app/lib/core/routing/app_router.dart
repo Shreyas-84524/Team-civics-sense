@@ -45,6 +45,21 @@ class AppRouter {
   AppRouter._();
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
+    final routeName = settings.name ?? '';
+
+    // Dynamic Deep Link for Government Complaint Details: /government/complaints/:id
+    if (routeName.startsWith('/government/complaints/') ||
+        routeName.startsWith('/govt/complaints/')) {
+      final segments = routeName.split('/');
+      if (segments.length >= 4 && segments[3].isNotEmpty) {
+        final complaintId = segments[3];
+        return _protectedGovtRoute(
+          GovtComplaintDetailsScreen(complaintId: complaintId),
+          settings: settings,
+        );
+      }
+    }
+
     switch (settings.name) {
       case AppRoutes.splash:
         return MaterialPageRoute(builder: (_) => const SplashScreen());
