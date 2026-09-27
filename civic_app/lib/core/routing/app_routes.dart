@@ -38,4 +38,25 @@ class AppRoutes {
   static const String govtHazardMap = '/govt/hazard-map';
   static const String govtAnalytics = '/govt/analytics';
   static const String govtProfile = '/govt/profile';
+
+  // Phase 1 & 2 Canonical Government Routes
+  static const String government = '/government';
+  static const String governmentLogin = '/government/login';
+  static const String governmentDashboard = '/government/dashboard';
+  static const String governmentZone = '/government/zone';
+  static const String governmentDepartment = '/government/department';
+  static const String governmentWard = '/government/ward';
+  static const String governmentDepartmentOperations = '/government/department-operations';
+  static const String governmentWork = '/government/work';
+  static const String governmentAccessDenied = '/government/access-denied';
+  static const String governmentComplaints = '/government/complaints';
+  static const String governmentOperations = '/government/operations';
+  static const String governmentAnalytics = '/government/analytics';
+  static const String governmentEscalations = '/government/escalations';
+  static const String governmentStaff = '/government/staff';
+  static const String governmentAudit = '/government/audit';
+  static const String governmentSettings = '/government/settings';
+
+  // Development & Verification Showcase Route
+  static const String govtShowcase = '/govt/showcase';
 }

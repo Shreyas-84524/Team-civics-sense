@@ -41,6 +41,9 @@ enum GovernmentRole {
       if (r.id == normalized) return r;
     }
     // Fallback for legacy role string
+    if (normalized == 'super_admin' || normalized == 'government_super_admin') {
+      return GovernmentRole.governmentSuperAdmin;
+    }
     if (normalized == 'government' || normalized == 'officer') {
       return GovernmentRole.wardDepartmentLead;
     }

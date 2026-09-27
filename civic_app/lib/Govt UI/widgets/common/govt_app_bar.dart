@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_spacing.dart';
-import '../../../core/constants/app_typography.dart';
 import '../../models/govt_user_model.dart';
+import '../../services/government_jurisdiction_resolver.dart';
+import '../../theme/govt_responsive.dart';
 import '../../theme/govt_theme_tokens.dart';
+import '../../theme/govt_typography.dart';
+import 'govt_notification_panel.dart';
+import 'govt_profile_menu.dart';
 
-/// Top Application Bar for Government Web and Tablet Views.
+/// Top Application Bar for Government Web, Desktop, Tablet, and Mobile Views.
 class GovtAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
   final String? subtitle;
@@ -12,6 +16,10 @@ class GovtAppBar extends StatelessWidget implements PreferredSizeWidget {
   final GovtUserModel? user;
   final VoidCallback? onMenuPressed;
   final bool showMenuButton;
+  final VoidCallback? onSearchTap;
+  final VoidCallback? onNotificationTap;
+  final VoidCallback? onHelpTap;
+  final int unreadNotificationsCount;
 
   const GovtAppBar({
     super.key,
@@ -21,6 +29,10 @@ class GovtAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.user,
     this.onMenuPressed,
     this.showMenuButton = false,
+    this.onSearchTap,
+    this.onNotificationTap,
+    this.onHelpTap,
+    this.unreadNotificationsCount = 0,
   });
 
   @override
@@ -28,158 +40,189 @@ class GovtAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: GovtThemeTokens.topBarHeight,
-      padding: const EdgeInsets.symmetric(horizontal: CivicFixSpacing.lg),
-      decoration: const BoxDecoration(
-        color: GovtThemeTokens.surface,
-        border: GovtThemeTokens.bottomBorder,
-      ),
-      child: Row(
-        children: [
-          if (showMenuButton) ...[
-            IconButton(
-              icon: const Icon(Icons.menu_rounded, color: GovtThemeTokens.textPrimary),
-              onPressed: onMenuPressed,
-              tooltip: 'Toggle Menu',
-            ),
-            CivicFixSpacing.hSpaceSm,
-          ],
+    final isMobileScreen = GovtResponsive.isMobile(context);
 
-          // Title & Breadcrumb
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableWidth = constraints.maxWidth;
+        final isNarrow = availableWidth < 600;
+        final showBreadcrumb = availableWidth >= 1000;
+        final showBadges = availableWidth >= 600 && user != null;
+        final showSearch = availableWidth >= 700;
+        final showHelp = availableWidth >= 750;
+        final isCompactProfile = availableWidth < 950;
+
+        return Container(
+          height: GovtThemeTokens.topBarHeight,
+          padding: EdgeInsets.symmetric(
+            horizontal: isNarrow ? CivicFixSpacing.sm : CivicFixSpacing.md,
+          ),
+          decoration: const BoxDecoration(
+            color: GovtThemeTokens.surface,
+            border: GovtThemeTokens.bottomBorder,
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Mobile Menu Drawer Button
+              if (showMenuButton) ...[
+                IconButton(
+                  icon: const Icon(Icons.menu_rounded, color: GovtThemeTokens.textPrimary),
+                  onPressed: onMenuPressed,
+                  visualDensity: isNarrow ? VisualDensity.compact : VisualDensity.standard,
+                  tooltip: 'Toggle Navigation Drawer',
+                ),
+                CivicFixSpacing.hSpaceXs,
+              ],
+
+              // Title & Operational Hierarchy
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'PORTAL',
-                      style: CivicFixTypography.captionMedium.copyWith(
-                        color: GovtThemeTokens.textSecondary,
-                        letterSpacing: 0.5,
-                        fontSize: 10,
+                    if (showBreadcrumb)
+                      Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          Text(
+                            'PORTAL',
+                            style: GovtTypography.caption.copyWith(
+                              color: GovtThemeTokens.textSecondary,
+                              letterSpacing: 0.6,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 10,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(
+                            Icons.chevron_right_rounded,
+                            size: 13,
+                            color: GovtThemeTokens.textMuted,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GovtTypography.caption.copyWith(
+                              color: GovtThemeTokens.primary,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 10,
+                              letterSpacing: 0.4,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(width: 4),
-                    const Icon(
-                      Icons.chevron_right_rounded,
-                      size: 14,
-                      color: GovtThemeTokens.textSecondary,
-                    ),
-                    const SizedBox(width: 4),
-                    Flexible(
-                      child: Text(
-                        title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: CivicFixTypography.captionMedium.copyWith(
-                          color: GovtThemeTokens.primary,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 11,
-                        ),
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GovtTypography.pageTitle.copyWith(
+                        fontSize: (isMobileScreen || isNarrow) ? 16 : 18,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ],
                 ),
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: CivicFixTypography.h3.copyWith(
-                    color: GovtThemeTokens.textPrimary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
+              ),
+
+              // Operational Context Badges (Centralized Jurisdiction Resolver)
+              if (showBadges) ...[
+                ...GovernmentJurisdictionResolver.resolveBadges(
+                  user!,
+                  isCompact: true,
+                  withBrackets: false,
+                  uppercase: false,
+                ).map(
+                  (badge) => Padding(
+                    padding: const EdgeInsets.only(right: CivicFixSpacing.xs + 2),
+                    child: badge,
                   ),
                 ),
               ],
-            ),
+
+              // Global Search Entry Point
+              if (showSearch) ...[
+                IconButton(
+                  icon: const Icon(Icons.search_rounded, color: GovtThemeTokens.textSecondary),
+                  onPressed: onSearchTap ?? () {},
+                  tooltip: 'Search Portal (Ctrl+K)',
+                ),
+                CivicFixSpacing.hSpaceXs,
+              ],
+
+              // Notification Bell
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.notifications_none_rounded,
+                        color: GovtThemeTokens.textSecondary),
+                    visualDensity: isNarrow ? VisualDensity.compact : VisualDensity.standard,
+                    onPressed: onNotificationTap ??
+                        () {
+                          GovtNotificationPanel.show(context);
+                        },
+                    tooltip: 'Notifications',
+                  ),
+                  if (unreadNotificationsCount > 0)
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: const BoxDecoration(
+                          color: GovtThemeTokens.error,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 14,
+                          minHeight: 14,
+                        ),
+                        child: Text(
+                          '$unreadNotificationsCount',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+
+              // Optional Help Button
+              if (showHelp) ...[
+                IconButton(
+                  icon: const Icon(Icons.help_outline_rounded,
+                      color: GovtThemeTokens.textSecondary),
+                  onPressed: onHelpTap ?? () {},
+                  tooltip: 'Municipal Help & SOP Documentation',
+                ),
+              ],
+
+              // User Profile Menu
+              CivicFixSpacing.hSpaceXs,
+              GovtProfileMenu(
+                user: user,
+                isCompact: isCompactProfile,
+              ),
+
+              // Custom Actions if supplied
+              if (actions != null && actions!.isNotEmpty) ...[
+                CivicFixSpacing.hSpaceXs,
+                ...actions!,
+              ],
+            ],
           ),
-
-          // Department & Ward Badges (Desktop/Tablet)
-          if (user != null) ...[
-            Flexible(
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: CivicFixSpacing.sm + 2,
-                  vertical: CivicFixSpacing.xs,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE8F2F8),
-                  borderRadius: GovtThemeTokens.chipRadius,
-                  border: Border.all(color: const Color(0xFFB8D8EA)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.apartment_rounded,
-                      size: 14,
-                      color: GovtThemeTokens.info,
-                    ),
-                    const SizedBox(width: 5),
-                    Flexible(
-                      child: Text(
-                        user!.departmentName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: CivicFixTypography.captionMedium.copyWith(
-                          color: GovtThemeTokens.info,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            CivicFixSpacing.hSpaceSm,
-            Flexible(
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: CivicFixSpacing.sm + 2,
-                  vertical: CivicFixSpacing.xs,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEFF3F0),
-                  borderRadius: GovtThemeTokens.chipRadius,
-                  border: Border.all(color: GovtThemeTokens.border),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.location_on_outlined,
-                      size: 14,
-                      color: GovtThemeTokens.secondary,
-                    ),
-                    const SizedBox(width: 4),
-                    Flexible(
-                      child: Text(
-                        user!.assignedWard,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: CivicFixTypography.captionMedium.copyWith(
-                          color: GovtThemeTokens.textPrimary,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-
-          if (actions != null) ...[
-            CivicFixSpacing.hSpaceMd,
-            ...actions!,
-          ],
-        ],
-      ),
+        );
+      },
     );
   }
 }
+
+/// Backwards compatibility typedef
+typedef GovernmentAppBar = GovtAppBar;

@@ -24,13 +24,20 @@ import '../../User UI/screens/splash_screen.dart';
 import '../../User UI/widgets/settings/language_selector_sheet.dart';
 import '../../Govt UI/screens/auth/govt_forgot_password_screen.dart';
 import '../../Govt UI/screens/auth/govt_login_screen.dart';
+import '../../Govt UI/screens/common/govt_placeholder_screen.dart';
 import '../../Govt UI/screens/complaints/govt_complaint_assignment_screen.dart';
 import '../../Govt UI/screens/complaints/govt_complaint_details_screen.dart';
 import '../../Govt UI/screens/complaints/govt_status_update_screen.dart';
 import '../../Govt UI/screens/govt_shell_screen.dart';
+import '../../Govt UI/screens/showcase/government_ui_showcase_screen.dart';
+import '../../Govt UI/models/government_session.dart';
+import '../../Govt UI/screens/auth/government_access_denied_screen.dart';
+import '../../Govt UI/screens/landing/government_role_landing_screens.dart';
+import '../../Govt UI/services/government_account_validator.dart';
 import '../auth/auth_service_locator.dart';
 import '../location/location_model.dart';
 import '../models/complaint_model.dart';
+import '../models/government_role.dart';
 import 'app_routes.dart';
 
 /// Centralized route generator for CivicFix application.
@@ -38,6 +45,21 @@ class AppRouter {
   AppRouter._();
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
+    final routeName = settings.name ?? '';
+
+    // Dynamic Deep Link for Government Complaint Details: /government/complaints/:id
+    if (routeName.startsWith('/government/complaints/') ||
+        routeName.startsWith('/govt/complaints/')) {
+      final segments = routeName.split('/');
+      if (segments.length >= 4 && segments[3].isNotEmpty) {
+        final complaintId = segments[3];
+        return _protectedGovtRoute(
+          GovtComplaintDetailsScreen(complaintId: complaintId),
+          settings: settings,
+        );
+      }
+    }
+
     switch (settings.name) {
       case AppRoutes.splash:
         return MaterialPageRoute(builder: (_) => const SplashScreen());
@@ -145,7 +167,23 @@ class AppRouter {
 
       // Government Routes
       case AppRoutes.govtLogin:
-        return MaterialPageRoute(builder: (_) => const GovtLoginScreen());
+      case AppRoutes.governmentLogin:
+        final govtAuth = AuthServiceLocator.govtAuth;
+        if (govtAuth.isAuthenticated && govtAuth.currentUser != null) {
+          final user = govtAuth.currentUser!;
+          final validation = GovernmentAccountValidator.validate(user);
+          if (validation.isValid) {
+            final session = GovernmentSession.fromUser(user);
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => _resolveLandingScreen(session.landingRoute),
+            );
+          }
+        }
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => const GovtLoginScreen(),
+        );
 
       case AppRoutes.govtForgotPassword:
         return MaterialPageRoute(builder: (_) => const GovtForgotPasswordScreen());
@@ -193,6 +231,122 @@ class AppRouter {
           GovtStatusUpdateScreen(complaint: complaint),
         );
 
+      // Phase 1 & 2 Canonical Government Routes
+      case AppRoutes.government:
+      case AppRoutes.governmentDashboard:
+        return _protectedGovtRoute(
+          const CityCommandCenterLanding(),
+          settings: settings,
+        );
+
+      case AppRoutes.governmentZone:
+        return _protectedGovtRoute(
+          const ZoneCommandCenterLanding(),
+          settings: settings,
+        );
+
+      case AppRoutes.governmentDepartment:
+        return _protectedGovtRoute(
+          const DepartmentCommandCenterLanding(),
+          settings: settings,
+        );
+
+      case AppRoutes.governmentWard:
+        return _protectedGovtRoute(
+          const WardCommandCenterLanding(),
+          settings: settings,
+        );
+
+      case AppRoutes.governmentDepartmentOperations:
+        return _protectedGovtRoute(
+          const DepartmentOperationsLanding(),
+          settings: settings,
+        );
+
+      case AppRoutes.governmentWork:
+        return _protectedGovtRoute(
+          const CrewWorkdeskLanding(),
+          settings: settings,
+        );
+
+      case AppRoutes.governmentAccessDenied:
+        return MaterialPageRoute(
+          builder: (_) => const GovernmentAccessDeniedScreen(),
+          settings: settings,
+        );
+
+      case AppRoutes.governmentComplaints:
+        return _protectedGovtRoute(
+          const GovtShellScreen(initialIndex: 1),
+          settings: settings,
+        );
+
+      case AppRoutes.governmentOperations:
+        return _protectedGovtRoute(
+          const GovtPlaceholderScreen(
+            title: 'Municipal Operations & Field Crew',
+            subtitle: 'Dispatch and workload tracking for departmental crew members',
+            icon: Icons.engineering_rounded,
+            moduleName: 'Operations',
+            navIndex: 5,
+          ),
+          settings: settings,
+        );
+
+      case AppRoutes.governmentAnalytics:
+        return _protectedGovtRoute(
+          const GovtShellScreen(initialIndex: 3),
+          settings: settings,
+        );
+
+      case AppRoutes.governmentEscalations:
+        return _protectedGovtRoute(
+          const GovtPlaceholderScreen(
+            title: 'Statutory SLA Escalations',
+            subtitle: 'Supervisory review queue for grievances exceeding statutory deadlines',
+            icon: Icons.priority_high_rounded,
+            moduleName: 'Escalations',
+            navIndex: 6,
+          ),
+          settings: settings,
+        );
+
+      case AppRoutes.governmentStaff:
+        return _protectedGovtRoute(
+          const GovtPlaceholderScreen(
+            title: 'Municipal Officers & Field Roster',
+            subtitle: 'Departmental staff, designations, and supervisory hierarchies',
+            icon: Icons.people_rounded,
+            moduleName: 'Staff',
+            navIndex: 7,
+          ),
+          settings: settings,
+        );
+
+      case AppRoutes.governmentAudit:
+        return _protectedGovtRoute(
+          const GovtPlaceholderScreen(
+            title: 'Administrative Audit & Security Logs',
+            subtitle: 'Immutable record of municipal actions, reassignments, and state transitions',
+            icon: Icons.receipt_long_rounded,
+            moduleName: 'Audit Logs',
+            navIndex: 8,
+          ),
+          settings: settings,
+        );
+
+      case AppRoutes.governmentSettings:
+        return _protectedGovtRoute(
+          const GovtShellScreen(initialIndex: 4),
+          settings: settings,
+        );
+
+      case AppRoutes.govtShowcase:
+        return MaterialPageRoute(
+          builder: (_) => const GovernmentUiShowcaseScreen(),
+          settings: settings,
+        );
+
       default:
         return _errorRoute(settings.name);
     }
@@ -234,17 +388,79 @@ class AppRouter {
     return MaterialPageRoute(builder: (_) => verificationScreen);
   }
 
-  /// Helper to enforce Government authentication on protected routes.
-  static Route<dynamic> _protectedGovtRoute(Widget authenticatedScreen) {
+  /// Helper to enforce Government authentication, account validity, and role route permissions.
+  static Route<dynamic> _protectedGovtRoute(
+    Widget authenticatedScreen, {
+    RouteSettings? settings,
+    List<GovernmentRole>? allowedRoles,
+  }) {
     final govtAuth = AuthServiceLocator.govtAuth;
     final isAuth = govtAuth.isAuthenticated;
-    final role = govtAuth.currentUser?.role;
-    final isAuthorizedGovt = isAuth && (role == 'government' || role == 'admin');
+    final user = govtAuth.currentUser;
 
-    if (!isAuthorizedGovt) {
-      return MaterialPageRoute(builder: (_) => const GovtLoginScreen());
+    if (!isAuth || user == null) {
+      return MaterialPageRoute(
+        builder: (_) => const GovtLoginScreen(),
+        settings: settings,
+      );
     }
-    return MaterialPageRoute(builder: (_) => authenticatedScreen);
+
+    // Security invariant: strictly reject non-government / citizen accounts
+    if (user.role == 'citizen') {
+      return MaterialPageRoute(
+        builder: (_) => const GovtLoginScreen(),
+        settings: settings,
+      );
+    }
+
+    // Account validation (active status, role validity, jurisdiction, supervisor)
+    final validation = GovernmentAccountValidator.validate(user);
+    if (!validation.isValid) {
+      return MaterialPageRoute(
+        builder: (_) => const GovtLoginScreen(),
+        settings: settings,
+      );
+    }
+
+    // Route-level permission & role jurisdiction checks
+    final routeName = settings?.name;
+    if (routeName != null) {
+      final session = GovernmentSession.fromUser(user);
+      if (!session.isAuthorizedForRoute(routeName)) {
+        return MaterialPageRoute(
+          builder: (_) => GovernmentAccessDeniedScreen(user: user),
+          settings: settings,
+        );
+      }
+    } else if (allowedRoles != null && !allowedRoles.contains(user.govtRole)) {
+      if (!user.isSuperAdmin) {
+        return MaterialPageRoute(
+          builder: (_) => GovernmentAccessDeniedScreen(user: user),
+          settings: settings,
+        );
+      }
+    }
+
+    return MaterialPageRoute(builder: (_) => authenticatedScreen, settings: settings);
+  }
+
+  static Widget _resolveLandingScreen(String landingRoute) {
+    switch (landingRoute) {
+      case AppRoutes.governmentDashboard:
+        return const CityCommandCenterLanding();
+      case AppRoutes.governmentZone:
+        return const ZoneCommandCenterLanding();
+      case AppRoutes.governmentDepartment:
+        return const DepartmentCommandCenterLanding();
+      case AppRoutes.governmentWard:
+        return const WardCommandCenterLanding();
+      case AppRoutes.governmentDepartmentOperations:
+        return const DepartmentOperationsLanding();
+      case AppRoutes.governmentWork:
+        return const CrewWorkdeskLanding();
+      default:
+        return const CityCommandCenterLanding();
+    }
   }
 
   static Route<dynamic> _errorRoute(String? routeName) {

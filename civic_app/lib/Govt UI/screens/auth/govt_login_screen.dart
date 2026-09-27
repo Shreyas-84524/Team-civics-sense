@@ -7,6 +7,7 @@ import '../../../core/routing/app_routes.dart';
 import '../../../core/widgets/civic_fix_button.dart';
 import '../../../core/widgets/civic_fix_text_field.dart';
 import '../../../core/widgets/responsive_container.dart';
+import '../../models/government_session.dart';
 import '../../services/govt_auth_service.dart';
 import '../../theme/govt_theme_tokens.dart';
 
@@ -65,7 +66,13 @@ class _GovtLoginScreenState extends State<GovtLoginScreen> {
     setState(() => _isLoading = false);
 
     if (result.isSuccess) {
-      Navigator.pushReplacementNamed(context, AppRoutes.govtDashboard);
+      final user = result.user ?? _authService.currentUser;
+      if (user != null) {
+        final session = GovernmentSession.fromUser(user);
+        Navigator.pushReplacementNamed(context, session.landingRoute);
+      } else {
+        Navigator.pushReplacementNamed(context, AppRoutes.govtDashboard);
+      }
     } else {
       setState(() {
         _errorMessage = result.errorMessage ??
@@ -132,6 +139,14 @@ class _GovtLoginScreenState extends State<GovtLoginScreen> {
                               style: CivicFixTypography.h1.copyWith(
                                 color: GovtThemeTokens.primary,
                                 fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            CivicFixSpacing.vSpaceXs,
+                            Text(
+                              'CivicFix Government Portal',
+                              style: CivicFixTypography.bodyMedium.copyWith(
+                                color: GovtThemeTokens.primary,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
                             CivicFixSpacing.vSpaceXs,
