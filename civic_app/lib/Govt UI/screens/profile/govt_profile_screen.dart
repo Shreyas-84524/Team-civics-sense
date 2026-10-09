@@ -2,20 +2,16 @@ import 'package:flutter/material.dart';
 import '../../../core/auth/auth_service_locator.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
+import '../../../core/localization/app_localizations.dart';
 import '../../../core/repositories/repository_locator.dart';
 import '../../../core/routing/app_routes.dart';
-import '../../models/department_model.dart';
 import '../../models/govt_user_model.dart';
 import '../../services/govt_auth_service.dart';
 import '../../services/govt_user_repository.dart';
 import '../../theme/govt_theme_tokens.dart';
 import '../../widgets/common/govt_confirmation_dialog.dart';
 import '../../widgets/dashboard/dashboard_card.dart';
-import '../../widgets/profile/govt_about_widget.dart';
-import '../../widgets/profile/govt_appearance_settings_widget.dart';
-import '../../widgets/profile/govt_edit_profile_dialog.dart';
 import '../../widgets/profile/govt_language_settings_widget.dart';
-import '../../widgets/profile/govt_notification_settings_widget.dart';
 import '../../widgets/profile/govt_privacy_principles_widget.dart';
 
 /// Government Officer Profile, Edit Profile, and Settings Screen.
@@ -42,16 +38,6 @@ class _GovtProfileScreenState extends State<GovtProfileScreen> {
     super.initState();
     _authService = widget.authService ?? AuthServiceLocator.govtAuth;
     _userRepo = widget.userRepository ?? RepositoryLocator.govtUserRepository;
-  }
-
-  void _openEditProfileDialog(GovtUserModel user) {
-    showDialog<bool>(
-      context: context,
-      builder: (ctx) => GovtEditProfileDialog(
-        user: user,
-        userRepository: _userRepo,
-      ),
-    );
   }
 
   void _handleLogout() {
@@ -96,32 +82,16 @@ class _GovtProfileScreenState extends State<GovtProfileScreen> {
                   _buildOfficerHeaderCard(user),
                   CivicFixSpacing.vSpaceLg,
 
-                  // Active Department & Jurisdiction Switcher
-                  _buildJurisdictionSwitcherCard(user),
-                  CivicFixSpacing.vSpaceLg,
-
                   // Authorized Role & System Permissions
                   _buildPermissionsCard(user),
-                  CivicFixSpacing.vSpaceLg,
-
-                  // Notification Preferences
-                  GovtNotificationSettingsWidget(userRepository: _userRepo),
                   CivicFixSpacing.vSpaceLg,
 
                   // Language & Regional Localization
                   GovtLanguageSettingsWidget(userRepository: _userRepo),
                   CivicFixSpacing.vSpaceLg,
 
-                  // Appearance & Layout Density
-                  GovtAppearanceSettingsWidget(userRepository: _userRepo),
-                  CivicFixSpacing.vSpaceLg,
-
                   // Privacy Principles
                   const GovtPrivacyPrinciplesWidget(),
-                  CivicFixSpacing.vSpaceLg,
-
-                  // About & Version
-                  const GovtAboutWidget(),
                   CivicFixSpacing.vSpaceXl,
 
                   // End Officer Session
@@ -181,7 +151,7 @@ class _GovtProfileScreenState extends State<GovtProfileScreen> {
                               const Icon(Icons.verified_rounded, size: 14, color: GovtThemeTokens.secondary),
                               CivicFixSpacing.hSpaceXs,
                               Text(
-                                'OFFICER ROLE',
+                                localizedGovernmentRole(user.role, context: context).toUpperCase(),
                                 style: CivicFixTypography.captionMedium.copyWith(
                                   color: GovtThemeTokens.secondary,
                                   fontWeight: FontWeight.w700,
@@ -195,7 +165,7 @@ class _GovtProfileScreenState extends State<GovtProfileScreen> {
                     ),
                     CivicFixSpacing.vSpaceXs,
                     Text(
-                      '${user.designation} • ${user.departmentName}',
+                      '${user.designation} • ${localizedDepartment(user.departmentName, context: context)}',
                       style: CivicFixTypography.bodySmallMedium.copyWith(
                         color: GovtThemeTokens.textSecondary,
                         fontWeight: FontWeight.w600,
@@ -216,34 +186,23 @@ class _GovtProfileScreenState extends State<GovtProfileScreen> {
           CivicFixSpacing.vSpaceSm,
 
           // Metadata Grid
-          Wrap(
-            spacing: CivicFixSpacing.lg,
-            runSpacing: CivicFixSpacing.sm,
-            children: [
-              _buildMetaTile(Icons.email_outlined, 'Email', user.email),
-              _buildMetaTile(Icons.phone_outlined, 'Phone', user.phone),
-              _buildMetaTile(Icons.badge_outlined, 'Employee ID', user.employeeId),
-              _buildMetaTile(Icons.location_on_outlined, 'Assigned Ward', user.assignedWard),
-            ],
+          Builder(
+            builder: (context) {
+              final l10n = AppLocalizations.of(context);
+              return Wrap(
+                spacing: CivicFixSpacing.lg,
+                runSpacing: CivicFixSpacing.sm,
+                children: [
+                  _buildMetaTile(Icons.email_outlined, l10n?.govOfficialEmail ?? 'Email', user.email),
+                  _buildMetaTile(Icons.phone_outlined, l10n?.mobileNumber ?? 'Phone', user.phone),
+                  _buildMetaTile(Icons.badge_outlined, l10n?.govEmployeeId ?? 'Employee ID', user.employeeId),
+                  _buildMetaTile(Icons.location_on_outlined, l10n?.govJurisdiction ?? 'Assigned Ward', user.assignedWard),
+                ],
+              );
+            },
           ),
           CivicFixSpacing.vSpaceMd,
 
-          // Edit Profile Action
-          Align(
-            alignment: Alignment.centerRight,
-            child: OutlinedButton.icon(
-              onPressed: () => _openEditProfileDialog(user),
-              icon: const Icon(Icons.edit_outlined, size: 16),
-              label: const Text('Edit Profile'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: GovtThemeTokens.primary,
-                side: const BorderSide(color: GovtThemeTokens.primary),
-                minimumSize: const Size(0, 38),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                padding: const EdgeInsets.symmetric(horizontal: CivicFixSpacing.md, vertical: CivicFixSpacing.sm),
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -258,56 +217,6 @@ class _GovtProfileScreenState extends State<GovtProfileScreen> {
         Text('$label: ', style: CivicFixTypography.caption.copyWith(color: GovtThemeTokens.textSecondary)),
         Text(value, style: CivicFixTypography.captionMedium.copyWith(fontWeight: FontWeight.w600)),
       ],
-    );
-  }
-
-  Widget _buildJurisdictionSwitcherCard(GovtUserModel user) {
-    return DashboardCard(
-      title: 'Active Municipal Jurisdiction & Department',
-      subtitle: 'Switch assigned department to filter grievances and hazard maps',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Department:', style: CivicFixTypography.captionMedium),
-          CivicFixSpacing.vSpaceXs,
-          DropdownButtonFormField<String>(
-            initialValue: user.departmentId,
-            isExpanded: true,
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: GovtThemeTokens.surface,
-              border: OutlineInputBorder(
-                borderRadius: GovtThemeTokens.chipRadius,
-                borderSide: const BorderSide(color: GovtThemeTokens.border),
-              ),
-            ),
-            items: GovtDepartmentModel.defaultDepartments.map((dept) {
-              return DropdownMenuItem<String>(
-                value: dept.id,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(dept.icon, size: 18, color: GovtThemeTokens.primary),
-                    CivicFixSpacing.hSpaceSm,
-                    Text(
-                      dept.name,
-                      style: CivicFixTypography.bodySmall,
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
-            onChanged: (val) {
-              if (val != null) {
-                final found = GovtDepartmentModel.defaultDepartments.firstWhere((d) => d.id == val);
-                _authService.switchDepartment(found.id, found.name);
-              }
-            },
-          ),
-          CivicFixSpacing.vSpaceMd,
-          Text('Assigned Zone: ${user.assignedWard}', style: CivicFixTypography.bodySmallMedium),
-        ],
-      ),
     );
   }
 

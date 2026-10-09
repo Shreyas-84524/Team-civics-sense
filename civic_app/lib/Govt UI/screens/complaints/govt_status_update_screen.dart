@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
+import '../../../core/localization/app_localizations.dart';
 import '../../../core/models/complaint_model.dart';
 import '../../../core/repositories/repository_locator.dart';
 import '../../../core/widgets/civic_fix_button.dart';
@@ -94,6 +95,8 @@ class _GovtStatusUpdateScreenState extends State<GovtStatusUpdateScreen> {
 
   ComplaintStatus _getNextDefaultStatus(ComplaintStatus current) {
     switch (current) {
+      case ComplaintStatus.underVerification:
+        return ComplaintStatus.assigned;
       case ComplaintStatus.reported:
         return ComplaintStatus.verified;
       case ComplaintStatus.verified:
@@ -103,6 +106,8 @@ class _GovtStatusUpdateScreenState extends State<GovtStatusUpdateScreen> {
       case ComplaintStatus.inProgress:
         return ComplaintStatus.resolved;
       case ComplaintStatus.resolved:
+        return ComplaintStatus.closed;
+      case ComplaintStatus.closed:
       case ComplaintStatus.rejected:
         return ComplaintStatus.resolved;
     }
@@ -111,16 +116,20 @@ class _GovtStatusUpdateScreenState extends State<GovtStatusUpdateScreen> {
   List<ComplaintStatus> _getAllowedStatuses(ComplaintStatus current) {
     if (_allowAdminOverride) {
       return [
+        ComplaintStatus.underVerification,
         ComplaintStatus.reported,
         ComplaintStatus.verified,
         ComplaintStatus.assigned,
         ComplaintStatus.inProgress,
         ComplaintStatus.resolved,
+        ComplaintStatus.closed,
         ComplaintStatus.rejected,
       ];
     }
 
     switch (current) {
+      case ComplaintStatus.underVerification:
+        return [ComplaintStatus.assigned, ComplaintStatus.rejected];
       case ComplaintStatus.reported:
         return [ComplaintStatus.verified, ComplaintStatus.rejected];
       case ComplaintStatus.verified:
@@ -130,14 +139,18 @@ class _GovtStatusUpdateScreenState extends State<GovtStatusUpdateScreen> {
       case ComplaintStatus.inProgress:
         return [ComplaintStatus.resolved, ComplaintStatus.rejected];
       case ComplaintStatus.resolved:
-        return [ComplaintStatus.resolved];
+        return [ComplaintStatus.closed, ComplaintStatus.inProgress];
+      case ComplaintStatus.closed:
+        return [ComplaintStatus.inProgress];
       case ComplaintStatus.rejected:
-        return [ComplaintStatus.reported, ComplaintStatus.verified];
+        return [ComplaintStatus.underVerification, ComplaintStatus.reported, ComplaintStatus.verified];
     }
   }
 
   String _getDefaultMessageForStatus(ComplaintStatus status) {
     switch (status) {
+      case ComplaintStatus.underVerification:
+        return 'Grievance undergoing automated two-stage AI verification.';
       case ComplaintStatus.reported:
         return 'Grievance recorded in the municipal registry.';
       case ComplaintStatus.verified:
@@ -148,6 +161,8 @@ class _GovtStatusUpdateScreenState extends State<GovtStatusUpdateScreen> {
         return 'Repair and maintenance work actively underway on site.';
       case ComplaintStatus.resolved:
         return 'Civic issue has been fully resolved and verified by ward engineer.';
+      case ComplaintStatus.closed:
+        return 'Grievance resolution verified and closed.';
       case ComplaintStatus.rejected:
         return 'Complaint closed / marked unactionable after inspection.';
     }
@@ -285,7 +300,7 @@ class _GovtStatusUpdateScreenState extends State<GovtStatusUpdateScreen> {
                         return DropdownMenuItem(
                           value: status,
                           child: Text(
-                            '${status.label.toUpperCase()} — ${_getStatusDescription(status)}',
+                            '${localizedComplaintStatus(status, context: context).toUpperCase()} — ${_getStatusDescription(status)}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: CivicFixTypography.bodySmall,
@@ -409,27 +424,32 @@ class _GovtStatusUpdateScreenState extends State<GovtStatusUpdateScreen> {
                     CivicFixSpacing.vSpaceLg,
 
                     // Action Buttons
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        OutlinedButton(
-                          onPressed: () => Navigator.of(context).pop(false),
-                          style: OutlinedButton.styleFrom(
-                            minimumSize: const Size(0, 40),
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          child: const Text('Cancel'),
-                        ),
-                        CivicFixSpacing.hSpaceMd,
-                        CivicFixButton(
-                          text: _targetStatus == ComplaintStatus.resolved
-                              ? 'Confirm & Resolve'
-                              : 'Update Grievance Status',
-                          width: 220,
-                          isLoading: _isLoading,
-                          onPressed: _promptStatusConfirmation,
-                        ),
-                      ],
+                    Builder(
+                      builder: (context) {
+                        final l10n = AppLocalizations.of(context);
+                        return Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            OutlinedButton(
+                              onPressed: () => Navigator.of(context).pop(false),
+                              style: OutlinedButton.styleFrom(
+                                minimumSize: const Size(0, 40),
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              child: Text(l10n?.commonCancel ?? 'Cancel'),
+                            ),
+                            CivicFixSpacing.hSpaceMd,
+                            CivicFixButton(
+                              text: _targetStatus == ComplaintStatus.resolved
+                                  ? (l10n?.govApproveResolution ?? 'Confirm & Resolve')
+                                  : (l10n?.govUpdateStatus ?? 'Update Grievance Status'),
+                              width: 220,
+                              isLoading: _isLoading,
+                              onPressed: _promptStatusConfirmation,
+                            ),
+                          ],
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -443,6 +463,8 @@ class _GovtStatusUpdateScreenState extends State<GovtStatusUpdateScreen> {
 
   String _getStatusDescription(ComplaintStatus status) {
     switch (status) {
+      case ComplaintStatus.underVerification:
+        return 'Under AI verification';
       case ComplaintStatus.reported:
         return 'Queued for review';
       case ComplaintStatus.verified:
@@ -453,6 +475,8 @@ class _GovtStatusUpdateScreenState extends State<GovtStatusUpdateScreen> {
         return 'Work actively underway';
       case ComplaintStatus.resolved:
         return 'Issue fixed & confirmed';
+      case ComplaintStatus.closed:
+        return 'Resolution verified & closed';
       case ComplaintStatus.rejected:
         return 'Closed / unactionable';
     }

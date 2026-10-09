@@ -86,7 +86,8 @@ class CrewJobItem {
           complaint.officerNotes != null &&
           complaint.officerNotes!.toLowerCase().contains('completion'));
 
-  bool get isCompleted => status == ComplaintStatus.resolved;
+  bool get isCompleted =>
+      status == ComplaintStatus.resolved || status == ComplaintStatus.closed;
 
   String get formattedDistance =>
       distanceKm < 1.0 ? '${(distanceKm * 1000).toInt()} m' : '${distanceKm.toStringAsFixed(1)} km';
@@ -237,7 +238,11 @@ class GovernmentCrewWorkService {
     // 4. Fetch Complaints & Apply STRICT CREW ISOLATION
     final allRawComplaints = await _complaintRepo.getComplaints();
     final assignedComplaints = allRawComplaints.where((c) {
-      // 1. Crew Isolation: Complaint must be assigned directly to THIS technician
+      // 1. Crew Isolation: Complaint must be assigned directly to THIS technician (as Field Officer or Junior Engineer)
+      final matchFOId = c.assignedFieldOfficerId != null &&
+          (c.assignedFieldOfficerId!.toUpperCase() == crewUser.employeeId.toUpperCase() ||
+              c.assignedFieldOfficerId!.toUpperCase() == crewUser.id.toUpperCase());
+
       final matchCrewId = c.assignedCrewMemberId != null &&
           (c.assignedCrewMemberId!.toUpperCase() == crewUser.employeeId.toUpperCase() ||
               c.assignedCrewMemberId!.toUpperCase() == crewUser.id.toUpperCase());
@@ -247,7 +252,7 @@ class GovernmentCrewWorkService {
           (c.assignedTo!.toLowerCase() == crewUser.fullName.toLowerCase() ||
               c.assignedTo!.toLowerCase().contains(crewUser.employeeId.toLowerCase()));
 
-      if (!matchCrewId && !matchCrewName) {
+      if (!matchFOId && !matchCrewId && !matchCrewName) {
         return false;
       }
 
@@ -279,8 +284,6 @@ class GovernmentCrewWorkService {
     int completedTodayCount = 0;
     int criticalCount = 0;
     int slaAtRiskCount = 0;
-
-    final startOfToday = DateTime(now.year, now.month, now.day);
 
     for (int i = 0; i < assignedComplaints.length; i++) {
       final c = assignedComplaints[i];
@@ -330,33 +333,30 @@ class GovernmentCrewWorkService {
       allJobItems.add(jobItem);
 
       // Category / Status Bucketing
-      if (c.createdAt.isAfter(startOfToday) ||
-          (c.currentDepartmentAssignedAt != null &&
-              c.currentDepartmentAssignedAt!.isAfter(startOfToday))) {
+      if ((c.status == ComplaintStatus.assigned || c.status == ComplaintStatus.reported) &&
+          !jobItem.isAwaitingVerification) {
         assignedTodayCount++;
       }
 
       if (c.priority == ComplaintPriority.emergency ||
           c.priority == ComplaintPriority.high) {
         criticalItems.add(jobItem);
-        if (c.status != ComplaintStatus.resolved && c.status != ComplaintStatus.rejected) {
+        if (c.status != ComplaintStatus.resolved &&
+            c.status != ComplaintStatus.rejected &&
+            !jobItem.isAwaitingVerification) {
           criticalCount++;
         }
       }
 
-      if (c.status == ComplaintStatus.inProgress) {
+      if (c.status == ComplaintStatus.inProgress && !jobItem.isAwaitingVerification) {
         inProgressItems.add(jobItem);
-      } else if (c.status == ComplaintStatus.verified ||
-          (c.status == ComplaintStatus.inProgress &&
-              c.officerNotes != null &&
-              c.officerNotes!.toLowerCase().contains('completion'))) {
+      } else if (jobItem.isAwaitingVerification || c.status == ComplaintStatus.verified) {
         awaitingReviewItems.add(jobItem);
-      } else if (c.status == ComplaintStatus.resolved) {
         completedItems.add(jobItem);
-        final resDate = c.resolvedAt ?? c.updatedAt;
-        if (resDate.isAfter(startOfToday)) {
-          completedTodayCount++;
-        }
+        completedTodayCount++;
+      } else if (c.status == ComplaintStatus.resolved || c.status == ComplaintStatus.closed) {
+        completedItems.add(jobItem);
+        completedTodayCount++;
       }
     }
 
@@ -413,18 +413,24 @@ class GovernmentCrewWorkService {
 
       // Tab filter
       if (activeTab != null && activeTab.isNotEmpty && activeTab != 'all') {
-        if (activeTab == 'in_progress' && c.status != ComplaintStatus.inProgress) {
+        if (activeTab == 'in_progress' && (c.status != ComplaintStatus.inProgress || item.isAwaitingVerification)) {
           return false;
         }
         if (activeTab == 'awaiting_review' && !item.isAwaitingVerification) {
           return false;
         }
-        if (activeTab == 'completed' && c.status != ComplaintStatus.resolved) {
+        if (activeTab == 'completed' && !(item.isAwaitingVerification || c.status == ComplaintStatus.resolved || c.status == ComplaintStatus.closed)) {
           return false;
         }
         if (activeTab == 'critical' &&
             c.priority != ComplaintPriority.emergency &&
             c.priority != ComplaintPriority.high) {
+          return false;
+        }
+      } else if (activeTab == 'all' || activeTab == null || activeTab.isEmpty) {
+        // Active work queue: Only include actionable pending work (not yet completed/verified/resolved/closed)
+        // unless explicitly filtered by status
+        if (statusFilter == null && (item.isAwaitingVerification || c.status == ComplaintStatus.verified || c.status == ComplaintStatus.resolved || c.status == ComplaintStatus.closed)) {
           return false;
         }
       }
@@ -518,6 +524,7 @@ class GovernmentCrewWorkService {
   }
 
   /// Starts field work on an assigned grievance.
+  /// Starts field work on an assigned grievance.
   /// Transitions status from `assigned` -> `inProgress`.
   Future<ComplaintModel> startJob({
     required String complaintId,
@@ -528,21 +535,20 @@ class GovernmentCrewWorkService {
       throw ArgumentError('Complaint not found for ID: $complaintId');
     }
 
-    final crewUser = await _getUser(crewId);
+    final crewUser = await _getUser(crewId, complaint: complaint);
     if (crewUser == null) {
       throw ArgumentError('Crew technician not found for ID: $crewId');
     }
 
-    // Security check: Must be assigned to this crew member
-    final isAssignedToCrew = complaint.assignedCrewMemberId == crewUser.employeeId ||
-        complaint.assignedCrewMemberId == crewUser.id ||
-        complaint.assignedTo == crewUser.fullName;
+    // Security check: Must be authorized to start field execution
+    final isAuthorized = _authService.canStartFieldWork(crewUser, complaint);
 
-    if (!isAssignedToCrew && !crewUser.isSuperAdmin) {
+    if (!isAuthorized) {
       throw StateError(
           'Security Violation: Complaint $complaintId is not assigned to crew member ${crewUser.employeeId}.');
     }
 
+    final now = DateTime.now();
     final updatedTimeline = List<TimelineEvent>.from(complaint.timeline)
       ..insert(
         0,
@@ -550,7 +556,7 @@ class GovernmentCrewWorkService {
           title: 'Work Started in Field',
           description:
               'Field technician ${crewUser.fullName} (${crewUser.displayDesignation}) has commenced work on site.',
-          timestamp: DateTime.now(),
+          timestamp: now,
           status: ComplaintStatus.inProgress,
           updatedBy: crewUser.employeeId,
         ),
@@ -558,8 +564,11 @@ class GovernmentCrewWorkService {
 
     final updated = complaint.copyWith(
       status: ComplaintStatus.inProgress,
+      routingStatus: ComplaintRoutingStatus.inProgress,
+      workStartedAt: now,
+      workStartedBy: crewUser.employeeId,
       timeline: updatedTimeline,
-      updatedAt: DateTime.now(),
+      updatedAt: now,
       // SLA Policy: Original creation timestamp and SLA clock are strictly PRESERVED
       originalCreatedAt: complaint.originalCreatedAt,
       slaStartedAt: complaint.slaStartedAt,
@@ -585,7 +594,7 @@ class GovernmentCrewWorkService {
       departmentId: complaint.assignedDepartmentId,
       details: {
         'action': 'work_started',
-        'startedAt': DateTime.now().toIso8601String(),
+        'startedAt': now.toIso8601String(),
       },
     );
 
@@ -593,11 +602,7 @@ class GovernmentCrewWorkService {
   }
 
   /// Submits completed field work with Before, After (and optional During) photos and remarks.
-  /// Transitions grievance to Awaiting Verification (`verified` status).
-  ///
-  /// CRITICAL ARCHITECTURAL RULE:
-  /// The crew member DOES NOT finally resolve the complaint.
-  /// Final resolution and certification belongs to the Ward Department Lead.
+  /// Transitions grievance directly to `closed` (with resolution evidence, remarks, timestamps, and SLA preservation).
   Future<ComplaintModel> submitWorkCompletion({
     required String complaintId,
     required String crewId,
@@ -612,30 +617,29 @@ class GovernmentCrewWorkService {
     if (afterPhotoUrl.trim().isEmpty) {
       throw ArgumentError('After-work completion photo evidence is required.');
     }
-    if (workRemarks.trim().isEmpty) {
-      throw ArgumentError('Work performed description / remarks are required.');
-    }
+    final cleanRemarks = workRemarks.trim().isNotEmpty
+        ? workRemarks.trim()
+        : 'Site restoration completed by frontline crew.';
 
     final complaint = await _complaintRepo.getComplaintById(complaintId);
     if (complaint == null) {
       throw ArgumentError('Complaint not found for ID: $complaintId');
     }
 
-    final crewUser = await _getUser(crewId);
+    final crewUser = await _getUser(crewId, complaint: complaint);
     if (crewUser == null) {
       throw ArgumentError('Crew technician not found for ID: $crewId');
     }
 
-    // Security check
-    final isAssignedToCrew = complaint.assignedCrewMemberId == crewUser.employeeId ||
-        complaint.assignedCrewMemberId == crewUser.id ||
-        complaint.assignedTo == crewUser.fullName;
+    // Security check: Must be authorized to submit field work completion
+    final isAuthorized = _authService.canSubmitFieldResolution(crewUser, complaint);
 
-    if (!isAssignedToCrew && !crewUser.isSuperAdmin) {
+    if (!isAuthorized) {
       throw StateError(
           'Security Violation: Crew member ${crewUser.employeeId} cannot submit completion for unassigned complaint $complaintId.');
     }
 
+    final now = DateTime.now();
     final updatedImageUrls = List<String>.from(complaint.imageUrls);
     if (!updatedImageUrls.contains(beforePhotoUrl)) {
       updatedImageUrls.add(beforePhotoUrl);
@@ -650,28 +654,36 @@ class GovernmentCrewWorkService {
     }
 
     final completionNote =
-        'Field work completed by ${crewUser.fullName}. Remarks: $workRemarks. Submitted for Ward Department Lead verification.';
+        'Field work completed by ${crewUser.fullName}. Remarks: $cleanRemarks.';
 
     final updatedTimeline = List<TimelineEvent>.from(complaint.timeline)
       ..insert(
         0,
         TimelineEvent(
-          title: 'Work Completed — Awaiting Lead Verification',
-          description: completionNote,
-          timestamp: DateTime.now(),
-          status: ComplaintStatus.verified,
+          title: 'Field Work Completed & Closed',
+          description:
+              'Field work completed with resolution evidence. Remarks: $cleanRemarks.',
+          timestamp: now,
+          status: ComplaintStatus.closed,
           updatedBy: crewUser.employeeId,
         ),
       );
 
-    // Moves to verified / awaiting verification state.
-    // NOTE: complaint.status is set to ComplaintStatus.verified (not resolved!).
+    // Direct transition to Closed upon field completion
     final updated = complaint.copyWith(
-      status: ComplaintStatus.verified,
-      imageUrls: updatedImageUrls,
+      status: ComplaintStatus.closed,
+      routingStatus: ComplaintRoutingStatus.resolved,
+      closedAt: now,
+      closedBy: crewUser.employeeId,
+      resolvedAt: now,
+      resolvedBy: crewUser.employeeId,
+      resolutionRemarks: cleanRemarks,
       officerNotes: completionNote,
+      beforeWorkPhoto: beforePhotoUrl,
+      afterWorkPhoto: afterPhotoUrl,
+      imageUrls: updatedImageUrls,
       timeline: updatedTimeline,
-      updatedAt: DateTime.now(),
+      updatedAt: now,
       originalCreatedAt: complaint.originalCreatedAt,
       slaStartedAt: complaint.slaStartedAt,
     );
@@ -680,29 +692,60 @@ class GovernmentCrewWorkService {
 
     await _complaintRepo.updateStatus(
       complaintId: complaint.id,
-      nextStatus: ComplaintStatus.verified,
-      updateMessage: completionNote,
+      nextStatus: ComplaintStatus.closed,
+      updateMessage: 'Complaint closed after field resolution: $cleanRemarks',
       officerName: crewUser.fullName,
     );
 
     await _auditService.logAction(
       complaintId: complaint.id,
-      action: GovernmentAuditActions.statusUpdated,
+      action: GovernmentAuditActions.complaintClosed,
       actorId: crewUser.employeeId,
       actorRole: crewUser.role,
       actorName: crewUser.fullName,
       wardId: complaint.wardId,
       departmentId: complaint.assignedDepartmentId,
       details: {
-        'action': 'completion_submitted',
-        'remarks': workRemarks,
+        'action': 'field_completion_and_closure',
+        'remarks': cleanRemarks,
         'beforePhoto': beforePhotoUrl,
         'afterPhoto': afterPhotoUrl,
-        'submittedAt': DateTime.now().toIso8601String(),
+        'submittedAt': now.toIso8601String(),
+        'closedAt': now.toIso8601String(),
       },
     );
 
     return updated;
+  }
+
+  /// Reopens a closed complaint for corrective rework.
+  Future<ComplaintModel> reopenComplaint({
+    required String complaintId,
+    required String actorId,
+    required String reopenReason,
+  }) async {
+    return _routingService.reopenComplaint(
+      complaintId: complaintId,
+      reopenedBy: actorId,
+      reopenReason: reopenReason,
+    );
+  }
+
+  /// Phase 2: Direct resolution by assigned Field Officer upon uploading completion evidence.
+  Future<ComplaintModel> resolveFieldJob({
+    required String complaintId,
+    required String fieldOfficerId,
+    required String afterPhotoUrl,
+    required String workRemarks,
+    List<String>? additionalPhotos,
+  }) async {
+    return _routingService.resolveByFieldOfficer(
+      complaintId: complaintId,
+      fieldOfficerId: fieldOfficerId,
+      afterPhotoUrl: afterPhotoUrl,
+      resolutionRemarks: workRemarks,
+      additionalPhotos: additionalPhotos,
+    );
   }
 
   /// Resumes work on a grievance returned for rework by the Ward Department Lead.
@@ -716,9 +759,17 @@ class GovernmentCrewWorkService {
       throw ArgumentError('Complaint not found for ID: $complaintId');
     }
 
-    final crewUser = await _getUser(crewId);
+    final crewUser = await _getUser(crewId, complaint: complaint);
     if (crewUser == null) {
       throw ArgumentError('Crew technician not found for ID: $crewId');
+    }
+
+    // Security check: Must be authorized to resume rework
+    final isAuthorized = _authService.canResumeFieldWork(crewUser, complaint);
+
+    if (!isAuthorized) {
+      throw StateError(
+          'Security Violation: Crew member ${crewUser.employeeId} is not authorized to resume rework on complaint $complaintId.');
     }
 
     final resumptionNote = remarks?.isNotEmpty == true
@@ -784,9 +835,17 @@ class GovernmentCrewWorkService {
       throw ArgumentError('Complaint not found for ID: $complaintId');
     }
 
-    final crewUser = await _getUser(crewId);
+    final crewUser = await _getUser(crewId, complaint: complaint);
     if (crewUser == null) {
       throw ArgumentError('Crew technician not found for ID: $crewId');
+    }
+
+    // Security check: Must be authorized to report blockage
+    final isAuthorized = _authService.canReportFieldObstacle(crewUser, complaint);
+
+    if (!isAuthorized) {
+      throw StateError(
+          'Security Violation: Crew member ${crewUser.employeeId} is not authorized to report issue on complaint $complaintId.');
     }
 
     final blockageMessage =
@@ -849,9 +908,7 @@ class GovernmentCrewWorkService {
     return GovtUserModel(
       id: idOrEmployeeId,
       employeeId: idOrEmployeeId,
-      fullName: (complaint?.assignedTo != null && complaint!.assignedTo!.isNotEmpty)
-          ? complaint.assignedTo!
-          : 'Field Technician ($idOrEmployeeId)',
+      fullName: 'Field Technician ($idOrEmployeeId)',
       email: 'crew.${idOrEmployeeId.toLowerCase().replaceAll('-', '.')}@mcgm.gov.in',
       role: 'department_crew',
       wardId: complaint?.wardId ?? 'N',

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/constants/app_typography.dart';
+import '../../core/localization/app_localizations.dart';
 import '../../core/models/complaint_model.dart';
 import '../../core/routing/app_routes.dart';
 import '../../core/widgets/civic_fix_button.dart';
@@ -54,15 +55,17 @@ class ComplaintSubmittedScreen extends StatelessWidget {
                   CivicFixSpacing.vSpaceLg,
 
                   Text(
-                    isOffline ? 'Complaint Saved Offline' : 'Issue Reported',
+                    isOffline
+                        ? (context.l10nOrNull?.complaintSavedOffline ?? 'Complaint Saved Offline')
+                        : (context.l10nOrNull?.issueReportedTitle ?? 'Issue Reported'),
                     textAlign: TextAlign.center,
                     style: CivicFixTypography.h1,
                   ),
                   CivicFixSpacing.vSpaceSm,
                   Text(
                     isOffline
-                        ? "Complaint saved. It will be submitted when you're back online."
-                        : 'Your issue has been submitted successfully.',
+                        ? (context.l10nOrNull?.offlineSubmissionNote ?? "Complaint saved. It will be submitted when you're back online.")
+                        : (context.l10nOrNull?.issueSubmittedSuccess ?? 'Your issue has been submitted successfully.'),
                     textAlign: TextAlign.center,
                     style: CivicFixTypography.body.copyWith(
                       color: CivicFixColors.secondaryText,
@@ -79,7 +82,9 @@ class ComplaintSubmittedScreen extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              isOffline ? 'Local Reference' : 'Complaint ID',
+                              isOffline
+                                  ? (context.l10nOrNull?.localReference ?? 'Local Reference')
+                                  : (context.l10nOrNull?.complaintId ?? 'Complaint ID'),
                               style: CivicFixTypography.caption.copyWith(
                                 color: CivicFixColors.secondaryText,
                               ),
@@ -100,7 +105,7 @@ class ComplaintSubmittedScreen extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              'Status',
+                              context.l10nOrNull?.status ?? 'Status',
                               style: CivicFixTypography.caption.copyWith(
                                 color: CivicFixColors.secondaryText,
                               ),
@@ -125,7 +130,7 @@ class ComplaintSubmittedScreen extends StatelessWidget {
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
-                                      'Pending Sync',
+                                      context.l10nOrNull?.pendingSync ?? 'Pending Sync',
                                       style: CivicFixTypography.captionMedium.copyWith(
                                         color: CivicFixColors.alertDark,
                                         fontWeight: FontWeight.w700,
@@ -146,7 +151,7 @@ class ComplaintSubmittedScreen extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              'Civic Reward',
+                              context.l10nOrNull?.civicReward ?? 'Civic Reward',
                               style: CivicFixTypography.caption.copyWith(
                                 color: CivicFixColors.secondaryText,
                               ),
@@ -160,7 +165,7 @@ class ComplaintSubmittedScreen extends StatelessWidget {
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
-                                  '+20 Points',
+                                  context.l10nOrNull?.plusTwentyPoints ?? '+20 Points',
                                   style: CivicFixTypography.captionMedium.copyWith(
                                     color: CivicFixColors.secondaryDark,
                                     fontWeight: FontWeight.w700,
@@ -177,8 +182,8 @@ class ComplaintSubmittedScreen extends StatelessWidget {
 
                   Text(
                     isOffline
-                        ? 'Your complaint is securely stored on this device and will sync once internet is connected.'
-                        : 'You can track the progress of this issue from My Complaints.',
+                        ? (context.l10nOrNull?.storedLocallyNote ?? 'Your complaint is securely stored on this device and will sync once internet is connected.')
+                        : (context.l10nOrNull?.trackFromMyComplaintsNote ?? 'You can track the progress of this issue from My Complaints.'),
                     textAlign: TextAlign.center,
                     style: CivicFixTypography.caption.copyWith(
                       color: CivicFixColors.secondaryText,
@@ -188,7 +193,7 @@ class ComplaintSubmittedScreen extends StatelessWidget {
 
                   // Primary Actions
                   CivicFixButton(
-                    text: 'View Complaint',
+                    text: context.l10nOrNull?.viewComplaint ?? 'View Complaint',
                     icon: Icons.description_outlined,
                     onPressed: () {
                       if (complaint != null) {
@@ -208,7 +213,7 @@ class ComplaintSubmittedScreen extends StatelessWidget {
                   ),
                   CivicFixSpacing.vSpaceMd,
                   CivicFixOutlinedButton(
-                    text: 'Back to Home',
+                    text: context.l10nOrNull?.backToHome ?? 'Back to Home',
                     onPressed: () {
                       Navigator.pushNamedAndRemoveUntil(
                         context,

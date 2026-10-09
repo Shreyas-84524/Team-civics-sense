@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
+import '../../../core/localization/app_localizations.dart';
 import '../../../core/models/complaint_model.dart';
 import '../../../core/repositories/repository_locator.dart';
 import '../../../core/widgets/civic_fix_button.dart';
@@ -242,7 +243,7 @@ class _GovtComplaintAssignmentScreenState extends State<GovtComplaintAssignmentS
                     items: GovtDepartmentModel.defaultDepartments.map((dept) {
                       return DropdownMenuItem<String>(
                         value: dept.id,
-                        child: Text(dept.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: CivicFixTypography.bodySmall),
+                        child: Text(localizedDepartment(dept.id, context: context), maxLines: 1, overflow: TextOverflow.ellipsis, style: CivicFixTypography.bodySmall),
                       );
                     }).toList(),
                     onChanged: (val) {
@@ -313,25 +314,30 @@ class _GovtComplaintAssignmentScreenState extends State<GovtComplaintAssignmentS
                   CivicFixSpacing.vSpaceXl,
 
                   // Actions
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      OutlinedButton(
-                        onPressed: () => Navigator.of(context).pop(false),
-                        style: OutlinedButton.styleFrom(
-                          minimumSize: const Size(0, 40),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        child: const Text('Cancel'),
-                      ),
-                      CivicFixSpacing.hSpaceMd,
-                      CivicFixButton(
-                        text: 'Confirm & Dispatch',
-                        width: 200,
-                        isLoading: _isLoading,
-                        onPressed: _promptAssignConfirmation,
-                      ),
-                    ],
+                  Builder(
+                    builder: (context) {
+                      final l10n = AppLocalizations.of(context);
+                      return Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          OutlinedButton(
+                            onPressed: () => Navigator.of(context).pop(false),
+                            style: OutlinedButton.styleFrom(
+                              minimumSize: const Size(0, 40),
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: Text(l10n?.commonCancel ?? 'Cancel'),
+                          ),
+                          CivicFixSpacing.hSpaceMd,
+                          CivicFixButton(
+                            text: l10n?.govConfirmAssignment ?? 'Confirm & Dispatch',
+                            width: 200,
+                            isLoading: _isLoading,
+                            onPressed: _promptAssignConfirmation,
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ],
               ),

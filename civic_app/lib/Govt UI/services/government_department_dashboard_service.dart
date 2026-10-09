@@ -369,6 +369,11 @@ class GovernmentDepartmentDashboardService {
       case 'solid_waste_management':
       case 'waste':
       case 'cat_waste':
+      case 'sanitation':
+      case 'cat_sanitation':
+      case 'garbage':
+      case 'trash':
+      case 'cleanliness':
         return 'solid_waste_management';
 
       case 'dept_roads':
@@ -376,6 +381,13 @@ class GovernmentDepartmentDashboardService {
       case 'roads':
       case 'maintenance_roads':
       case 'cat_roads':
+      case 'pothole':
+      case 'potholes':
+      case 'drainage':
+      case 'storm_water_drain':
+      case 'storm_water_drainage':
+      case 'swd':
+      case 'cat_drainage':
         return 'maintenance_roads';
 
       case 'dept_water':
@@ -438,14 +450,6 @@ class GovernmentDepartmentDashboardService {
       case 'assessment_collection':
       case 'ac':
         return 'assessment_collection';
-
-      case 'dept_storm_water_drain':
-      case 'storm_water_drain':
-      case 'storm_water_drainage':
-      case 'swd':
-      case 'drainage':
-      case 'cat_drainage':
-        return 'storm_water_drain';
 
       case 'dept_mechanical_electrical':
       case 'mechanical_electrical':
@@ -646,10 +650,10 @@ class GovernmentDepartmentDashboardService {
         createdToday++;
       }
 
-      final isResolved = c.status == ComplaintStatus.resolved;
+      final isResolved = c.status == ComplaintStatus.resolved || c.status == ComplaintStatus.closed;
       if (isResolved) {
         resolved++;
-        final resDate = c.resolvedAt ?? c.updatedAt;
+        final resDate = c.resolvedAt ?? c.closedAt ?? c.updatedAt;
         if (resDate.year == now.year && resDate.month == now.month && resDate.day == now.day) {
           resolvedToday++;
         }
@@ -663,6 +667,10 @@ class GovernmentDepartmentDashboardService {
       }
 
       switch (c.status) {
+        case ComplaintStatus.underVerification:
+          submitted++;
+          awaitingVerification++;
+          break;
         case ComplaintStatus.reported:
           submitted++;
           awaitingVerification++;
@@ -678,6 +686,7 @@ class GovernmentDepartmentDashboardService {
           inProgress++;
           break;
         case ComplaintStatus.resolved:
+        case ComplaintStatus.closed:
           break;
         case ComplaintStatus.rejected:
           break;
@@ -1285,43 +1294,7 @@ class GovernmentDepartmentDashboardService {
     if (c.departmentName != null && c.departmentName!.isNotEmpty) {
       return normalizeDepartmentId(c.departmentName!);
     }
-    final catId = c.category.id.toLowerCase();
-    switch (catId) {
-      case 'waste':
-      case 'garbage':
-      case 'cat_waste':
-      case 'solid_waste_management':
-        return 'solid_waste_management';
-      case 'pothole':
-      case 'roads':
-      case 'cat_roads':
-      case 'street_light':
-        return 'maintenance_roads';
-      case 'water':
-      case 'cat_water':
-      case 'water_works':
-        return 'water_works';
-      case 'drainage':
-      case 'sewage':
-      case 'cat_drainage':
-        return 'storm_water_drain';
-      case 'garden':
-      case 'trees':
-      case 'cat_garden':
-        return 'garden_trees';
-      case 'health':
-      case 'cat_health':
-        return 'public_health';
-      case 'pest':
-      case 'mosquito':
-      case 'cat_pest':
-        return 'pest_control_insecticide';
-      case 'building':
-      case 'encroachment':
-        return 'building_factory';
-      default:
-        return 'general_administration';
-    }
+    return normalizeDepartmentId(c.category.id);
   }
 
   List<TimeTrendPoint> _generateRealTimeTrends(List<ComplaintModel> complaints, int days) {

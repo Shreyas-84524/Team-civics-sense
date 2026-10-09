@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
+import '../../../core/localization/app_localizations.dart';
 import '../../../core/models/complaint_model.dart';
 import '../../../core/network/connectivity_service.dart';
 import '../../../core/repositories/repository_locator.dart';
@@ -243,6 +244,8 @@ class _GovtDashboardScreenState extends State<GovtDashboardScreen> {
   }
 
   Widget _buildDashboardHeader() {
+    final l10n = AppLocalizations.of(context);
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final isMobile = constraints.maxWidth < 600;
@@ -255,7 +258,7 @@ class _GovtDashboardScreenState extends State<GovtDashboardScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Municipal Operations Overview',
+                    l10n?.govDashboard ?? 'Municipal Operations Overview',
                     style: (isMobile ? CivicFixTypography.h3 : CivicFixTypography.h2).copyWith(
                       fontWeight: FontWeight.w700,
                       color: GovtThemeTokens.textPrimary,
@@ -263,7 +266,7 @@ class _GovtDashboardScreenState extends State<GovtDashboardScreen> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Real-time grievance telemetry & nodal department workload',
+                    l10n?.govDashboardSubtitle ?? 'Real-time grievance telemetry & nodal department workload',
                     style: CivicFixTypography.captionMedium.copyWith(
                       color: GovtThemeTokens.textSecondary,
                     ),
@@ -287,6 +290,8 @@ class _GovtDashboardScreenState extends State<GovtDashboardScreen> {
   }
 
   Widget _buildKpiMetricsGrid() {
+    final l10n = AppLocalizations.of(context);
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
@@ -306,7 +311,7 @@ class _GovtDashboardScreenState extends State<GovtDashboardScreen> {
 
         final cards = [
           StatCard(
-            title: 'Total Grievances',
+            title: l10n?.govTotalComplaints ?? 'Total Grievances',
             value: '${_metrics?.totalComplaints ?? 0}',
             icon: Icons.folder_open_rounded,
             accentColor: GovtThemeTokens.textPrimary,
@@ -315,7 +320,7 @@ class _GovtDashboardScreenState extends State<GovtDashboardScreen> {
             onTap: widget.onNavigateToComplaints,
           ),
           StatCard(
-            title: 'Reported / New',
+            title: l10n?.govReportedComplaints ?? 'Reported / New',
             value: '${_metrics?.reportedCount ?? 0}',
             icon: Icons.assignment_outlined,
             accentColor: GovtThemeTokens.primary,
@@ -324,7 +329,7 @@ class _GovtDashboardScreenState extends State<GovtDashboardScreen> {
             onTap: widget.onNavigateToComplaints,
           ),
           StatCard(
-            title: 'Verified',
+            title: localizedComplaintStatus(ComplaintStatus.verified, context: context),
             value: '${_metrics?.verifiedCount ?? 0}',
             icon: Icons.verified_outlined,
             accentColor: GovtThemeTokens.info,
@@ -333,7 +338,7 @@ class _GovtDashboardScreenState extends State<GovtDashboardScreen> {
             onTap: widget.onNavigateToComplaints,
           ),
           StatCard(
-            title: 'Assigned',
+            title: localizedComplaintStatus(ComplaintStatus.assigned, context: context),
             value: '${_metrics?.assignedCount ?? 0}',
             icon: Icons.person_add_alt_1_outlined,
             accentColor: GovtThemeTokens.secondary,
@@ -342,7 +347,7 @@ class _GovtDashboardScreenState extends State<GovtDashboardScreen> {
             onTap: widget.onNavigateToComplaints,
           ),
           StatCard(
-            title: 'In Progress',
+            title: localizedComplaintStatus(ComplaintStatus.inProgress, context: context),
             value: '${_metrics?.inProgressCount ?? 0}',
             icon: Icons.engineering_rounded,
             accentColor: GovtThemeTokens.alert,
@@ -351,7 +356,7 @@ class _GovtDashboardScreenState extends State<GovtDashboardScreen> {
             onTap: widget.onNavigateToComplaints,
           ),
           StatCard(
-            title: 'Resolved',
+            title: localizedComplaintStatus(ComplaintStatus.resolved, context: context),
             value: '${_metrics?.resolvedCount ?? 0}',
             icon: Icons.check_circle_outline_rounded,
             accentColor: GovtThemeTokens.secondary,
@@ -436,14 +441,16 @@ class _GovtDashboardScreenState extends State<GovtDashboardScreen> {
   }
 
   Widget _buildRecentComplaintsSection() {
+    final l10n = AppLocalizations.of(context);
+
     final columns = [
-      const GovtDataColumn(label: 'Ticket #', width: 130),
-      const GovtDataColumn(label: 'Issue & Category', width: 220),
-      const GovtDataColumn(label: 'Location / Ward', width: 180),
-      const GovtDataColumn(label: 'Priority', width: 120),
-      const GovtDataColumn(label: 'Status', width: 140),
-      const GovtDataColumn(label: 'Reported', width: 110),
-      const GovtDataColumn(label: 'Action', width: 90),
+      GovtDataColumn(label: l10n?.govTableHeaderId ?? 'Ticket #', width: 130),
+      GovtDataColumn(label: l10n?.govTableHeaderCategory ?? 'Issue & Category', width: 220),
+      GovtDataColumn(label: l10n?.govTableHeaderWard ?? 'Location / Ward', width: 180),
+      GovtDataColumn(label: l10n?.govTableHeaderPriority ?? 'Priority', width: 120),
+      GovtDataColumn(label: l10n?.govTableHeaderStatus ?? 'Status', width: 140),
+      GovtDataColumn(label: l10n?.govTableHeaderReported ?? 'Reported', width: 110),
+      GovtDataColumn(label: l10n?.govTableHeaderActions ?? 'Action', width: 90),
     ];
 
     final rows = _recentComplaints.map((c) {
@@ -468,7 +475,7 @@ class _GovtDashboardScreenState extends State<GovtDashboardScreen> {
               ),
             ),
             Text(
-              c.category.name,
+              localizedCategory(c.category.name, context: context),
               style: CivicFixTypography.caption.copyWith(
                 color: GovtThemeTokens.textSecondary,
                 fontSize: 11,
@@ -495,13 +502,13 @@ class _GovtDashboardScreenState extends State<GovtDashboardScreen> {
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
           onPressed: () => _navigateToDetails(c),
-          child: const Text('View', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+          child: Text(l10n?.details ?? 'View', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
         ),
       ];
     }).toList();
 
     return GovtDataTable(
-      title: 'Recent Civic Grievances',
+      title: l10n?.recentComplaints ?? 'Recent Civic Grievances',
       headerAction: TextButton.icon(
         style: TextButton.styleFrom(
           minimumSize: const Size(0, 32),
@@ -510,7 +517,7 @@ class _GovtDashboardScreenState extends State<GovtDashboardScreen> {
         ),
         onPressed: widget.onNavigateToComplaints,
         icon: const Icon(Icons.arrow_forward_rounded, size: 14),
-        label: const Text('View All Complaints', style: TextStyle(fontSize: 12)),
+        label: Text(l10n?.viewAllComplaints ?? 'View All Complaints', style: const TextStyle(fontSize: 12)),
       ),
       columns: columns,
       rows: rows,
@@ -558,6 +565,8 @@ class _GovtDashboardScreenState extends State<GovtDashboardScreen> {
   }
 
   Widget _buildQuickActionsPanel() {
+    final l10n = AppLocalizations.of(context);
+
     return DashboardCard(
       title: 'Quick Operations',
       subtitle: 'Frequent nodal administrative workflows',
@@ -565,7 +574,7 @@ class _GovtDashboardScreenState extends State<GovtDashboardScreen> {
         children: [
           _buildActionTile(
             icon: Icons.assignment_outlined,
-            title: 'Manage Grievances',
+            title: l10n?.govNavComplaints ?? 'Manage Grievances',
             subtitle: 'Assign, verify, and update tickets',
             color: GovtThemeTokens.primary,
             onTap: widget.onNavigateToComplaints,
@@ -573,7 +582,7 @@ class _GovtDashboardScreenState extends State<GovtDashboardScreen> {
           CivicFixSpacing.vSpaceSm,
           _buildActionTile(
             icon: Icons.map_outlined,
-            title: 'Live Hazard Map',
+            title: l10n?.govNavHazardMap ?? 'Live Hazard Map',
             subtitle: 'Inspect emergency geographic hazards',
             color: GovtThemeTokens.info,
             onTap: widget.onNavigateToMap,
@@ -581,7 +590,7 @@ class _GovtDashboardScreenState extends State<GovtDashboardScreen> {
           CivicFixSpacing.vSpaceSm,
           _buildActionTile(
             icon: Icons.bar_chart_rounded,
-            title: 'Resolution Analytics',
+            title: l10n?.govNavAnalytics ?? 'Resolution Analytics',
             subtitle: 'View SLA compliance & departmental stats',
             color: GovtThemeTokens.secondary,
             onTap: widget.onNavigateToAnalytics,

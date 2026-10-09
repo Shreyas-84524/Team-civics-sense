@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/constants/app_spacing.dart';
 import '../../../../core/constants/app_typography.dart';
 import '../../../../core/models/complaint_model.dart';
+import '../../../../core/localization/widgets/civic_fix_translated_text.dart';
 import '../../../theme/govt_theme_tokens.dart';
 
 /// Standardized, reusable complaint lifecycle timeline for all government roles.
@@ -114,8 +115,10 @@ class GovernmentComplaintTimeline extends StatelessWidget {
                       ],
                     ),
                     CivicFixSpacing.vSpaceXs,
-                    Text(
-                      event.description,
+                    CivicFixTranslatedText(
+                      originalText: event.description,
+                      contentCategory: 'timeline_event_description',
+                      dense: true,
                       style: CivicFixTypography.caption.copyWith(
                         color: GovtThemeTokens.textSecondary,
                         height: 1.3,

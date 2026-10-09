@@ -7,6 +7,7 @@ import '../../../core/location/location_model.dart';
 import '../../../core/models/evidence_model.dart';
 import '../../../core/repositories/repository_locator.dart';
 import '../../../core/widgets/civic_fix_card.dart';
+import '../../../core/widgets/supabase_evidence_image.dart';
 import '../../services/evidence_service.dart';
 
 /// Evidence photo picker widget for Step 2 of Report Issue.
@@ -256,6 +257,8 @@ class _EvidencePickerState extends State<EvidencePicker> {
   }
 
   void _openPhotoPreview(int index, String photoPath, EvidenceItem? item) {
+    final fileName = item?.fileName ?? photoPath.split(RegExp(r'[/\\]')).last;
+
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
@@ -269,9 +272,11 @@ class _EvidencePickerState extends State<EvidencePicker> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Photo Preview (${index + 1} of $_count)',
-                    style: CivicFixTypography.h3,
+                  Expanded(
+                    child: Text(
+                      'Photo Preview (${index + 1} of $_count)',
+                      style: CivicFixTypography.h3,
+                    ),
                   ),
                   IconButton(
                     icon: const Icon(Icons.close_rounded),
@@ -283,44 +288,76 @@ class _EvidencePickerState extends State<EvidencePicker> {
               CivicFixSpacing.vSpaceMd,
               Container(
                 width: double.infinity,
-                height: 220,
+                constraints: const BoxConstraints(
+                  maxHeight: 320,
+                  minHeight: 180,
+                ),
                 decoration: BoxDecoration(
-                  color: CivicFixColors.surfaceMuted,
+                  color: Colors.black,
                   borderRadius: CivicFixRadius.cardRadius,
                   border: Border.all(color: CivicFixColors.border),
                 ),
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          item?.source == EvidenceSource.camera
-                              ? Icons.camera_alt_rounded
-                              : Icons.image_rounded,
-                          size: 56,
-                          color: CivicFixColors.primary.withValues(alpha: 0.6),
-                        ),
-                        CivicFixSpacing.vSpaceSm,
-                        Text(
-                          item?.fileName ?? photoPath.split('/').last,
-                          textAlign: TextAlign.center,
-                          style: CivicFixTypography.bodySmallMedium,
-                        ),
-                        CivicFixSpacing.vSpaceXs,
-                        Text(
-                          item != null
-                              ? 'Captured via ${item.source.label} • ${item.formattedTime}'
-                              : 'Attached Photo',
-                          style: CivicFixTypography.caption.copyWith(
-                            color: CivicFixColors.secondaryText,
+                child: ClipRRect(
+                  borderRadius: CivicFixRadius.cardRadius,
+                  child: InteractiveViewer(
+                    minScale: 0.8,
+                    maxScale: 3.5,
+                    child: Center(
+                      child: SupabaseEvidenceImage(
+                        imagePath: photoPath,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_) => Container(
+                          color: CivicFixColors.surfaceMuted,
+                          alignment: Alignment.center,
+                          padding: const EdgeInsets.all(CivicFixSpacing.lg),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                item?.source == EvidenceSource.camera
+                                    ? Icons.camera_alt_rounded
+                                    : Icons.image_rounded,
+                                size: 56,
+                                color: CivicFixColors.primary.withValues(alpha: 0.6),
+                              ),
+                              CivicFixSpacing.vSpaceSm,
+                              Text(
+                                fileName,
+                                textAlign: TextAlign.center,
+                                style: CivicFixTypography.bodySmallMedium,
+                              ),
+                            ],
                           ),
                         ),
-                      ],
+                      ),
                     ),
-                  ],
+                  ),
                 ),
+              ),
+              CivicFixSpacing.vSpaceSm,
+              Row(
+                children: [
+                  Icon(
+                    item?.source == EvidenceSource.camera
+                        ? Icons.camera_alt_outlined
+                        : Icons.photo_library_outlined,
+                    size: 14,
+                    color: CivicFixColors.secondaryText,
+                  ),
+                  CivicFixSpacing.hSpaceXs,
+                  Expanded(
+                    child: Text(
+                      item != null
+                          ? '$fileName • Captured via ${item.source.label} at ${item.formattedTime}'
+                          : fileName,
+                      style: CivicFixTypography.caption.copyWith(
+                        color: CivicFixColors.secondaryText,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
               ),
               CivicFixSpacing.vSpaceLg,
               Row(
@@ -705,31 +742,43 @@ class _EvidenceCard extends StatelessWidget {
                 borderRadius: CivicFixRadius.chipRadius,
                 border: Border.all(color: CivicFixColors.border),
               ),
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Icon(
-                    isCamera ? Icons.camera_alt_outlined : Icons.image_outlined,
-                    color: CivicFixColors.secondaryDark,
-                    size: 26,
-                  ),
-                  Positioned(
-                    bottom: 2,
-                    right: 2,
-                    child: Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: const BoxDecoration(
-                        color: CivicFixColors.secondary,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.visibility_outlined,
-                        color: Colors.white,
-                        size: 10,
+              child: ClipRRect(
+                borderRadius: CivicFixRadius.chipRadius,
+                child: Stack(
+                  fit: StackFit.expand,
+                  alignment: Alignment.center,
+                  children: [
+                    SupabaseEvidenceImage(
+                      imagePath: photoPath,
+                      fit: BoxFit.cover,
+                      width: 58,
+                      height: 58,
+                      errorBuilder: (_) => Center(
+                        child: Icon(
+                          isCamera ? Icons.camera_alt_outlined : Icons.image_outlined,
+                          color: CivicFixColors.secondaryDark,
+                          size: 26,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                    Positioned(
+                      bottom: 2,
+                      right: 2,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: CivicFixColors.primary.withValues(alpha: 0.85),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.visibility_outlined,
+                          color: Colors.white,
+                          size: 10,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

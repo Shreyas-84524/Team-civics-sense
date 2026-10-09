@@ -23,7 +23,6 @@ class GovtNavigationConfig {
       selectedIcon: Icons.assignment_rounded,
       index: 1,
       routeName: '/govt/complaints',
-      badgeCount: 24,
       group: 'Core',
     ),
     GovtNavItem(
@@ -76,7 +75,6 @@ class GovtNavigationConfig {
       selectedIcon: Icons.assignment_rounded,
       index: 1,
       routeName: '/government/complaints',
-      badgeCount: 24,
       group: 'Operations',
       requiredPermission: 'view_complaints',
     ),

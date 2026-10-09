@@ -19,11 +19,11 @@ The legacy architecture implemented a flat 5-tier municipal officer model with a
 
 | Tier | Legacy Role Identifier | Hierarchy Level | Count | Legacy Password | Scope / Responsibility |
 | :---: | :--- | :--- | :---: | :---: | :--- |
-| **1** | `Admin` / `admin` | Level 1 (Apex) | 1 | `mum_admin` | Dr. Bhushan Gagrani, IAS (Municipal Commissioner & Administrator) |
-| **2** | `Ward Officer` / `ward_officer` | Level 2 (Ward Executive) | 24 | `mum_wardoff` | Assistant Municipal Commissioners (AMCs for Wards A through T) |
-| **3** | `Ward Nagarsevak` / `nagarsevak` | Level 2 (Elected Representative) | 24 | `mum_nagarsevak` | Municipal Corporators (Government of Maharashtra / BMC) |
-| **4** | `Departmental Officer` / `dept_officer` | Level 3 (Ward Departmental Nodal) | 168 | `mum_dept` | 1 Departmental Officer per department in each of 24 wards ($24 \times 7$) |
-| **5** | `Field Engineer` / `engineer` | Level 4 (Ground Operations) | 840 | `mum_engg` | 5 Field Engineers per department in each of 24 wards ($24 \times 7 \times 5$) |
+| **1** | `Admin` / `admin` | Level 1 (Apex) | 1 | `[REDACTED_PURGED]` | Dr. Bhushan Gagrani, IAS (Municipal Commissioner & Administrator) |
+| **2** | `Ward Officer` / `ward_officer` | Level 2 (Ward Executive) | 24 | `[REDACTED_PURGED]` | Assistant Municipal Commissioners (AMCs for Wards A through T) |
+| **3** | `Ward Nagarsevak` / `nagarsevak` | Level 2 (Elected Representative) | 24 | `[REDACTED_PURGED]` | Municipal Corporators (Government of Maharashtra / BMC) |
+| **4** | `Departmental Officer` / `dept_officer` | Level 3 (Ward Departmental Nodal) | 168 | `[REDACTED_PURGED]` | 1 Departmental Officer per department in each of 24 wards ($24 \times 7$) |
+| **5** | `Field Engineer` / `engineer` | Level 4 (Ground Operations) | 840 | `[REDACTED_PURGED]` | 5 Field Engineers per department in each of 24 wards ($24 \times 7 \times 5$) |
 | **Total** | **All Legacy Government Personnel** | | **1,057** | | **100% Deterministic Accounts** |
 
 ### Legacy Mathematical Model:

@@ -4,7 +4,7 @@ import '../../../../../core/constants/app_typography.dart';
 import '../../../../services/government_crew_work_service.dart';
 import '../../../../theme/govt_theme_tokens.dart';
 
-/// Top field KPI summary cards for Department Crew workspace.
+/// Top field KPI summary cards for Department Crew workspace (Assigned, In Progress, Completed).
 class CrewKpiSummarySection extends StatelessWidget {
   final CrewKpiMetrics metrics;
   final void Function(String tabKey)? onKpiTapped;
@@ -20,16 +20,14 @@ class CrewKpiSummarySection extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
-        int crossAxisCount = 6;
-        if (width < 600) {
-          crossAxisCount = 2;
-        } else if (width < 900) {
-          crossAxisCount = 3;
+        int crossAxisCount = 3;
+        if (width < 480) {
+          crossAxisCount = 1;
         }
 
         final cards = [
           _CrewKpiCard(
-            title: 'Assigned Today',
+            title: 'Assigned',
             value: '${metrics.assignedToday}',
             icon: Icons.assignment_outlined,
             accentColor: const Color(0xFF3B82F6),
@@ -45,31 +43,7 @@ class CrewKpiSummarySection extends StatelessWidget {
             onTap: onKpiTapped,
           ),
           _CrewKpiCard(
-            title: 'High / Critical',
-            value: '${metrics.criticalCount}',
-            icon: Icons.priority_high_rounded,
-            accentColor: const Color(0xFFEF4444),
-            tabKey: 'critical',
-            onTap: onKpiTapped,
-          ),
-          _CrewKpiCard(
-            title: 'SLA At Risk',
-            value: '${metrics.slaAtRiskCount}',
-            icon: Icons.timer_outlined,
-            accentColor: const Color(0xFFEA580C),
-            tabKey: 'sla_risk',
-            onTap: onKpiTapped,
-          ),
-          _CrewKpiCard(
-            title: 'Awaiting Review',
-            value: '${metrics.awaitingReviewCount}',
-            icon: Icons.fact_check_outlined,
-            accentColor: const Color(0xFF8B5CF6),
-            tabKey: 'awaiting_review',
-            onTap: onKpiTapped,
-          ),
-          _CrewKpiCard(
-            title: 'Completed Today',
+            title: 'Completed',
             value: '${metrics.completedToday}',
             icon: Icons.check_circle_outline_rounded,
             accentColor: const Color(0xFF10B981),
@@ -78,14 +52,22 @@ class CrewKpiSummarySection extends StatelessWidget {
           ),
         ];
 
-        return GridView.count(
-          crossAxisCount: crossAxisCount,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: CivicFixSpacing.md,
-          crossAxisSpacing: CivicFixSpacing.md,
-          childAspectRatio: width < 600 ? 1.6 : 1.5,
-          children: cards,
+        final spacing = CivicFixSpacing.md;
+        final totalSpacing = spacing * (crossAxisCount - 1);
+        final itemWidth = ((width - totalSpacing) / crossAxisCount)
+            .floorToDouble();
+
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          children: cards
+              .map(
+                (c) => SizedBox(
+                  width: itemWidth > 0 ? itemWidth : width,
+                  child: c,
+                ),
+              )
+              .toList(),
         );
       },
     );
@@ -126,7 +108,7 @@ class _CrewKpiCard extends StatelessWidget {
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -147,7 +129,7 @@ class _CrewKpiCard extends StatelessWidget {
                     ),
                 ],
               ),
-              const Spacer(),
+              CivicFixSpacing.vSpaceSm,
               Text(
                 value,
                 style: CivicFixTypography.h2.copyWith(
@@ -163,7 +145,7 @@ class _CrewKpiCard extends StatelessWidget {
                 style: CivicFixTypography.captionMedium.copyWith(
                   color: GovtThemeTokens.textSecondary,
                   fontWeight: FontWeight.w500,
-                  fontSize: 11,
+                  fontSize: 12,
                 ),
               ),
             ],

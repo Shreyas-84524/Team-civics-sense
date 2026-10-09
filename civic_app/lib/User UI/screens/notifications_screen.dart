@@ -4,6 +4,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_radius.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/constants/app_typography.dart';
+import '../../core/localization/app_localizations.dart';
 import '../../core/models/notification_model.dart';
 import '../../core/network/connectivity_service.dart';
 import '../../core/repositories/complaint_repository.dart';
@@ -14,6 +15,7 @@ import '../../core/widgets/empty_state.dart';
 import '../../core/widgets/error_state.dart';
 import '../../core/widgets/offline_cache_banner.dart';
 import '../../core/widgets/responsive_container.dart';
+import '../widgets/assistant/civic_assistant_fab.dart';
 import '../widgets/notifications/notification_card.dart';
 import '../widgets/notifications/notification_skeleton.dart';
 
@@ -83,9 +85,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     await _notificationRepository.markAllAsRead(userId: _currentUserId);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('All notifications marked as read.'),
-        duration: Duration(seconds: 2),
+      SnackBar(
+        content: Text(context.l10nOrNull?.allNotificationsMarkedAsRead ?? 'All notifications marked as read.'),
+        duration: const Duration(seconds: 2),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -107,17 +109,19 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10nOrNull;
     return Scaffold(
       backgroundColor: CivicFixColors.background,
+      floatingActionButton: const CivicChatbotFab(heroTag: 'notifications_assistant_fab'),
       appBar: CivicFixAppBar(
-        title: 'Notifications',
+        title: l10n?.navNotifications ?? 'Notifications',
         automaticallyImplyLeading: false,
         actions: [
           if (_unreadCount > 0)
             TextButton(
               onPressed: _markAllAsRead,
               child: Text(
-                'Mark all as read',
+                l10n?.markAllAsRead ?? 'Mark all as read',
                 style: CivicFixTypography.captionMedium.copyWith(
                   color: CivicFixColors.primary,
                   fontWeight: FontWeight.w700,
@@ -153,15 +157,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Widget _buildFilterChips() {
+    final l10n = context.l10nOrNull;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
         children: [
-          _buildFilterChip('All', NotificationFilter.all, _allNotifications.length),
+          _buildFilterChip(l10n?.filterAll ?? 'All', NotificationFilter.all, _allNotifications.length),
           CivicFixSpacing.hSpaceSm,
-          _buildFilterChip('Unread', NotificationFilter.unread, _unreadCount),
+          _buildFilterChip(l10n?.filterUnread ?? 'Unread', NotificationFilter.unread, _unreadCount),
           CivicFixSpacing.hSpaceSm,
-          _buildFilterChip('Read', NotificationFilter.read, _allNotifications.length - _unreadCount),
+          _buildFilterChip(l10n?.filterRead ?? 'Read', NotificationFilter.read, _allNotifications.length - _unreadCount),
         ],
       ),
     );
@@ -195,6 +200,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Widget _buildBody() {
+    final l10n = context.l10nOrNull;
     if (_isLoading) {
       return const NotificationSkeleton(itemCount: 5);
     }
@@ -202,8 +208,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     if (_errorMessage != null) {
       return Center(
         child: ErrorState(
-          title: "Couldn't load notifications.",
-          message: 'Please check your connection and try again.',
+          title: l10n?.couldNotLoadNotifications ?? "Couldn't load notifications.",
+          message: l10n?.checkConnectionAndRetry ?? 'Please check your connection and try again.',
           onRetry: _loadNotifications,
         ),
       );
@@ -213,16 +219,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
     if (items.isEmpty) {
       if (_selectedFilter == NotificationFilter.unread) {
-        return const EmptyState(
+        return EmptyState(
           icon: Icons.mark_chat_read_outlined,
-          title: 'No unread notifications',
-          description: 'You have read all updates on your complaints and ward notices.',
+          title: l10n?.noUnreadNotifications ?? 'No unread notifications',
+          description: l10n?.noUnreadNotificationsDesc ?? 'You have read all updates on your complaints and ward notices.',
         );
       }
-      return const EmptyState(
+      return EmptyState(
         icon: Icons.notifications_none_rounded,
-        title: 'No notifications yet.',
-        description: 'When there is an update to one of your complaints, it will appear here.',
+        title: l10n?.noNotificationsYet ?? 'No notifications yet.',
+        description: l10n?.noNotificationsYetDesc ?? 'When there is an update to one of your complaints, it will appear here.',
       );
     }
 

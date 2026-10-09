@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../../core/constants/app_spacing.dart';
 import '../../../../../core/constants/app_typography.dart';
+import '../../../../../core/localization/app_localizations.dart';
 import '../../../../../core/models/complaint_routing_ticket_model.dart';
 import '../../../../theme/govt_responsive.dart';
 import '../../../../theme/govt_theme_tokens.dart';
@@ -155,7 +156,7 @@ class DepartmentLeadRoutingRequestsSection extends StatelessWidget {
               separatorBuilder: (ctx, i) => CivicFixSpacing.vSpaceMd,
               itemBuilder: (ctx, i) {
                 final t = routingTickets[i];
-                return _buildMobileTicketCard(t);
+                return _buildMobileTicketCard(context, t);
               },
             )
           else
@@ -202,25 +203,21 @@ class DepartmentLeadRoutingRequestsSection extends StatelessWidget {
             final ageHours = now.difference(t.createdAt).inHours;
 
             Color statusColor;
-            String statusLabel;
             switch (t.status) {
               case RoutingTicketStatus.pending:
                 statusColor = const Color(0xFFF59E0B);
-                statusLabel = 'Pending Review';
                 break;
               case RoutingTicketStatus.approved:
                 statusColor = const Color(0xFF10B981);
-                statusLabel = 'Approved';
                 break;
               case RoutingTicketStatus.rejected:
                 statusColor = const Color(0xFFEF4444);
-                statusLabel = 'Rejected';
                 break;
               case RoutingTicketStatus.cancelled:
                 statusColor = const Color(0xFF6B7280);
-                statusLabel = 'Cancelled';
                 break;
             }
+            final statusLabel = localizedRoutingTicketStatus(t.status, context: context);
 
             return TableRow(
               decoration: BoxDecoration(
@@ -378,7 +375,7 @@ class DepartmentLeadRoutingRequestsSection extends StatelessWidget {
     );
   }
 
-  Widget _buildMobileTicketCard(ComplaintRoutingTicket t) {
+  Widget _buildMobileTicketCard(BuildContext context, ComplaintRoutingTicket t) {
     return Container(
       padding: const EdgeInsets.all(CivicFixSpacing.md),
       decoration: BoxDecoration(
@@ -400,7 +397,7 @@ class DepartmentLeadRoutingRequestsSection extends StatelessWidget {
               ),
               const Spacer(),
               Text(
-                t.status.name.toUpperCase(),
+                localizedRoutingTicketStatus(t.status, context: context).toUpperCase(),
                 style: CivicFixTypography.caption.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
@@ -409,7 +406,7 @@ class DepartmentLeadRoutingRequestsSection extends StatelessWidget {
           ),
           CivicFixSpacing.vSpaceXs,
           Text(
-            'Transfer to: ${t.suggestedDepartmentId.replaceAll("_", " ").toUpperCase()}',
+            'Transfer to: ${localizedDepartment(t.suggestedDepartmentId, context: context).toUpperCase()}',
             style: CivicFixTypography.bodySmall.copyWith(
               fontWeight: FontWeight.w700,
               color: const Color(0xFFF97316),

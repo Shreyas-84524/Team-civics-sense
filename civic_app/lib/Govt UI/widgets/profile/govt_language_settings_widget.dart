@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_spacing.dart';
 import '../../../../core/constants/app_typography.dart';
+import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/localization/locale_controller.dart';
 import '../../../../core/repositories/repository_locator.dart';
 import '../../models/govt_settings_model.dart';
 import '../../services/govt_user_repository.dart';
@@ -31,6 +33,7 @@ class _GovtLanguageSettingsWidgetState extends State<GovtLanguageSettingsWidget>
 
   void _selectLanguage(GovtLanguage language) {
     _userRepo.updateLanguage(language);
+    LocaleController.instance.setLanguageCode(language.code);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Portal language changed to ${language.label} (${language.localizedDisplay}).'),
@@ -42,14 +45,16 @@ class _GovtLanguageSettingsWidgetState extends State<GovtLanguageSettingsWidget>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
     return ValueListenableBuilder<GovtSettingsModel>(
       valueListenable: _userRepo.settingsListenable,
       builder: (context, settings, _) {
         final currentLang = settings.language;
 
         return DashboardCard(
-          title: 'Language & Regional Localization',
-          subtitle: 'Select your preferred official working language for dashboards and reports',
+          title: l10n?.govLanguageSettings ?? 'Language & Regional Localization',
+          subtitle: l10n?.preferredLanguage ?? 'Select your preferred official working language for dashboards and reports',
           child: Column(
             children: GovtLanguage.values.map((lang) {
               final isSelected = lang == currentLang;
@@ -98,6 +103,8 @@ class _GovtLanguageSettingsWidgetState extends State<GovtLanguageSettingsWidget>
                             ),
                             Text(
                               'Language Code: [${lang.code.toUpperCase()}] • Official Municipal Script',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: CivicFixTypography.caption.copyWith(color: GovtThemeTokens.textSecondary),
                             ),
                           ],

@@ -12,6 +12,7 @@ enum GovernmentComplaintAction {
   flag,
   assignCrew,
   reassignCrew,
+  assignFieldOfficer,
   raiseWrongDepartment,
   approveRouting,
   rejectRouting,
@@ -34,6 +35,8 @@ extension GovernmentComplaintActionExt on GovernmentComplaintAction {
         return 'Assign Crew';
       case GovernmentComplaintAction.reassignCrew:
         return 'Reassign Crew';
+      case GovernmentComplaintAction.assignFieldOfficer:
+        return 'Assign Execution Officer';
       case GovernmentComplaintAction.raiseWrongDepartment:
         return 'Raise Wrong Dept';
       case GovernmentComplaintAction.approveRouting:
@@ -169,11 +172,22 @@ class GovernmentComplaintVisibilityService {
   }) {
     final actions = <GovernmentComplaintAction>{};
 
-    // If complaint is resolved or rejected, no active operations
-    final isClosed = complaint.status == ComplaintStatus.resolved ||
-        complaint.status == ComplaintStatus.rejected;
+    // If complaint is closed, resolved or rejected
+    final isClosedOrResolved = complaint.status == ComplaintStatus.closed ||
+        complaint.status == ComplaintStatus.resolved;
+    final isRejected = complaint.status == ComplaintStatus.rejected;
 
-    if (isClosed) {
+    if (isClosedOrResolved) {
+      if (_authService.canReopenComplaint(user, complaint)) {
+        actions.add(GovernmentComplaintAction.returnForRework);
+      }
+      if (actions.isEmpty) {
+        actions.add(GovernmentComplaintAction.viewOnly);
+      }
+      return actions;
+    }
+
+    if (isRejected) {
       actions.add(GovernmentComplaintAction.viewOnly);
       return actions;
     }
@@ -192,13 +206,14 @@ class GovernmentComplaintVisibilityService {
 
     // 1. Crew Work Actions
     if (user.isCrew || user.isSuperAdmin) {
-      final isAssignedToThisCrew = complaint.assignedCrewMemberId == user.employeeId ||
-          complaint.assignedCrewMemberId == user.id ||
-          (complaint.assignedTo != null &&
-              complaint.assignedTo!.toLowerCase() == user.fullName.toLowerCase()) ||
-          user.isSuperAdmin;
+      if (user.isCrew &&
+          _authService.canAssignFieldOfficer(user, complaint) &&
+          complaint.assignedCrewMemberId != null &&
+          complaint.assignedFieldOfficerId == null) {
+        actions.add(GovernmentComplaintAction.assignFieldOfficer);
+      }
 
-      if (isAssignedToThisCrew) {
+      if (_authService.canStartFieldWork(user, complaint)) {
         if (complaint.status == ComplaintStatus.assigned) {
           actions.add(GovernmentComplaintAction.startWork);
         } else if (complaint.status == ComplaintStatus.inProgress) {
@@ -267,7 +282,7 @@ class GovernmentComplaintVisibilityService {
 
     // 4. Supervisory Escalation (DMC, HOD, Super Admin, Ward Officer)
     final isSupervisory = user.isZonalDmc || user.isCentralHod || user.isSuperAdmin || user.isWardOfficer;
-    if (isSupervisory && !isClosed) {
+    if (isSupervisory) {
       actions.add(GovernmentComplaintAction.escalate);
     }
 

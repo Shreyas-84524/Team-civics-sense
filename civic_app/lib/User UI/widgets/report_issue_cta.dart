@@ -3,6 +3,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_radius.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/constants/app_typography.dart';
+import '../../core/localization/app_localizations.dart';
 import '../../core/routing/app_routes.dart';
 
 /// Primary call-to-action button for reporting civic issues.
@@ -13,8 +14,10 @@ class ReportIssueCta extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final reportText = context.l10nOrNull?.reportAnIssue ?? 'Report an Issue';
+
     return Semantics(
-      label: 'Report a civic issue',
+      label: reportText,
       button: true,
       child: Container(
         width: double.infinity,
@@ -61,13 +64,16 @@ class ReportIssueCta extends StatelessWidget {
                 ),
               ),
               CivicFixSpacing.hSpaceSm,
-              Text(
-                'Report an Issue',
-                style: CivicFixTypography.button.copyWith(
-                  color: Colors.white,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.2,
+              Flexible(
+                child: Text(
+                  reportText,
+                  style: CivicFixTypography.button.copyWith(
+                    color: Colors.white,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.2,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],

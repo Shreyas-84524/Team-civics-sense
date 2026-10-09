@@ -1,8 +1,9 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_radius.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
+import '../../../core/localization/app_localizations.dart';
 import '../../../core/models/category_model.dart';
 import '../../../core/models/complaint_model.dart';
 import '../../../core/widgets/civic_fix_button.dart';
@@ -20,6 +21,19 @@ enum ComplaintSortOption {
         return 'Newest First';
       case ComplaintSortOption.oldestFirst:
         return 'Oldest First';
+    }
+  }
+
+  String localizedLabel(BuildContext context) {
+    final l10n = context.l10nOrNull;
+    if (l10n == null) return label;
+    switch (this) {
+      case ComplaintSortOption.recentlyUpdated:
+        return l10n.recentlyUpdated;
+      case ComplaintSortOption.newestFirst:
+        return l10n.newestFirst;
+      case ComplaintSortOption.oldestFirst:
+        return l10n.oldestFirst;
     }
   }
 }
@@ -165,12 +179,12 @@ class _ComplaintFilterBottomSheetState extends State<ComplaintFilterBottomSheet>
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Filter & Sort',
+                      context.l10nOrNull?.filterAndSort ?? 'Filter & Sort',
                       style: CivicFixTypography.h3,
                     ),
                     IconButton(
                       icon: const Icon(Icons.close_rounded),
-                      tooltip: 'Close Filters',
+                      tooltip: context.l10nOrNull?.close ?? 'Close Filters',
                       onPressed: () => Navigator.pop(context),
                     ),
                   ],
@@ -188,20 +202,22 @@ class _ComplaintFilterBottomSheetState extends State<ComplaintFilterBottomSheet>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // 1. Status Section
-                  _buildSectionTitle('Complaint Status'),
+                  _buildSectionTitle(
+                    context.l10nOrNull?.complaintStatus ?? 'Complaint Status',
+                  ),
                   CivicFixSpacing.vSpaceSm,
                   Wrap(
                     spacing: CivicFixSpacing.sm,
                     runSpacing: CivicFixSpacing.sm,
                     children: [
                       _buildChoiceChip(
-                        label: 'All Statuses',
+                        label: context.l10nOrNull?.allStatuses ?? 'All Statuses',
                         isSelected: _selectedStatus == null,
                         onSelected: () => setState(() => _selectedStatus = null),
                       ),
                       ..._statuses.map(
                         (status) => _buildChoiceChip(
-                          label: status.label,
+                          label: status.localizedLabel(context),
                           isSelected: _selectedStatus == status,
                           onSelected: () => setState(() => _selectedStatus = status),
                         ),
@@ -211,14 +227,16 @@ class _ComplaintFilterBottomSheetState extends State<ComplaintFilterBottomSheet>
                   CivicFixSpacing.vSpaceXl,
 
                   // 2. Category Section
-                  _buildSectionTitle('Issue Category'),
+                  _buildSectionTitle(
+                    context.l10nOrNull?.issueCategory ?? 'Issue Category',
+                  ),
                   CivicFixSpacing.vSpaceSm,
                   Wrap(
                     spacing: CivicFixSpacing.sm,
                     runSpacing: CivicFixSpacing.sm,
                     children: [
                       _buildChoiceChip(
-                        label: 'All Categories',
+                        label: context.l10nOrNull?.allCategories ?? 'All Categories',
                         isSelected: _selectedCategory == null,
                         onSelected: () => setState(() => _selectedCategory = null),
                       ),
@@ -235,14 +253,16 @@ class _ComplaintFilterBottomSheetState extends State<ComplaintFilterBottomSheet>
                   CivicFixSpacing.vSpaceXl,
 
                   // 3. Sorting Section
-                  _buildSectionTitle('Sort By'),
+                  _buildSectionTitle(
+                    context.l10nOrNull?.sortBy ?? 'Sort By',
+                  ),
                   CivicFixSpacing.vSpaceSm,
                   Wrap(
                     spacing: CivicFixSpacing.sm,
                     runSpacing: CivicFixSpacing.sm,
                     children: ComplaintSortOption.values.map(
                       (option) => _buildChoiceChip(
-                        label: option.label,
+                        label: option.localizedLabel(context),
                         isSelected: _selectedSort == option,
                         onSelected: () => setState(() => _selectedSort = option),
                       ),
@@ -279,13 +299,15 @@ class _ComplaintFilterBottomSheetState extends State<ComplaintFilterBottomSheet>
                       ),
                       padding: const EdgeInsets.symmetric(vertical: CivicFixSpacing.md),
                     ),
-                    child: const Text('Clear Filters'),
+                    child: Text(
+                      context.l10nOrNull?.clearFilters ?? 'Clear Filters',
+                    ),
                   ),
                 ),
                 CivicFixSpacing.hSpaceMd,
                 Expanded(
                   child: CivicFixButton(
-                    text: 'Apply Filters',
+                    text: context.l10nOrNull?.applyFilters ?? 'Apply Filters',
                     onPressed: _apply,
                   ),
                 ),

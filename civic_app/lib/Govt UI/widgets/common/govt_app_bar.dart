@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../models/govt_user_model.dart';
-import '../../services/government_jurisdiction_resolver.dart';
 import '../../theme/govt_responsive.dart';
 import '../../theme/govt_theme_tokens.dart';
 import '../../theme/govt_typography.dart';
@@ -46,9 +45,6 @@ class GovtAppBar extends StatelessWidget implements PreferredSizeWidget {
       builder: (context, constraints) {
         final availableWidth = constraints.maxWidth;
         final isNarrow = availableWidth < 600;
-        final showBreadcrumb = availableWidth >= 1000;
-        final showBadges = availableWidth >= 600 && user != null;
-        final showSearch = availableWidth >= 700;
         final showHelp = availableWidth >= 750;
         final isCompactProfile = availableWidth < 950;
 
@@ -81,39 +77,6 @@ class GovtAppBar extends StatelessWidget implements PreferredSizeWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (showBreadcrumb)
-                      Wrap(
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          Text(
-                            'PORTAL',
-                            style: GovtTypography.caption.copyWith(
-                              color: GovtThemeTokens.textSecondary,
-                              letterSpacing: 0.6,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 10,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          const Icon(
-                            Icons.chevron_right_rounded,
-                            size: 13,
-                            color: GovtThemeTokens.textMuted,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: GovtTypography.caption.copyWith(
-                              color: GovtThemeTokens.primary,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 10,
-                              letterSpacing: 0.4,
-                            ),
-                          ),
-                        ],
-                      ),
                     Text(
                       title,
                       maxLines: 1,
@@ -127,30 +90,8 @@ class GovtAppBar extends StatelessWidget implements PreferredSizeWidget {
                 ),
               ),
 
-              // Operational Context Badges (Centralized Jurisdiction Resolver)
-              if (showBadges) ...[
-                ...GovernmentJurisdictionResolver.resolveBadges(
-                  user!,
-                  isCompact: true,
-                  withBrackets: false,
-                  uppercase: false,
-                ).map(
-                  (badge) => Padding(
-                    padding: const EdgeInsets.only(right: CivicFixSpacing.xs + 2),
-                    child: badge,
-                  ),
-                ),
-              ],
-
-              // Global Search Entry Point
-              if (showSearch) ...[
-                IconButton(
-                  icon: const Icon(Icons.search_rounded, color: GovtThemeTokens.textSecondary),
-                  onPressed: onSearchTap ?? () {},
-                  tooltip: 'Search Portal (Ctrl+K)',
-                ),
-                CivicFixSpacing.hSpaceXs,
-              ],
+              // Custom Actions
+              ...?actions,
 
               // Notification Bell
               Stack(

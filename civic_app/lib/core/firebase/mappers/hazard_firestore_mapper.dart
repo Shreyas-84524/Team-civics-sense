@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../map/spatial_chunk.dart';
 import '../../models/hazard_model.dart';
 import 'firestore_mapper_helpers.dart';
 
@@ -22,6 +23,14 @@ class HazardFirestoreMapper {
       'severity': hazard.severity.name,
       'imageUrl': hazard.imageUrl,
       'upvotes': hazard.upvotes,
+      'spatialChunkId': hazard.spatialChunkId ??
+          (hazard.latitude != 0.0 || hazard.longitude != 0.0
+              ? GeohashUtils.encode(hazard.latitude, hazard.longitude, precision: 5)
+              : null),
+      'geohash': hazard.geohash ??
+          (hazard.latitude != 0.0 || hazard.longitude != 0.0
+              ? GeohashUtils.encode(hazard.latitude, hazard.longitude, precision: 7)
+              : null),
     };
 
     if (isCreate) {
@@ -39,6 +48,8 @@ class HazardFirestoreMapper {
     required String documentId,
     required Map<String, dynamic> data,
   }) {
+    final lat = (data['latitude'] as num?)?.toDouble() ?? 0.0;
+    final lng = (data['longitude'] as num?)?.toDouble() ?? 0.0;
     return HazardModel(
       id: documentId,
       complaintId: data['complaintId'] as String?,
@@ -46,8 +57,8 @@ class HazardFirestoreMapper {
       title: data['title'] as String? ?? '',
       category: FirestoreMapperHelpers.categoryFromMap(data['category']),
       status: FirestoreMapperHelpers.parseComplaintStatus(data['status'] as String?),
-      latitude: (data['latitude'] as num?)?.toDouble() ?? 0.0,
-      longitude: (data['longitude'] as num?)?.toDouble() ?? 0.0,
+      latitude: lat,
+      longitude: lng,
       address: data['address'] as String? ?? '',
       landmark: data['landmark'] as String?,
       ward: data['ward'] as String?,
@@ -56,6 +67,10 @@ class HazardFirestoreMapper {
       upvotes: data['upvotes'] as int? ?? 0,
       createdAt: FirestoreMapperHelpers.timestampToDateTime(data['createdAt']) ?? DateTime.now(),
       updatedAt: FirestoreMapperHelpers.timestampToDateTime(data['updatedAt']) ?? DateTime.now(),
+      spatialChunkId: data['spatialChunkId'] as String? ??
+          (lat != 0.0 || lng != 0.0 ? GeohashUtils.encode(lat, lng, precision: 5) : null),
+      geohash: data['geohash'] as String? ??
+          (lat != 0.0 || lng != 0.0 ? GeohashUtils.encode(lat, lng, precision: 7) : null),
     );
   }
 }

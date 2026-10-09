@@ -202,6 +202,7 @@ class DepartmentLeadDashboardData {
   final DepartmentLeadKpiMetrics kpiMetrics;
   final DepartmentLeadOperationsFunnel operationsFunnel;
   final List<ComplaintModel> allUnitComplaints;
+  final List<ComplaintModel> manualVerificationComplaints;
   final List<ComplaintModel> unassignedComplaints;
   final List<ComplaintModel> awaitingVerificationComplaints;
   final List<ComplaintModel> inProgressComplaints;
@@ -224,6 +225,7 @@ class DepartmentLeadDashboardData {
     required this.kpiMetrics,
     required this.operationsFunnel,
     required this.allUnitComplaints,
+    this.manualVerificationComplaints = const [],
     required this.unassignedComplaints,
     required this.awaitingVerificationComplaints,
     required this.inProgressComplaints,
@@ -402,6 +404,7 @@ class GovernmentDepartmentLeadDashboardService {
     int resolvedTodayCount = 0;
 
     final List<ComplaintModel> unassignedList = [];
+    final List<ComplaintModel> manualVerificationList = [];
     final List<ComplaintModel> awaitingVerificationList = [];
     final List<ComplaintModel> inProgressList = [];
     final List<ComplaintModel> criticalList = [];
@@ -410,6 +413,12 @@ class GovernmentDepartmentLeadDashboardService {
     final startOfToday = DateTime(now.year, now.month, now.day);
 
     for (final c in unitComplaints) {
+      if (c.isHumanReviewPending ||
+          c.verificationStage == 'humanDepartmentReview' ||
+          c.humanReviewStatus == 'pending') {
+        manualVerificationList.add(c);
+      }
+
       final isResolved = c.status == ComplaintStatus.resolved;
       final isRejected = c.status == ComplaintStatus.rejected;
       final isClosed = isResolved || isRejected;
@@ -493,6 +502,7 @@ class GovernmentDepartmentLeadDashboardService {
 
     for (final c in unitComplaints) {
       switch (c.status) {
+        case ComplaintStatus.underVerification:
         case ComplaintStatus.reported:
           funnelNewUnassigned++;
           break;
@@ -512,6 +522,7 @@ class GovernmentDepartmentLeadDashboardService {
           funnelInProgress++;
           break;
         case ComplaintStatus.resolved:
+        case ComplaintStatus.closed:
           funnelResolved++;
           break;
         case ComplaintStatus.rejected:
@@ -549,8 +560,8 @@ class GovernmentDepartmentLeadDashboardService {
             crewInProgress++;
           } else if (c.status == ComplaintStatus.verified) {
             crewAwaiting++;
-          } else if (c.status == ComplaintStatus.resolved) {
-            final resDate = c.resolvedAt ?? c.updatedAt;
+          } else if (c.status == ComplaintStatus.resolved || c.status == ComplaintStatus.closed) {
+            final resDate = c.resolvedAt ?? c.closedAt ?? c.updatedAt;
             if (resDate.isAfter(startOfToday)) {
               crewCompletedToday++;
             }
@@ -579,11 +590,13 @@ class GovernmentDepartmentLeadDashboardService {
       ComplaintPriority.low: 0,
     };
     final Map<ComplaintStatus, int> statusBreakdown = {
+      ComplaintStatus.underVerification: 0,
       ComplaintStatus.reported: 0,
       ComplaintStatus.verified: 0,
       ComplaintStatus.assigned: 0,
       ComplaintStatus.inProgress: 0,
       ComplaintStatus.resolved: 0,
+      ComplaintStatus.closed: 0,
     };
     final Map<String, int> crewBreakdown = {};
 
@@ -593,6 +606,7 @@ class GovernmentDepartmentLeadDashboardService {
 
     for (final c in unitComplaints) {
       if (c.status == ComplaintStatus.resolved ||
+          c.status == ComplaintStatus.closed ||
           c.status == ComplaintStatus.rejected) {
         continue;
       }
@@ -765,6 +779,7 @@ class GovernmentDepartmentLeadDashboardService {
       kpiMetrics: kpiMetrics,
       operationsFunnel: operationsFunnel,
       allUnitComplaints: unitComplaints,
+      manualVerificationComplaints: manualVerificationList,
       unassignedComplaints: unassignedList,
       awaitingVerificationComplaints: awaitingVerificationList,
       inProgressComplaints: inProgressList,
@@ -1033,6 +1048,70 @@ class GovernmentDepartmentLeadDashboardService {
       }
 
       return success;
+    }
+  }
+
+  /// Phase 2: Ward Department Lead reopens an improperly resolved complaint for field rework.
+  Future<ComplaintModel> reopenResolvedComplaint({
+    required String complaintId,
+    required String leadId,
+    required String reopenReason,
+  }) async {
+    final lead = await _getUser(leadId);
+    if (lead == null) {
+      throw ArgumentError('Department Lead not found for ID: $leadId');
+    }
+
+    final complaint = await _getComplaint(complaintId);
+    if (complaint == null) {
+      throw ArgumentError('Complaint not found for ID: $complaintId');
+    }
+
+    if (!_authService.canReopenComplaint(lead, complaint)) {
+      throw StateError('Lead ${lead.employeeId} is not authorized to reopen complaint $complaintId.');
+    }
+
+    return _routingService.reopenComplaint(
+      complaintId: complaintId,
+      reopenedBy: lead.employeeId,
+      reopenReason: reopenReason,
+    );
+  }
+
+  /// Submits a human verification decision for a complaint needing manual department confirmation.
+  Future<ComplaintModel> submitHumanVerificationDecision({
+    required String complaintId,
+    required String leadId,
+    required bool belongsToCurrentDepartment,
+    String? targetDepartmentId,
+    required String remarks,
+  }) async {
+    final lead = await _getUser(leadId);
+    if (lead == null) {
+      throw ArgumentError('Department Lead not found for ID: $leadId');
+    }
+
+    final complaint = await _getComplaint(complaintId);
+    if (complaint == null) {
+      throw ArgumentError('Complaint not found for ID: $complaintId');
+    }
+
+    if (belongsToCurrentDepartment) {
+      return _routingService.confirmHumanDepartmentReview(
+        complaintId: complaintId,
+        leadId: lead.employeeId,
+        remarks: remarks,
+      );
+    } else {
+      if (targetDepartmentId == null || targetDepartmentId.trim().isEmpty) {
+        throw ArgumentError('Target department is required when transferring complaint.');
+      }
+      return _routingService.transferHumanDepartmentReview(
+        complaintId: complaintId,
+        leadId: lead.employeeId,
+        targetDepartmentId: targetDepartmentId,
+        remarks: remarks,
+      );
     }
   }
 

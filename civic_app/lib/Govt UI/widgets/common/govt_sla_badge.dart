@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_spacing.dart';
+import '../../../core/localization/app_localizations.dart';
 import '../../theme/govt_theme_tokens.dart';
 import '../../theme/govt_typography.dart';
 
@@ -124,43 +125,70 @@ class GovtSlaBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final displayLabel = customLabel ?? status.label;
+    final l10n = AppLocalizations.of(context);
+    String displayLabel;
+    if (customLabel != null) {
+      displayLabel = customLabel!;
+    } else if (l10n != null) {
+      switch (status) {
+        case GovtSlaStatus.healthy:
+          displayLabel = l10n.govWithinSla;
+          break;
+        case GovtSlaStatus.warning:
+          displayLabel = l10n.govApproachingSlaDeadline;
+          break;
+        case GovtSlaStatus.breached:
+          displayLabel = l10n.govSlaBreached;
+          break;
+      }
+    } else {
+      displayLabel = status.label;
+    }
 
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: isCompact ? CivicFixSpacing.sm : CivicFixSpacing.md,
-        vertical: isCompact ? 2 : 4,
-      ),
-      decoration: BoxDecoration(
-        color: status.backgroundColor,
-        borderRadius: GovtThemeTokens.chipRadius,
-        border: Border.all(
-          color: status.color.withValues(alpha: 0.35),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            status.icon,
-            size: isCompact ? 12 : 14,
-            color: status.color,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxW = constraints.maxWidth.isFinite ? constraints.maxWidth : double.infinity;
+        return Container(
+          constraints: BoxConstraints(maxWidth: maxW),
+          padding: EdgeInsets.symmetric(
+            horizontal: isCompact ? CivicFixSpacing.sm : CivicFixSpacing.md,
+            vertical: isCompact ? 2 : 4,
           ),
-          SizedBox(width: isCompact ? 4 : 5),
-          Text(
-            displayLabel,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: GovtTypography.caption.copyWith(
-              color: status.color,
-              fontWeight: FontWeight.w600,
-              fontSize: isCompact ? 11 : 12,
-              height: 1.1,
+          decoration: BoxDecoration(
+            color: status.backgroundColor,
+            borderRadius: GovtThemeTokens.chipRadius,
+            border: Border.all(
+              color: status.color.withValues(alpha: 0.35),
+              width: 1,
             ),
           ),
-        ],
-      ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                status.icon,
+                size: isCompact ? 12 : 14,
+                color: status.color,
+              ),
+              SizedBox(width: isCompact ? 4 : 5),
+              Flexible(
+                child: Text(
+                  displayLabel,
+                  maxLines: 1,
+                  softWrap: false,
+                  overflow: TextOverflow.ellipsis,
+                  style: GovtTypography.caption.copyWith(
+                    color: status.color,
+                    fontWeight: FontWeight.w600,
+                    fontSize: isCompact ? 11 : 12,
+                    height: 1.1,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

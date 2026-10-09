@@ -3,7 +3,9 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_radius.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
+import '../../../core/localization/mappers/canonical_display_mappers.dart';
 import '../../../core/models/category_model.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 /// Interactive Civic Category Selector for Step 1 of Report Issue.
 class IssueCategorySelector extends StatelessWidget {
@@ -20,6 +22,7 @@ class IssueCategorySelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final categories = CivicCategory.defaultCategories;
 
     return Column(
@@ -28,7 +31,7 @@ class IssueCategorySelector extends StatelessWidget {
         Row(
           children: [
             Text(
-              'Category',
+              l10n?.categoryLabel ?? 'Category',
               style: CivicFixTypography.bodySmallMedium.copyWith(
                 fontWeight: FontWeight.w600,
                 color: CivicFixColors.primaryText,
@@ -45,7 +48,7 @@ class IssueCategorySelector extends StatelessWidget {
         ),
         CivicFixSpacing.vSpaceXs,
         Text(
-          'Select the category that best matches the problem.',
+          l10n?.selectCategorySubtitle ?? 'Select the category that best matches the problem.',
           style: CivicFixTypography.caption.copyWith(
             color: CivicFixColors.secondaryText,
           ),
@@ -112,8 +115,11 @@ class _CategoryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final localizedName = localizedCategory(category, context: context);
+    final localizedDesc = localizedCategoryDescription(category, context: context);
+
     return Semantics(
-      label: '${category.name}: ${category.description}',
+      label: '$localizedName: $localizedDesc',
       selected: isSelected,
       button: true,
       child: Material(
@@ -167,7 +173,7 @@ class _CategoryTile extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        category.name,
+                        localizedName,
                         style: CivicFixTypography.bodySmallMedium.copyWith(
                           fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
                           color: isSelected ? CivicFixColors.secondaryDark : CivicFixColors.primaryText,
@@ -175,7 +181,7 @@ class _CategoryTile extends StatelessWidget {
                       ),
                       CivicFixSpacing.vSpaceXs,
                       Text(
-                        category.description,
+                        localizedDesc,
                         style: CivicFixTypography.caption.copyWith(
                           color: CivicFixColors.secondaryText,
                           fontSize: 11,

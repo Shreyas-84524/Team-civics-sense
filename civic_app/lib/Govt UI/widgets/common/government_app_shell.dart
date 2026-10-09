@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../core/auth/auth_service_locator.dart';
 import '../../models/govt_user_model.dart';
+import '../../models/government_session.dart';
+import '../../navigation/govt_navigation_config.dart';
 import '../../services/govt_auth_service.dart';
 import '../../theme/govt_theme_tokens.dart';
 import 'govt_app_bar.dart';
@@ -83,6 +85,22 @@ class _GovernmentAppShellState extends State<GovernmentAppShell> {
 
     if (widget.onDestinationSelected != null) {
       widget.onDestinationSelected!(index);
+      return;
+    }
+
+    // Screens that use the shell directly still need working sidebar
+    // navigation. Previously the selected highlight changed, but the route
+    // stayed on the current page because no callback was supplied.
+    final items = widget.navItems ?? GovtNavigationConfig.getItemsForUser(
+          _authService.currentUser,
+        );
+    final destination = items.where((item) => item.index == index).firstOrNull;
+    if (destination != null && destination.routeName.isNotEmpty) {
+      final user = _authService.currentUser;
+      final route = index == 0 && user != null
+          ? GovernmentSession.fromUser(user).landingRoute
+          : destination.routeName;
+      Navigator.of(context).pushReplacementNamed(route);
     }
   }
 
@@ -159,27 +177,6 @@ class _GovernmentAppShellState extends State<GovernmentAppShell> {
                           _scaffoldKey.currentState?.openDrawer();
                         },
                         actions: widget.actions,
-                      ),
-
-                    // Breadcrumb Strip (if breadcrumbs supplied and showBreadcrumbs is true)
-                    if (widget.showBreadcrumbs &&
-                        widget.breadcrumbs != null &&
-                        widget.breadcrumbs!.isNotEmpty)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20.0,
-                          vertical: 10.0,
-                        ),
-                        decoration: const BoxDecoration(
-                          color: GovtThemeTokens.surface,
-                          border: Border(
-                            bottom: BorderSide(
-                              color: GovtThemeTokens.borderLight,
-                              width: 1,
-                            ),
-                          ),
-                        ),
-                        child: GovtBreadcrumbs(items: widget.breadcrumbs!),
                       ),
 
                     // Page Body Container

@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/evidence/permanent_evidence_storage.dart';
+import '../../core/evidence/evidence_bytes.dart';
 import '../../core/location/location_model.dart';
 import '../../core/models/evidence_model.dart';
 import 'evidence_service.dart';
@@ -57,7 +58,7 @@ class ImagePickerEvidenceService implements EvidenceService {
 
       String durablePath = photo.path;
       try {
-        durablePath = await _storage.persistEvidenceFile(photo.path);
+        durablePath = await _persistPhoto(photo);
       } catch (e) {
         debugPrint('[ImagePickerEvidenceService] Fallback to temporary path on storage error: $e');
       }
@@ -110,7 +111,7 @@ class ImagePickerEvidenceService implements EvidenceService {
 
       String durablePath = photo.path;
       try {
-        durablePath = await _storage.persistEvidenceFile(photo.path);
+        durablePath = await _persistPhoto(photo);
       } catch (e) {
         debugPrint('[ImagePickerEvidenceService] Fallback to temporary path on storage error: $e');
       }
@@ -134,5 +135,15 @@ class ImagePickerEvidenceService implements EvidenceService {
       debugPrint('[ImagePickerEvidenceService] Gallery selection failed: $e');
       throw Exception('Failed to pick photo from gallery: $e');
     }
+  }
+
+  Future<String> _persistPhoto(XFile photo) async {
+    if (!kIsWeb) return _storage.persistEvidenceFile(photo.path);
+    final bytes = await photo.readAsBytes();
+    final extension = evidenceFileName(bytes, 1).split('.').last;
+    return Uri.dataFromBytes(
+      bytes,
+      mimeType: 'image/${extension == 'jpg' ? 'jpeg' : extension}',
+    ).toString();
   }
 }

@@ -10,6 +10,7 @@ class GovernmentComplaintActionBar extends StatelessWidget {
   final VoidCallback? onFlag;
   final VoidCallback? onAssignCrew;
   final VoidCallback? onReassignCrew;
+  final VoidCallback? onAssignFieldOfficer;
   final VoidCallback? onRaiseWrongDepartment;
   final VoidCallback? onApproveRouting;
   final VoidCallback? onRejectRouting;
@@ -19,6 +20,7 @@ class GovernmentComplaintActionBar extends StatelessWidget {
   final VoidCallback? onReturnForRework;
   final VoidCallback? onEscalate;
   final VoidCallback? onUpdateStatus;
+  final bool isReopen;
 
   const GovernmentComplaintActionBar({
     super.key,
@@ -27,6 +29,7 @@ class GovernmentComplaintActionBar extends StatelessWidget {
     this.onFlag,
     this.onAssignCrew,
     this.onReassignCrew,
+    this.onAssignFieldOfficer,
     this.onRaiseWrongDepartment,
     this.onApproveRouting,
     this.onRejectRouting,
@@ -36,6 +39,7 @@ class GovernmentComplaintActionBar extends StatelessWidget {
     this.onReturnForRework,
     this.onEscalate,
     this.onUpdateStatus,
+    this.isReopen = false,
   });
 
   @override
@@ -124,7 +128,7 @@ class GovernmentComplaintActionBar extends StatelessWidget {
               onSubmitCompletion != null)
             ElevatedButton.icon(
               icon: const Icon(Icons.fact_check_outlined, size: 18),
-              label: const Text('Submit for Verification'),
+              label: const Text('Solved'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF10B981),
                 foregroundColor: Colors.white,
@@ -159,6 +163,19 @@ class GovernmentComplaintActionBar extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               ),
               onPressed: onReassignCrew,
+            ),
+
+          if (permittedActions.contains(GovernmentComplaintAction.assignFieldOfficer) &&
+              onAssignFieldOfficer != null)
+            ElevatedButton.icon(
+              icon: const Icon(Icons.engineering_outlined, size: 18),
+              label: const Text('Assign Execution Officer'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: GovtThemeTokens.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              ),
+              onPressed: onAssignFieldOfficer,
             ),
 
           // 5. Lead Raise Wrong Department
@@ -203,12 +220,12 @@ class GovernmentComplaintActionBar extends StatelessWidget {
               onPressed: onRejectRouting,
             ),
 
-          // 8. Lead / Officer Return for Rework
+          // 8. Lead / Officer Return for Rework / Reopen Complaint
           if (permittedActions.contains(GovernmentComplaintAction.returnForRework) &&
               onReturnForRework != null)
             OutlinedButton.icon(
               icon: const Icon(Icons.replay_rounded, size: 18),
-              label: const Text('Return for Rework'),
+              label: Text(isReopen ? 'Reopen Complaint' : 'Return for Rework'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: const Color(0xFFEF4444),
                 side: const BorderSide(color: Color(0xFFEF4444)),

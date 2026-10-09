@@ -17,6 +17,8 @@ import '../../core/widgets/loading_state.dart';
 import '../../core/widgets/offline_cache_banner.dart';
 import '../../core/widgets/responsive_container.dart';
 import '../../core/auth/auth_service.dart';
+import '../../core/localization/app_localizations.dart';
+import '../widgets/assistant/civic_assistant_fab.dart';
 import '../widgets/complaint_card.dart';
 import '../widgets/complaints/complaint_filter_bottom_sheet.dart';
 
@@ -46,41 +48,42 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
   List<ComplaintModel> _allComplaints = [];
   bool _isLoading = true;
   String? _errorMessage;
+  final Set<String> _upvotesInFlight = {};
+  final Set<String> _supportedComplaintIds = {};
 
   final TextEditingController _searchController = TextEditingController();
   ComplaintFilterCriteria _filterCriteria = const ComplaintFilterCriteria();
-
-  final List<ComplaintStatus> _quickStatuses = [
-    ComplaintStatus.reported,
-    ComplaintStatus.verified,
-    ComplaintStatus.assigned,
-    ComplaintStatus.inProgress,
-    ComplaintStatus.resolved,
-  ];
 
   @override
   void initState() {
     super.initState();
     _repository = widget.repository ?? RepositoryLocator.complaintRepository;
     _authService = widget.authService ?? AuthServiceLocator.citizenAuth;
-    _connectivityService = widget.connectivityService ?? AppConnectivityService();
+    _connectivityService =
+        widget.connectivityService ?? AppConnectivityService();
     _loadComplaints();
     _subscribeToLiveComplaints();
   }
 
   void _subscribeToLiveComplaints() {
-    final citizenId = _authService.currentUser?.id ?? _authService.currentUid ?? '';
+    final citizenId =
+        _authService.currentUser?.id ?? _authService.currentUid ?? '';
     _complaintsSubscription?.cancel();
-    _complaintsSubscription = _repository.watchCitizenComplaints(citizenId).listen((list) {
-      if (mounted) {
-        setState(() {
-          _allComplaints = List.from(list);
-          _isLoading = false;
-        });
-      }
-    }, onError: (e) {
-      debugPrint('[MyComplaintsScreen] Real-time stream error: $e');
-    });
+    _complaintsSubscription = _repository
+        .watchCitizenComplaints(citizenId)
+        .listen(
+          (list) {
+            if (mounted) {
+              setState(() {
+                _allComplaints = List.from(list);
+                _isLoading = false;
+              });
+            }
+          },
+          onError: (e) {
+            debugPrint('[MyComplaintsScreen] Real-time stream error: $e');
+          },
+        );
   }
 
   @override
@@ -90,7 +93,6 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
     super.dispose();
   }
 
-
   Future<void> _loadComplaints({bool forceRefresh = false}) async {
     setState(() {
       _isLoading = true;
@@ -98,7 +100,8 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
     });
 
     try {
-      final citizenId = _authService.currentUser?.id ?? _authService.currentUid ?? '';
+      final citizenId =
+          _authService.currentUser?.id ?? _authService.currentUid ?? '';
       final complaints = await _repository.getCitizenComplaints(citizenId);
       if (mounted) {
         setState(() {
@@ -121,42 +124,56 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
 
     return _allComplaints.where((complaint) {
       // 1. Status Filter
-      if (_filterCriteria.status != null && complaint.status != _filterCriteria.status) {
+      if (_filterCriteria.status != null &&
+          complaint.status != _filterCriteria.status) {
         return false;
       }
 
       // 2. Category Filter
-      if (_filterCriteria.category != null && complaint.category.id != _filterCriteria.category!.id) {
+      if (_filterCriteria.category != null &&
+          complaint.category.id != _filterCriteria.category!.id) {
         return false;
       }
 
       // 3. Search Query (Ticket ID, Title, Category, Location)
       if (query.isNotEmpty) {
-        final matchesTicket = complaint.ticketNumber.toLowerCase().contains(query);
+        final matchesTicket = complaint.ticketNumber.toLowerCase().contains(
+          query,
+        );
         final matchesTitle = complaint.title.toLowerCase().contains(query);
-        final matchesCategory = complaint.category.name.toLowerCase().contains(query);
-        final matchesAddress = complaint.location.fullDisplayAddress.toLowerCase().contains(query) ||
-            complaint.location.shortDisplayAddress.toLowerCase().contains(query) ||
-            (complaint.location.landmark?.toLowerCase().contains(query) ?? false) ||
+        final matchesCategory = complaint.category.name.toLowerCase().contains(
+          query,
+        );
+        final matchesAddress =
+            complaint.location.fullDisplayAddress.toLowerCase().contains(
+              query,
+            ) ||
+            complaint.location.shortDisplayAddress.toLowerCase().contains(
+              query,
+            ) ||
+            (complaint.location.landmark?.toLowerCase().contains(query) ??
+                false) ||
             (complaint.location.ward?.toLowerCase().contains(query) ?? false);
 
-        if (!matchesTicket && !matchesTitle && !matchesCategory && !matchesAddress) {
+        if (!matchesTicket &&
+            !matchesTitle &&
+            !matchesCategory &&
+            !matchesAddress) {
           return false;
         }
       }
 
       return true;
-    }).toList()
-      ..sort((a, b) {
-        switch (_filterCriteria.sortOption) {
-          case ComplaintSortOption.newestFirst:
-            return b.createdAt.compareTo(a.createdAt);
-          case ComplaintSortOption.oldestFirst:
-            return a.createdAt.compareTo(b.createdAt);
-          case ComplaintSortOption.recentlyUpdated:
-            return b.updatedAt.compareTo(a.updatedAt);
-        }
-      });
+    }).toList()..sort((a, b) {
+      switch (_filterCriteria.sortOption) {
+        case ComplaintSortOption.newestFirst:
+          return b.createdAt.compareTo(a.createdAt);
+        case ComplaintSortOption.oldestFirst:
+          return a.createdAt.compareTo(b.createdAt);
+        case ComplaintSortOption.recentlyUpdated:
+          return b.updatedAt.compareTo(a.updatedAt);
+      }
+    });
   }
 
   void _clearFiltersAndSearch() {
@@ -182,12 +199,14 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
   Widget build(BuildContext context) {
     final filteredComplaints = _getFilteredComplaints();
     final hasActiveFilterOrSearch =
-        _searchController.text.trim().isNotEmpty || _filterCriteria.hasActiveFilters;
+        _searchController.text.trim().isNotEmpty ||
+        _filterCriteria.hasActiveFilters;
 
     return Scaffold(
       backgroundColor: CivicFixColors.background,
-      appBar: const CivicFixAppBar(
-        title: 'My Complaints',
+      floatingActionButton: const CivicChatbotFab(heroTag: 'complaints_assistant_fab'),
+      appBar: CivicFixAppBar(
+        title: context.l10nOrNull?.myComplaintsTitle ?? 'My Complaints',
         automaticallyImplyLeading: false,
       ),
       body: SafeArea(
@@ -204,10 +223,15 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
     );
   }
 
-  Widget _buildContent(List<ComplaintModel> filteredComplaints, bool isFiltered) {
+  Widget _buildContent(
+    List<ComplaintModel> filteredComplaints,
+    bool isFiltered,
+  ) {
     if (_isLoading) {
-      return const Center(
-        child: LoadingState(message: 'Loading your complaints...'),
+      return Center(
+        child: LoadingState(
+          message: context.l10nOrNull?.loadingComplaints ?? 'Loading your complaints...',
+        ),
       );
     }
 
@@ -216,8 +240,10 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
         child: Padding(
           padding: CivicFixSpacing.pagePadding,
           child: ErrorState(
-            title: 'Something went wrong',
-            message: _errorMessage!,
+            title: context.l10nOrNull?.somethingWentWrong ?? 'Something went wrong',
+            message: _errorMessage == "Couldn't load your complaints."
+                ? (context.l10nOrNull?.failedToLoadComplaints ?? _errorMessage!)
+                : _errorMessage!,
             onRetry: () => _loadComplaints(forceRefresh: true),
           ),
         ),
@@ -230,9 +256,10 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
         child: Padding(
           padding: CivicFixSpacing.pagePadding,
           child: EmptyState(
-            title: 'No complaints yet',
-            description: 'Report a civic issue and track its progress here.',
-            actionText: 'Report an Issue',
+            title: context.l10nOrNull?.noComplaintsYet ?? 'No complaints yet',
+            description: context.l10nOrNull?.reportCivicIssueTrackProgress ??
+                'Report a civic issue and track its progress here.',
+            actionText: context.l10nOrNull?.reportAnIssue ?? 'Report an Issue',
             icon: Icons.assignment_outlined,
             onActionPressed: () {
               Navigator.pushNamed(context, AppRoutes.reportIssue);
@@ -261,19 +288,27 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
                     onRefresh: () => _loadComplaints(forceRefresh: true),
                   ),
                 Text(
-                  "Track the civic issues you've reported.",
+                  context.l10nOrNull?.trackCivicIssuesReported ??
+                      "Track the civic issues you've reported.",
                   style: CivicFixTypography.caption.copyWith(
                     color: CivicFixColors.secondaryText,
                   ),
                 ),
                 CivicFixSpacing.vSpaceMd,
 
-                // Search input field
-                _buildSearchField(),
-                CivicFixSpacing.vSpaceSm,
-
-                // Status Filter Chips Row + Filter Button
-                _buildQuickFiltersRow(),
+                // Search input field + Filter Button (matched height)
+                IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        child: _buildSearchField(),
+                      ),
+                      CivicFixSpacing.hSpaceSm,
+                      _buildFilterButton(),
+                    ],
+                  ),
+                ),
                 CivicFixSpacing.vSpaceMd,
 
                 // Complaint count summary
@@ -291,9 +326,10 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
               child: Padding(
                 padding: CivicFixSpacing.pagePadding,
                 child: EmptyState(
-                  title: 'No complaints found',
-                  description: 'Try a different search or filter.',
-                  actionText: 'Clear Filters',
+                  title: context.l10nOrNull?.noComplaintsFound ?? 'No complaints found',
+                  description: context.l10nOrNull?.tryChangingFiltersOrSearch ??
+                      'Try a different search or filter.',
+                  actionText: context.l10nOrNull?.clearFilters ?? 'Clear Filters',
                   icon: Icons.search_off_rounded,
                   onActionPressed: _clearFiltersAndSearch,
                 ),
@@ -309,52 +345,78 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
               CivicFixSpacing.xxl,
             ),
             sliver: SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
-                  final complaint = filteredComplaints[index];
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: CivicFixSpacing.md),
-                    child: ComplaintCard(
-                      complaint: complaint,
-                      onTap: () {
-                        Navigator.pushNamed(
-                          context,
-                          AppRoutes.complaintDetails,
-                          arguments: complaint,
-                        );
-                      },
-                      onUpvote: () async {
-                        final messenger = ScaffoldMessenger.of(context);
-                        try {
-                          await _repository.upvoteComplaint(complaint.id);
-                          if (!mounted) return;
-                          setState(() {
-                            final idx = _allComplaints.indexWhere((c) => c.id == complaint.id);
-                            if (idx != -1) {
-                              _allComplaints[idx] = _allComplaints[idx].copyWith(
-                                upvotes: _allComplaints[idx].upvotes + 1,
+              delegate: SliverChildBuilderDelegate((context, index) {
+                final complaint = filteredComplaints[index];
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: CivicFixSpacing.md),
+                  child: ComplaintCard(
+                    complaint: complaint,
+                    onTap: () {
+                      Navigator.pushNamed(
+                        context,
+                        AppRoutes.complaintDetails,
+                        arguments: complaint,
+                      );
+                    },
+                    onUpvote:
+                        _upvotesInFlight.contains(complaint.id) ||
+                            _supportedComplaintIds.contains(complaint.id)
+                        ? null
+                        : () async {
+                            final messenger = ScaffoldMessenger.of(context);
+                            final l10n = context.l10nOrNull;
+                            final supportedText =
+                                l10n?.supportedComplaintSuccess ??
+                                'Supported complaint!';
+                            final alreadySupportedText =
+                                l10n?.alreadySupportedComplaint ??
+                                'You already supported this complaint.';
+                            final errorPrefix =
+                                l10n?.somethingWentWrong ?? 'Failed to upvote';
+
+                            setState(() => _upvotesInFlight.add(complaint.id));
+                            try {
+                              final result = await _repository.upvoteComplaint(
+                                complaint.id,
+                              );
+                              if (!mounted) return;
+                              setState(() {
+                                _upvotesInFlight.remove(complaint.id);
+                                _supportedComplaintIds.add(complaint.id);
+                                final idx = _allComplaints.indexWhere(
+                                  (c) => c.id == complaint.id,
+                                );
+                                if (idx != -1) {
+                                  _allComplaints[idx] = _allComplaints[idx]
+                                      .copyWith(upvotes: result.upvotes);
+                                }
+                              });
+                              messenger.hideCurrentSnackBar();
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    result.added
+                                        ? supportedText
+                                        : alreadySupportedText,
+                                  ),
+                                  duration: const Duration(seconds: 1),
+                                ),
+                              );
+                            } catch (e) {
+                              if (!mounted) return;
+                              setState(
+                                () => _upvotesInFlight.remove(complaint.id),
+                              );
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  content: Text('$errorPrefix: $e'),
+                                ),
                               );
                             }
-                          });
-                          messenger.hideCurrentSnackBar();
-                          messenger.showSnackBar(
-                            const SnackBar(
-                              content: Text('Supported complaint!'),
-                              duration: Duration(seconds: 1),
-                            ),
-                          );
-                        } catch (e) {
-                          if (!mounted) return;
-                          messenger.showSnackBar(
-                            SnackBar(content: Text('Failed to upvote: $e')),
-                          );
-                        }
-                      },
-                    ),
-                  );
-                },
-                childCount: filteredComplaints.length,
-              ),
+                          },
+                  ),
+                );
+              }, childCount: filteredComplaints.length),
             ),
           ),
       ],
@@ -363,13 +425,15 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
 
   Widget _buildSearchField() {
     return Semantics(
-      label: 'Search complaints by ID, title, category, or location',
+      label: context.l10nOrNull?.searchComplaintsHint ??
+          'Search complaints by ID, title, category, or location',
       child: TextField(
         controller: _searchController,
         onChanged: (_) => setState(() {}),
         textInputAction: TextInputAction.search,
         decoration: InputDecoration(
-          hintText: 'Search complaints...',
+          hintText:
+              context.l10nOrNull?.searchComplaintsHint ?? 'Search complaints...',
           prefixIcon: const Icon(
             Icons.search_rounded,
             color: CivicFixColors.secondaryText,
@@ -378,7 +442,7 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
           suffixIcon: _searchController.text.isNotEmpty
               ? IconButton(
                   icon: const Icon(Icons.clear_rounded, size: 20),
-                  tooltip: 'Clear search',
+                  tooltip: context.l10nOrNull?.clearSearch ?? 'Clear search',
                   onPressed: () {
                     _searchController.clear();
                     setState(() {});
@@ -401,112 +465,50 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: CivicFixRadius.buttonRadius,
-            borderSide: const BorderSide(color: CivicFixColors.primary, width: 1.5),
+            borderSide: const BorderSide(
+              color: CivicFixColors.primary,
+              width: 1.5,
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildQuickFiltersRow() {
-    final hasAdvancedFilters =
-        _filterCriteria.category != null || _filterCriteria.sortOption != ComplaintSortOption.recentlyUpdated;
+  Widget _buildFilterButton() {
+    final hasActiveFilters = _filterCriteria.hasActiveFilters;
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          // Filter Bottom Sheet Button
-          OutlinedButton.icon(
-            onPressed: _openFilterBottomSheet,
-            icon: Badge(
-              isLabelVisible: hasAdvancedFilters,
-              smallSize: 8,
-              backgroundColor: CivicFixColors.alertDark,
-              child: const Icon(Icons.tune_rounded, size: 16),
-            ),
-            label: Text(
-              _filterCriteria.category != null ? _filterCriteria.category!.name : 'Filter',
-            ),
-            style: OutlinedButton.styleFrom(
-              minimumSize: Size.zero,
-              padding: const EdgeInsets.symmetric(
-                horizontal: CivicFixSpacing.md,
-                vertical: CivicFixSpacing.sm + 2,
-              ),
-              foregroundColor:
-                  hasAdvancedFilters ? CivicFixColors.primary : CivicFixColors.primaryText,
-              side: BorderSide(
-                color: hasAdvancedFilters ? CivicFixColors.primary : CivicFixColors.border,
-                width: hasAdvancedFilters ? 1.5 : 1.0,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: CivicFixRadius.chipRadius,
-              ),
-            ),
-          ),
-          CivicFixSpacing.hSpaceSm,
-
-          // All Statuses Chip
-          _buildStatusChip(
-            label: 'All',
-            isSelected: _filterCriteria.status == null,
-            onTap: () {
-              setState(() {
-                _filterCriteria = _filterCriteria.copyWith(clearStatus: true);
-              });
-            },
-          ),
-          CivicFixSpacing.hSpaceSm,
-
-          // Specific Status Chips
-          ..._quickStatuses.map(
-            (status) => Padding(
-              padding: const EdgeInsets.only(right: CivicFixSpacing.sm),
-              child: _buildStatusChip(
-                label: status.label,
-                isSelected: _filterCriteria.status == status,
-                onTap: () {
-                  setState(() {
-                    _filterCriteria = _filterCriteria.copyWith(
-                      status: _filterCriteria.status == status ? null : status,
-                      clearStatus: _filterCriteria.status == status,
-                    );
-                  });
-                },
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatusChip({
-    required String label,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: CivicFixRadius.chipRadius,
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: CivicFixSpacing.md,
-          vertical: CivicFixSpacing.sm + 2,
+    return Semantics(
+      button: true,
+      label: context.l10nOrNull?.filter ?? 'Filter',
+      child: OutlinedButton.icon(
+        onPressed: _openFilterBottomSheet,
+        icon: Badge(
+          isLabelVisible: hasActiveFilters,
+          smallSize: 8,
+          backgroundColor: CivicFixColors.alertDark,
+          child: const Icon(Icons.tune_rounded, size: 20),
         ),
-        decoration: BoxDecoration(
-          color: isSelected ? CivicFixColors.primary : CivicFixColors.surface,
-          borderRadius: CivicFixRadius.chipRadius,
-          border: Border.all(
-            color: isSelected ? CivicFixColors.primary : CivicFixColors.border,
-          ),
+        label: Text(
+          _filterCriteria.category != null
+              ? _filterCriteria.category!.name
+              : (context.l10nOrNull?.filter ?? 'Filter'),
         ),
-        child: Text(
-          label,
-          style: CivicFixTypography.captionMedium.copyWith(
-            color: isSelected ? Colors.white : CivicFixColors.primaryText,
-            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(
+            horizontal: CivicFixSpacing.md,
+          ),
+          foregroundColor: hasActiveFilters
+              ? CivicFixColors.primary
+              : CivicFixColors.primaryText,
+          side: BorderSide(
+            color: hasActiveFilters
+                ? CivicFixColors.primary
+                : CivicFixColors.border,
+            width: hasActiveFilters ? 1.5 : 1.0,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: CivicFixRadius.buttonRadius,
           ),
         ),
       ),
@@ -514,23 +516,32 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
   }
 
   Widget _buildSummaryCount(int count, bool isFiltered) {
+    final countText = isFiltered
+        ? (context.l10nOrNull != null
+            ? context.l10n.complaintsFound(count)
+            : '$count ${count == 1 ? "complaint" : "complaints"} found')
+        : (context.l10nOrNull != null
+            ? context.l10n.complaintCount(count)
+            : '$count ${count == 1 ? "complaint" : "complaints"}');
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          isFiltered
-              ? '$count ${count == 1 ? "complaint" : "complaints"} found'
-              : '$count ${count == 1 ? "complaint" : "complaints"}',
-          style: CivicFixTypography.captionMedium.copyWith(
-            color: CivicFixColors.secondaryText,
-            fontWeight: FontWeight.w600,
+        Flexible(
+          child: Text(
+            countText,
+            style: CivicFixTypography.captionMedium.copyWith(
+              color: CivicFixColors.secondaryText,
+              fontWeight: FontWeight.w600,
+            ),
+            overflow: TextOverflow.ellipsis,
           ),
         ),
         if (isFiltered)
           InkWell(
             onTap: _clearFiltersAndSearch,
             child: Text(
-              'Clear all',
+              context.l10nOrNull?.clearAll ?? 'Clear all',
               style: CivicFixTypography.captionMedium.copyWith(
                 color: CivicFixColors.secondary,
                 fontWeight: FontWeight.w600,

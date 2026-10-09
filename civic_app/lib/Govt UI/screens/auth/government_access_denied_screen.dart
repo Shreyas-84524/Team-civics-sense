@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/auth/auth_service_locator.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
+import '../../../core/localization/app_localizations.dart';
 import '../../../core/routing/app_routes.dart';
 import '../../../core/widgets/civic_fix_button.dart';
 import '../../../core/widgets/responsive_container.dart';
@@ -24,6 +25,7 @@ class GovernmentAccessDeniedScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final activeUser = user ?? AuthServiceLocator.govtAuth.currentUser;
     final landingRoute = activeUser != null
         ? GovernmentSession.getLandingRouteForRole(activeUser.govtRole)
@@ -32,7 +34,7 @@ class GovernmentAccessDeniedScreen extends StatelessWidget {
     final roleLabel = activeUser != null
         ? (activeUser.displayDesignation.isNotEmpty
             ? activeUser.displayDesignation
-            : activeUser.govtRole.displayName)
+            : localizedGovernmentRole(activeUser.govtRole, context: context))
         : null;
 
     final jurisdictionLabel = activeUser != null
@@ -84,7 +86,7 @@ class GovernmentAccessDeniedScreen extends StatelessWidget {
 
                     // Headline
                     Text(
-                      'Access Restricted',
+                      l10n?.govAccessDenied ?? 'Access Restricted',
                       style: CivicFixTypography.h2.copyWith(
                         color: GovtThemeTokens.primaryDark,
                         fontWeight: FontWeight.w700,
@@ -95,7 +97,8 @@ class GovernmentAccessDeniedScreen extends StatelessWidget {
 
                     // Body
                     Text(
-                      'You do not have permission to access this government portal section.',
+                      l10n?.govAccessDeniedDesc ??
+                          'You do not have permission to access this government portal section.',
                       style: CivicFixTypography.bodySmall.copyWith(
                         color: GovtThemeTokens.textSecondary,
                         height: 1.5,
@@ -122,7 +125,7 @@ class GovernmentAccessDeniedScreen extends StatelessWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Active Role: ',
+                                    '${l10n?.govDesignation ?? "Active Role"}: ',
                                     style: CivicFixTypography.captionMedium.copyWith(
                                       color: GovtThemeTokens.textSecondary,
                                       fontWeight: FontWeight.w600,
@@ -146,7 +149,7 @@ class GovernmentAccessDeniedScreen extends StatelessWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Jurisdiction: ',
+                                    '${l10n?.govJurisdiction ?? "Jurisdiction"}: ',
                                     style: CivicFixTypography.captionMedium.copyWith(
                                       color: GovtThemeTokens.textSecondary,
                                       fontWeight: FontWeight.w600,
@@ -174,7 +177,7 @@ class GovernmentAccessDeniedScreen extends StatelessWidget {
                     SizedBox(
                       width: double.infinity,
                       child: CivicFixButton(
-                        text: 'Return to Dashboard',
+                        text: l10n?.govReturnToDashboard ?? 'Return to Dashboard',
                         icon: Icons.dashboard_rounded,
                         onPressed: () {
                           Navigator.pushReplacementNamed(context, landingRoute);

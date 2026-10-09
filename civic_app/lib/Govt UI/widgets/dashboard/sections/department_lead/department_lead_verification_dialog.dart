@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../../core/constants/app_spacing.dart';
 import '../../../../../core/constants/app_typography.dart';
 import '../../../../../core/models/complaint_model.dart';
+import '../../../../../core/widgets/supabase_evidence_image.dart';
 import '../../../../theme/govt_theme_tokens.dart';
 
 /// Modal dialog for reviewing work completed by field crew.
@@ -307,16 +308,13 @@ class _DepartmentLeadVerificationDialogState
                               border:
                                   Border.all(color: GovtThemeTokens.borderLight),
                             ),
-                            child: c.imageUrls.isNotEmpty
+                            child: (c.imageUrls.isNotEmpty || (c.beforeWorkPhoto != null && c.beforeWorkPhoto!.isNotEmpty))
                                 ? ClipRRect(
                                     borderRadius: BorderRadius.circular(6),
-                                    child: Image.network(
-                                      c.imageUrls.first,
+                                    child: SupabaseEvidenceImage(
+                                      imagePath: c.beforeWorkPhoto ?? c.imageUrls.first,
                                       fit: BoxFit.cover,
                                       width: double.infinity,
-                                      errorBuilder: (context, error, stackTrace) =>
-                                          _buildPlaceholder(
-                                              'Initial Report Photo'),
                                     ),
                                   )
                                 : _buildPlaceholder('Reported Issue Photo'),
@@ -377,18 +375,16 @@ class _DepartmentLeadVerificationDialogState
                               borderRadius: BorderRadius.circular(6),
                               border: Border.all(
                                 color: const Color(0xFF10B981)
-                                    .withValues(alpha: 0.3),
+                                     .withValues(alpha: 0.3),
                               ),
                             ),
-                            child: c.imageUrls.length > 1
+                            child: (c.afterWorkPhoto != null && c.afterWorkPhoto!.isNotEmpty) || c.imageUrls.length > 1
                                 ? ClipRRect(
                                     borderRadius: BorderRadius.circular(6),
-                                    child: Image.network(
-                                      c.imageUrls[1],
+                                    child: SupabaseEvidenceImage(
+                                      imagePath: c.afterWorkPhoto ?? (c.imageUrls.length > 1 ? c.imageUrls[1] : ''),
                                       fit: BoxFit.cover,
                                       width: double.infinity,
-                                      errorBuilder: (context, error, stackTrace) =>
-                                          _buildResolvedPlaceholder(),
                                     ),
                                   )
                                 : _buildResolvedPlaceholder(),

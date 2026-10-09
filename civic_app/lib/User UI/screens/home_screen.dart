@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/constants/app_typography.dart';
+import '../../core/localization/app_localizations.dart';
 import '../../core/network/connectivity_service.dart';
 import '../../core/routing/app_routes.dart';
 import '../../core/widgets/civic_fix_button.dart';
@@ -14,11 +15,11 @@ import '../../core/widgets/section_header.dart';
 import '../../core/repositories/repository_locator.dart';
 import '../models/home_data_model.dart';
 import '../services/mock_home_service.dart';
+import '../widgets/assistant/civic_assistant_fab.dart';
 import '../widgets/civic_progress_card.dart';
 import '../widgets/complaint_preview_card.dart';
 import '../widgets/home_header.dart';
 import '../widgets/nearby_hazard_card.dart';
-import '../widgets/quick_action_card.dart';
 import '../widgets/report_issue_cta.dart';
 
 /// Main Citizen Home Screen (Dashboard).
@@ -70,7 +71,7 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = 'Unable to load civic updates. Please try again.';
+          _errorMessage = context.l10nOrNull?.unableToLoadUpdates ?? 'Unable to load civic updates. Please try again.';
           _isLoading = false;
         });
       }
@@ -89,6 +90,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: CivicFixColors.background,
+      floatingActionButton: const CivicChatbotFab(heroTag: 'home_assistant_fab'),
       body: SafeArea(
         child: ResponsiveContainer(
           maxWidth: 600,
@@ -101,9 +103,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildBody() {
     if (_isLoading) {
-      return const Center(
+      return Center(
         child: LoadingState(
-          message: 'Loading civic dashboard...',
+          message: context.l10nOrNull?.loadingDashboard ?? 'Loading civic dashboard...',
         ),
       );
     }
@@ -111,8 +113,8 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_errorMessage != null || _data == null) {
       return Center(
         child: ErrorState(
-          title: 'Something went wrong',
-          message: _errorMessage ?? 'Please check your connection and try again.',
+          title: context.l10nOrNull?.somethingWentWrong ?? 'Something went wrong',
+          message: _errorMessage ?? context.l10nOrNull?.checkConnectionAndRetry ?? 'Please check your connection and try again.',
           onRetry: () => _loadData(forceRefresh: true),
         ),
       );
@@ -153,8 +155,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
             // 3. Recent Complaints Section
             SectionHeader(
-              title: 'Recent Complaints',
-              actionTitle: data.recentComplaints.isNotEmpty ? 'View all complaints →' : null,
+              title: context.l10nOrNull?.recentComplaints ?? 'Recent Complaints',
+              actionTitle: data.recentComplaints.isNotEmpty ? (context.l10nOrNull?.viewAllComplaints ?? 'View all complaints →') : null,
               onActionTap: () => _navigateToTabOrRoute(1, AppRoutes.myComplaints),
             ),
             CivicFixSpacing.vSpaceSm,
@@ -163,8 +165,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
             // 4. Nearby Civic Issues Preview Section
             SectionHeader(
-              title: 'Nearby Civic Issues',
-              actionTitle: 'View hazard map →',
+              title: context.l10nOrNull?.nearbyCivicIssues ?? 'Nearby Civic Issues',
+              actionTitle: context.l10nOrNull?.viewHazardMap ?? 'View hazard map →',
               onActionTap: () => _navigateToTabOrRoute(2, AppRoutes.hazardMap),
             ),
             CivicFixSpacing.vSpaceSm,
@@ -172,8 +174,8 @@ class _HomeScreenState extends State<HomeScreen> {
             CivicFixSpacing.vSpaceXxl,
 
             // 5. Your Civic Progress Section
-            const SectionHeader(
-              title: 'Your Civic Progress',
+            SectionHeader(
+              title: context.l10nOrNull?.yourCivicProgress ?? 'Your Civic Progress',
             ),
             CivicFixSpacing.vSpaceSm,
             CivicProgressCard(
@@ -181,42 +183,6 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: () {
                 Navigator.pushNamed(context, AppRoutes.rewards);
               },
-            ),
-            CivicFixSpacing.vSpaceXxl,
-
-            // 6. Quick Actions Section
-            const SectionHeader(
-              title: 'Quick Actions',
-            ),
-            CivicFixSpacing.vSpaceSm,
-            Row(
-              children: [
-                Expanded(
-                  child: QuickActionCard(
-                    title: 'Assistant',
-                    subtitle: 'Get help with CivicFix',
-                    icon: Icons.smart_toy_outlined,
-                    iconBackgroundColor: CivicFixColors.infoLight,
-                    iconColor: CivicFixColors.info,
-                    onTap: () {
-                      Navigator.pushNamed(context, AppRoutes.assistant);
-                    },
-                  ),
-                ),
-                CivicFixSpacing.hSpaceMd,
-                Expanded(
-                  child: QuickActionCard(
-                    title: 'Rewards',
-                    subtitle: 'View your civic progress',
-                    icon: Icons.card_giftcard_rounded,
-                    iconBackgroundColor: CivicFixColors.alertLight,
-                    iconColor: CivicFixColors.alertDark,
-                    onTap: () {
-                      Navigator.pushNamed(context, AppRoutes.rewards);
-                    },
-                  ),
-                ),
-              ],
             ),
             CivicFixSpacing.vSpaceXxxl,
           ],
@@ -251,12 +217,12 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               CivicFixSpacing.vSpaceMd,
               Text(
-                'No complaints yet',
+                context.l10nOrNull?.noComplaintsYet ?? 'No complaints yet',
                 style: CivicFixTypography.h3.copyWith(fontSize: 18),
               ),
               CivicFixSpacing.vSpaceXs,
               Text(
-                'Report a civic issue to get started.',
+                context.l10nOrNull?.reportToGetStarted ?? 'Report a civic issue to get started.',
                 textAlign: TextAlign.center,
                 style: CivicFixTypography.bodySmall.copyWith(
                   color: CivicFixColors.secondaryText,
@@ -264,7 +230,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               CivicFixSpacing.vSpaceLg,
               CivicFixButton(
-                text: 'Report an Issue',
+                text: context.l10nOrNull?.reportAnIssue ?? 'Report an Issue',
                 onPressed: () {
                   Navigator.pushNamed(context, AppRoutes.reportIssue);
                 },
@@ -304,7 +270,7 @@ class _HomeScreenState extends State<HomeScreen> {
             CivicFixSpacing.hSpaceMd,
             Expanded(
               child: Text(
-                'No immediate hazards reported in your immediate vicinity.',
+                context.l10nOrNull?.noNearbyHazards ?? 'No immediate hazards reported in your immediate vicinity.',
                 style: CivicFixTypography.bodySmall,
               ),
             ),
@@ -316,7 +282,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Column(
       children: data.nearbyHazards.take(3).map((hazard) {
         return Padding(
-          padding: const EdgeInsets.only(bottom: CivicFixSpacing.sm),
+          padding: const EdgeInsets.only(bottom: CivicFixSpacing.md),
           child: NearbyHazardCard(
             hazard: hazard,
             onTap: () {

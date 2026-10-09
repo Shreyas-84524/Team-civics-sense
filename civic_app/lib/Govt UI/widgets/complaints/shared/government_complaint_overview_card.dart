@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/constants/app_spacing.dart';
 import '../../../../core/constants/app_typography.dart';
 import '../../../../core/models/complaint_model.dart';
+import '../../../../core/localization/widgets/civic_fix_translated_text.dart';
 import '../../../theme/govt_theme_tokens.dart';
 import '../../common/govt_priority_badge.dart';
 import '../../common/govt_sla_badge.dart';
@@ -86,8 +87,11 @@ class GovernmentComplaintOverviewCard extends StatelessWidget {
                       ],
                     ),
                     CivicFixSpacing.vSpaceXs,
-                    Text(
-                      c.title,
+                    CivicFixTranslatedText(
+                      originalText: c.title,
+                      contentId: c.id,
+                      fieldName: 'title',
+                      contentCategory: 'complaint_title',
                       style: CivicFixTypography.h3.copyWith(
                         fontSize: 17,
                         fontWeight: FontWeight.w700,
@@ -151,8 +155,11 @@ class GovernmentComplaintOverviewCard extends StatelessWidget {
                           ],
                         ),
                         CivicFixSpacing.vSpaceXs,
-                        Text(
-                          c.title,
+                        CivicFixTranslatedText(
+                          originalText: c.title,
+                          contentId: c.id,
+                          fieldName: 'title',
+                          contentCategory: 'complaint_title',
                           style: CivicFixTypography.h3.copyWith(
                             fontSize: 17,
                             fontWeight: FontWeight.w700,
@@ -193,8 +200,11 @@ class GovernmentComplaintOverviewCard extends StatelessWidget {
             ),
           ),
           CivicFixSpacing.vSpaceXs,
-          Text(
-            c.description,
+          CivicFixTranslatedText(
+            originalText: c.description,
+            contentId: c.id,
+            fieldName: 'description',
+            contentCategory: 'complaint_description',
             style: CivicFixTypography.bodySmall.copyWith(
               color: GovtThemeTokens.textSecondary,
               height: 1.4,

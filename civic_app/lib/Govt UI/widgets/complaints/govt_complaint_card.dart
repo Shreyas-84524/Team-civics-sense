@@ -3,6 +3,7 @@ import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
 import '../../../core/models/complaint_model.dart';
 import '../../../core/utils/date_formatter.dart';
+import '../../../core/localization/app_localizations.dart';
 import '../../../core/widgets/priority_badge.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../theme/govt_theme_tokens.dart';
@@ -124,7 +125,7 @@ class GovtComplaintCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      complaint.category.name,
+                      localizedCategory(complaint.category.name, context: context),
                       style: CivicFixTypography.captionMedium.copyWith(
                         color: GovtThemeTokens.textPrimary,
                         fontSize: 11,
@@ -143,52 +144,59 @@ class GovtComplaintCard extends StatelessWidget {
 
                 // Department & Assigned Officer Info
                 CivicFixSpacing.vSpaceSm,
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: CivicFixSpacing.sm,
-                    vertical: CivicFixSpacing.xs,
-                  ),
-                  decoration: BoxDecoration(
-                    color: complaint.assignedTo != null
-                        ? const Color(0xFFE8F2F8)
-                        : const Color(0xFFF9FAFB),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                      color: complaint.assignedTo != null
-                          ? GovtThemeTokens.info.withValues(alpha: 0.2)
-                          : GovtThemeTokens.border,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        complaint.assignedTo != null
-                            ? Icons.engineering_outlined
-                            : Icons.assignment_late_outlined,
-                        size: 13,
-                        color: complaint.assignedTo != null
-                            ? GovtThemeTokens.info
-                            : GovtThemeTokens.textDisabled,
+                Builder(
+                  builder: (context) {
+                    final l10n = AppLocalizations.of(context);
+                    final deptLabel = localizedDepartment(complaint.effectiveDepartment, context: context);
+
+                    return Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: CivicFixSpacing.sm,
+                        vertical: CivicFixSpacing.xs,
                       ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          complaint.assignedTo != null
-                              ? 'Assigned: ${complaint.assignedTo} (${complaint.effectiveDepartment})'
-                              : 'Unassigned • ${complaint.effectiveDepartment}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: CivicFixTypography.captionMedium.copyWith(
-                            color: complaint.assignedTo != null
-                                ? GovtThemeTokens.info
-                                : GovtThemeTokens.textSecondary,
-                            fontSize: 11,
-                          ),
+                      decoration: BoxDecoration(
+                        color: complaint.assignedTo != null
+                            ? const Color(0xFFE8F2F8)
+                            : const Color(0xFFF9FAFB),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: complaint.assignedTo != null
+                              ? GovtThemeTokens.info.withValues(alpha: 0.2)
+                              : GovtThemeTokens.border,
                         ),
                       ),
-                    ],
-                  ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            complaint.assignedTo != null
+                                ? Icons.engineering_outlined
+                                : Icons.assignment_late_outlined,
+                            size: 13,
+                            color: complaint.assignedTo != null
+                                ? GovtThemeTokens.info
+                                : GovtThemeTokens.textDisabled,
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              complaint.assignedTo != null
+                                  ? '${l10n?.govAssignedOfficerLabel ?? "Assigned"}: ${complaint.assignedTo} ($deptLabel)'
+                                  : '${l10n?.unassignedOfficer ?? "Unassigned"} • $deptLabel',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: CivicFixTypography.captionMedium.copyWith(
+                                color: complaint.assignedTo != null
+                                    ? GovtThemeTokens.info
+                                    : GovtThemeTokens.textSecondary,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
 
                 // Action Buttons Bar
@@ -196,53 +204,59 @@ class GovtComplaintCard extends StatelessWidget {
                   CivicFixSpacing.vSpaceMd,
                   const Divider(color: GovtThemeTokens.border, height: 1),
                   CivicFixSpacing.vSpaceSm,
-                  Wrap(
-                    spacing: CivicFixSpacing.xs,
-                    runSpacing: CivicFixSpacing.xs,
-                    alignment: WrapAlignment.end,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      if (onTap != null)
-                        TextButton.icon(
-                          onPressed: onTap,
-                          icon: const Icon(Icons.visibility_outlined, size: 14),
-                          label: const Text('Details', style: TextStyle(fontSize: 12)),
-                          style: TextButton.styleFrom(
-                            foregroundColor: GovtThemeTokens.textSecondary,
-                            minimumSize: const Size(0, 32),
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          ),
-                        ),
-                      if (onAssign != null)
-                        TextButton.icon(
-                          onPressed: onAssign,
-                          icon: const Icon(Icons.person_add_alt_1_rounded, size: 14),
-                          label: const Text('Assign', style: TextStyle(fontSize: 12)),
-                          style: TextButton.styleFrom(
-                            foregroundColor: GovtThemeTokens.primary,
-                            minimumSize: const Size(0, 32),
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          ),
-                        ),
-                      if (onUpdateStatus != null)
-                        ElevatedButton.icon(
-                          onPressed: onUpdateStatus,
-                          icon: const Icon(Icons.sync_rounded, size: 14),
-                          label: const Text('Update Status', style: TextStyle(fontSize: 12)),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: GovtThemeTokens.secondary,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            minimumSize: const Size(0, 32),
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(6),
+                  Builder(
+                    builder: (context) {
+                      final l10n = AppLocalizations.of(context);
+
+                      return Wrap(
+                        spacing: CivicFixSpacing.xs,
+                        runSpacing: CivicFixSpacing.xs,
+                        alignment: WrapAlignment.end,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          if (onTap != null)
+                            TextButton.icon(
+                              onPressed: onTap,
+                              icon: const Icon(Icons.visibility_outlined, size: 14),
+                              label: Text(l10n?.govInspectAction ?? 'Details', style: const TextStyle(fontSize: 12)),
+                              style: TextButton.styleFrom(
+                                foregroundColor: GovtThemeTokens.textSecondary,
+                                minimumSize: const Size(0, 32),
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              ),
                             ),
-                          ),
-                        ),
-                    ],
+                          if (onAssign != null)
+                            TextButton.icon(
+                              onPressed: onAssign,
+                              icon: const Icon(Icons.person_add_alt_1_rounded, size: 14),
+                              label: Text(l10n?.govAssignOfficer ?? 'Assign', style: const TextStyle(fontSize: 12)),
+                              style: TextButton.styleFrom(
+                                foregroundColor: GovtThemeTokens.primary,
+                                minimumSize: const Size(0, 32),
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              ),
+                            ),
+                          if (onUpdateStatus != null)
+                            ElevatedButton.icon(
+                              onPressed: onUpdateStatus,
+                              icon: const Icon(Icons.sync_rounded, size: 14),
+                              label: Text(l10n?.govUpdateStatus ?? 'Update Status', style: const TextStyle(fontSize: 12)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: GovtThemeTokens.secondary,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                minimumSize: const Size(0, 32),
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                              ),
+                            ),
+                        ],
+                      );
+                    },
                   ),
                 ],
               ],

@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../ai/models/ai_analysis_status.dart';
 import '../../ai/models/ai_authenticity_result.dart';
+import '../../map/spatial_chunk.dart';
 import '../../models/complaint_model.dart';
 import 'firestore_mapper_helpers.dart';
 
@@ -22,25 +23,77 @@ class ComplaintFirestoreMapper {
       'imageUrls': complaint.imageUrls,
       'upvotes': complaint.upvotes,
       'isHazard': complaint.isHazard,
-      'officerNotes': complaint.officerNotes,
-      'assignedTo': complaint.assignedTo,
-      'departmentName': complaint.departmentName,
-      'resolvedAt': FirestoreMapperHelpers.dateTimeToTimestamp(complaint.resolvedAt),
+      'officerNotes': isCreate ? null : complaint.officerNotes,
+      'assignedTo': isCreate ? null : complaint.assignedTo,
+      // The creation rule requires this legacy assignment field explicitly null.
+      // Routing uses assignedDepartmentId; keep both fields in the wire schema.
+      'departmentId': isCreate ? null : complaint.assignedDepartmentId,
+      'departmentName': isCreate ? null : complaint.departmentName,
+      'resolvedAt': isCreate ? null : FirestoreMapperHelpers.dateTimeToTimestamp(complaint.resolvedAt),
       if (complaint.aiAuthenticity != null)
         'aiAuthenticity': complaint.aiAuthenticity!.toMap(),
       'aiAnalysisStatus': complaint.aiAnalysisStatus.name,
+      // Phase 3 Canonical AI Verification Fields
+      'evidenceVerificationStatus': isCreate ? 'pending' : complaint.evidenceVerificationStatus,
+      'departmentVerificationStatus': isCreate ? 'pending' : complaint.departmentVerificationStatus,
+      'verificationStage': isCreate ? 'evidence' : complaint.verificationStage,
+      'verifiedDepartmentId': isCreate ? null : complaint.verifiedDepartmentId,
+      'verifiedDepartmentName': isCreate ? null : complaint.verifiedDepartmentName,
+      'evidenceVerificationStartedAt': isCreate ? null : FirestoreMapperHelpers.dateTimeToTimestamp(complaint.evidenceVerificationStartedAt),
+      'evidenceVerificationCompletedAt': isCreate ? null : FirestoreMapperHelpers.dateTimeToTimestamp(complaint.evidenceVerificationCompletedAt),
+      'departmentVerificationStartedAt': isCreate ? null : FirestoreMapperHelpers.dateTimeToTimestamp(complaint.departmentVerificationStartedAt),
+      'departmentVerificationCompletedAt': isCreate ? null : FirestoreMapperHelpers.dateTimeToTimestamp(complaint.departmentVerificationCompletedAt),
+      'verificationCompletedAt': isCreate ? null : FirestoreMapperHelpers.dateTimeToTimestamp(complaint.verificationCompletedAt),
+      'verificationFailureReason': isCreate ? null : complaint.verificationFailureReason,
+      'citizenSafeVerificationMessage': isCreate ? null : complaint.citizenSafeVerificationMessage,
+      // Phase 3 Closure Lifecycle Fields
+      'closedAt': isCreate ? null : FirestoreMapperHelpers.dateTimeToTimestamp(complaint.closedAt),
+      'closedBy': isCreate ? null : complaint.closedBy,
+      'closureRemarks': isCreate ? null : complaint.closureRemarks,
       // Phase 2 BMC Matrix Hierarchical Fields
       'wardId': complaint.wardId,
-      'assignedDepartmentId': complaint.assignedDepartmentId,
-      'assignedDepartmentLeadId': complaint.assignedDepartmentLeadId,
-      'assignedCrewMemberId': complaint.assignedCrewMemberId,
-      'routingStatus': complaint.routingStatus.id,
-      'assignmentStatus': complaint.assignmentStatus.id,
+      'assignedDepartmentId': isCreate ? null : complaint.assignedDepartmentId,
+      'assignedDepartmentLeadId': isCreate ? null : complaint.assignedDepartmentLeadId,
+      'assignedCrewMemberId': isCreate ? null : complaint.assignedCrewMemberId,
+      'routingStatus': isCreate ? ComplaintRoutingStatus.unassigned.id : complaint.routingStatus.id,
+      'assignmentStatus': isCreate ? ComplaintAssignmentStatus.unassigned.id : complaint.assignmentStatus.id,
       'slaStartedAt': FirestoreMapperHelpers.dateTimeToTimestamp(complaint.slaStartedAt),
       'originalCreatedAt': FirestoreMapperHelpers.dateTimeToTimestamp(complaint.originalCreatedAt),
-      'currentDepartmentAssignedAt': FirestoreMapperHelpers.dateTimeToTimestamp(complaint.currentDepartmentAssignedAt),
-      'lastReassignedAt': FirestoreMapperHelpers.dateTimeToTimestamp(complaint.lastReassignedAt),
-      'reassignmentCount': complaint.reassignmentCount,
+      'currentDepartmentAssignedAt': isCreate ? null : FirestoreMapperHelpers.dateTimeToTimestamp(complaint.currentDepartmentAssignedAt),
+      'lastReassignedAt': isCreate ? null : FirestoreMapperHelpers.dateTimeToTimestamp(complaint.lastReassignedAt),
+      'reassignmentCount': isCreate ? 0 : complaint.reassignmentCount,
+      // Phase 1/3 Junior Engineer Snapshots
+      'assignedJuniorEngineerNameSnapshot': isCreate ? null : complaint.assignedJuniorEngineerNameSnapshot,
+      'assignedJuniorEngineerDesignationSnapshot': isCreate ? null : complaint.assignedJuniorEngineerDesignationSnapshot,
+      // Phase 2 Field Officer & Ground Execution Fields
+      'assignedFieldOfficerId': isCreate ? null : complaint.assignedFieldOfficerId,
+      'assignedFieldOfficerAt': isCreate ? null : FirestoreMapperHelpers.dateTimeToTimestamp(complaint.assignedFieldOfficerAt),
+      'assignedFieldOfficerNameSnapshot': isCreate ? null : complaint.assignedFieldOfficerNameSnapshot,
+      'assignedFieldOfficerDesignationSnapshot': isCreate ? null : complaint.assignedFieldOfficerDesignationSnapshot,
+      'workStartedAt': isCreate ? null : FirestoreMapperHelpers.dateTimeToTimestamp(complaint.workStartedAt),
+      'workStartedBy': isCreate ? null : complaint.workStartedBy,
+      'beforeWorkPhoto': isCreate ? null : complaint.beforeWorkPhoto,
+      'beforeWorkNotes': isCreate ? null : complaint.beforeWorkNotes,
+      'afterWorkPhoto': isCreate ? null : complaint.afterWorkPhoto,
+      'resolutionRemarks': isCreate ? null : complaint.resolutionRemarks,
+      'resolvedBy': isCreate ? null : complaint.resolvedBy,
+      'blockedAt': isCreate ? null : FirestoreMapperHelpers.dateTimeToTimestamp(complaint.blockedAt),
+      'blockedBy': isCreate ? null : complaint.blockedBy,
+      'blockedReason': isCreate ? null : complaint.blockedReason,
+      'reopenedAt': isCreate ? null : FirestoreMapperHelpers.dateTimeToTimestamp(complaint.reopenedAt),
+      'reopenedBy': isCreate ? null : complaint.reopenedBy,
+      'reopenReason': isCreate ? null : complaint.reopenReason,
+      'previousResolvedAt': isCreate ? null : FirestoreMapperHelpers.dateTimeToTimestamp(complaint.previousResolvedAt),
+      'previousResolutionEvidence': isCreate ? const [] : complaint.previousResolutionEvidence,
+      'reopenCount': isCreate ? 0 : complaint.reopenCount,
+      'spatialChunkId': complaint.spatialChunkId ??
+          (complaint.location.latitude != 0.0 || complaint.location.longitude != 0.0
+              ? GeohashUtils.encode(complaint.location.latitude, complaint.location.longitude, precision: 5)
+              : null),
+      'geohash': complaint.geohash ??
+          (complaint.location.latitude != 0.0 || complaint.location.longitude != 0.0
+              ? GeohashUtils.encode(complaint.location.latitude, complaint.location.longitude, precision: 7)
+              : null),
     };
 
     if (isCreate) {
@@ -67,6 +120,7 @@ class ComplaintFirestoreMapper {
     }
 
     final createdAt = FirestoreMapperHelpers.timestampToDateTime(data['createdAt']) ?? DateTime.now();
+    final parsedLocation = FirestoreMapperHelpers.locationFromMap(data['location']);
 
     return ComplaintModel(
       id: documentId,
@@ -77,8 +131,8 @@ class ComplaintFirestoreMapper {
       category: FirestoreMapperHelpers.categoryFromMap(data['category']),
       status: FirestoreMapperHelpers.parseComplaintStatus(data['status'] as String?),
       priority: FirestoreMapperHelpers.parseComplaintPriority(data['priority'] as String?),
-      location: FirestoreMapperHelpers.locationFromMap(data['location']),
-      imageUrls: List<String>.from(data['imageUrls'] as List<dynamic>? ?? const []),
+      location: parsedLocation,
+      imageUrls: FirestoreMapperHelpers.parseImageUrls(data),
       createdAt: createdAt,
       updatedAt: FirestoreMapperHelpers.timestampToDateTime(data['updatedAt']) ?? DateTime.now(),
       timeline: timeline,
@@ -93,6 +147,23 @@ class ComplaintFirestoreMapper {
       localId: data['localId'] as String?,
       aiAuthenticity: parsedAuthenticity,
       aiAnalysisStatus: AiAnalysisStatus.fromString(data['aiAnalysisStatus'] as String?),
+      // Phase 3 Canonical AI Verification Fields
+      evidenceVerificationStatus: data['evidenceVerificationStatus'] as String? ?? 'pending',
+      departmentVerificationStatus: data['departmentVerificationStatus'] as String? ?? 'pending',
+      verificationStage: data['verificationStage'] as String? ?? 'evidence',
+      verifiedDepartmentId: data['verifiedDepartmentId'] as String?,
+      verifiedDepartmentName: data['verifiedDepartmentName'] as String?,
+      evidenceVerificationStartedAt: FirestoreMapperHelpers.timestampToDateTime(data['evidenceVerificationStartedAt']),
+      evidenceVerificationCompletedAt: FirestoreMapperHelpers.timestampToDateTime(data['evidenceVerificationCompletedAt']),
+      departmentVerificationStartedAt: FirestoreMapperHelpers.timestampToDateTime(data['departmentVerificationStartedAt']),
+      departmentVerificationCompletedAt: FirestoreMapperHelpers.timestampToDateTime(data['departmentVerificationCompletedAt']),
+      verificationCompletedAt: FirestoreMapperHelpers.timestampToDateTime(data['verificationCompletedAt']),
+      verificationFailureReason: data['verificationFailureReason'] as String?,
+      citizenSafeVerificationMessage: data['citizenSafeVerificationMessage'] as String?,
+      // Phase 3 Closure Lifecycle Fields
+      closedAt: FirestoreMapperHelpers.timestampToDateTime(data['closedAt']),
+      closedBy: data['closedBy'] as String?,
+      closureRemarks: data['closureRemarks'] as String?,
       // Phase 2 BMC Matrix Hierarchical Fields
       wardId: data['wardId'] as String?,
       assignedDepartmentId: data['assignedDepartmentId'] as String? ?? data['departmentId'] as String?,
@@ -105,6 +176,38 @@ class ComplaintFirestoreMapper {
       currentDepartmentAssignedAt: FirestoreMapperHelpers.timestampToDateTime(data['currentDepartmentAssignedAt']),
       lastReassignedAt: FirestoreMapperHelpers.timestampToDateTime(data['lastReassignedAt']),
       reassignmentCount: data['reassignmentCount'] as int? ?? 0,
+      // Phase 1/3 Junior Engineer Snapshots
+      assignedJuniorEngineerNameSnapshot: data['assignedJuniorEngineerNameSnapshot'] as String?,
+      assignedJuniorEngineerDesignationSnapshot: data['assignedJuniorEngineerDesignationSnapshot'] as String?,
+      // Phase 2 Field Officer & Ground Execution Fields
+      assignedFieldOfficerId: data['assignedFieldOfficerId'] as String?,
+      assignedFieldOfficerAt: FirestoreMapperHelpers.timestampToDateTime(data['assignedFieldOfficerAt']),
+      assignedFieldOfficerNameSnapshot: data['assignedFieldOfficerNameSnapshot'] as String?,
+      assignedFieldOfficerDesignationSnapshot: data['assignedFieldOfficerDesignationSnapshot'] as String?,
+      workStartedAt: FirestoreMapperHelpers.timestampToDateTime(data['workStartedAt']),
+      workStartedBy: data['workStartedBy'] as String?,
+      beforeWorkPhoto: FirestoreMapperHelpers.parseBeforeWorkPhoto(data),
+      beforeWorkNotes: data['beforeWorkNotes'] as String?,
+      afterWorkPhoto: FirestoreMapperHelpers.parseAfterWorkPhoto(data),
+      resolutionRemarks: data['resolutionRemarks'] as String?,
+      resolvedBy: data['resolvedBy'] as String?,
+      blockedAt: FirestoreMapperHelpers.timestampToDateTime(data['blockedAt']),
+      blockedBy: data['blockedBy'] as String?,
+      blockedReason: data['blockedReason'] as String?,
+      reopenedAt: FirestoreMapperHelpers.timestampToDateTime(data['reopenedAt']),
+      reopenedBy: data['reopenedBy'] as String?,
+      reopenReason: data['reopenReason'] as String?,
+      previousResolvedAt: FirestoreMapperHelpers.timestampToDateTime(data['previousResolvedAt']),
+      previousResolutionEvidence: FirestoreMapperHelpers.parsePreviousResolutionEvidence(data),
+      reopenCount: data['reopenCount'] as int? ?? 0,
+      spatialChunkId: data['spatialChunkId'] as String? ??
+          (parsedLocation.latitude != 0.0 || parsedLocation.longitude != 0.0
+              ? GeohashUtils.encode(parsedLocation.latitude, parsedLocation.longitude, precision: 5)
+              : null),
+      geohash: data['geohash'] as String? ??
+          (parsedLocation.latitude != 0.0 || parsedLocation.longitude != 0.0
+              ? GeohashUtils.encode(parsedLocation.latitude, parsedLocation.longitude, precision: 7)
+              : null),
     );
   }
 

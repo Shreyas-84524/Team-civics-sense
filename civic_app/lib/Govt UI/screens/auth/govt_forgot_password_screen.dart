@@ -3,6 +3,7 @@ import '../../../core/auth/auth_service_locator.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
+import '../../../core/localization/app_localizations.dart';
 import '../../../core/routing/app_routes.dart';
 import '../../../core/widgets/civic_fix_button.dart';
 import '../../../core/widgets/civic_fix_text_field.dart';
@@ -126,6 +127,8 @@ class _GovtForgotPasswordScreenState extends State<GovtForgotPasswordScreen> {
   }
 
   Widget _buildFormView() {
+    final l10n = AppLocalizations.of(context);
+
     return Form(
       key: _formKey,
       child: Column(
@@ -168,7 +171,7 @@ class _GovtForgotPasswordScreenState extends State<GovtForgotPasswordScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    'OFFICER PASSWORD RECOVERY',
+                    l10n?.govForgotPassword.toUpperCase() ?? 'OFFICER PASSWORD RECOVERY',
                     style: CivicFixTypography.captionMedium.copyWith(
                       color: GovtThemeTokens.textSecondary,
                       letterSpacing: 0.8,
@@ -183,7 +186,7 @@ class _GovtForgotPasswordScreenState extends State<GovtForgotPasswordScreen> {
           CivicFixSpacing.vSpaceLg,
 
           Text(
-            'Reset Municipal Access Passcode',
+            l10n?.govForgotPassword ?? 'Reset Municipal Access Passcode',
             style: CivicFixTypography.h3.copyWith(
               color: GovtThemeTokens.textPrimary,
               fontWeight: FontWeight.w700,
@@ -191,7 +194,8 @@ class _GovtForgotPasswordScreenState extends State<GovtForgotPasswordScreen> {
           ),
           CivicFixSpacing.vSpaceXs,
           Text(
-            'Enter your registered official government email. We will generate a secure reset token dispatched to your municipal mailbox.',
+            l10n?.govResetPasswordInstruction ??
+                'Enter your registered official government email. We will generate a secure reset token dispatched to your municipal mailbox.',
             style: CivicFixTypography.bodySmall.copyWith(
               color: GovtThemeTokens.textSecondary,
               height: 1.45,
@@ -227,7 +231,7 @@ class _GovtForgotPasswordScreenState extends State<GovtForgotPasswordScreen> {
 
           // Official Email
           Text(
-            'Official Government Email',
+            l10n?.govOfficialEmail ?? 'Official Government Email',
             style: CivicFixTypography.bodySmallMedium.copyWith(
               fontWeight: FontWeight.w600,
             ),
@@ -253,7 +257,7 @@ class _GovtForgotPasswordScreenState extends State<GovtForgotPasswordScreen> {
 
           // Submit Button
           CivicFixButton(
-            text: 'Send Recovery Instructions',
+            text: l10n?.govSendResetLink ?? 'Send Recovery Instructions',
             icon: Icons.send_rounded,
             isLoading: _isLoading,
             onPressed: _isLoading ? null : _handleResetRequest,
@@ -271,7 +275,7 @@ class _GovtForgotPasswordScreenState extends State<GovtForgotPasswordScreen> {
                 }
               },
               icon: const Icon(Icons.arrow_back_rounded, size: 16),
-              label: const Text('Back to Government Login'),
+              label: Text(l10n?.govLoginTitle ?? 'Back to Government Login'),
               style: TextButton.styleFrom(
                 foregroundColor: GovtThemeTokens.textSecondary,
               ),
@@ -283,6 +287,8 @@ class _GovtForgotPasswordScreenState extends State<GovtForgotPasswordScreen> {
   }
 
   Widget _buildSuccessView() {
+    final l10n = AppLocalizations.of(context);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
@@ -347,7 +353,7 @@ class _GovtForgotPasswordScreenState extends State<GovtForgotPasswordScreen> {
         ),
         CivicFixSpacing.vSpaceXl,
         CivicFixButton(
-          text: 'Return to Government Login',
+          text: l10n?.govReturnToDashboard ?? 'Return to Government Login',
           icon: Icons.login_rounded,
           onPressed: () {
             if (Navigator.canPop(context)) {

@@ -1,47 +1,82 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import '../../models/complaint_model.dart';
+import '../../models/complaint_upvote_result.dart';
 import '../../location/location_model.dart';
+import '../../map/spatial_chunk.dart';
 import '../errors/firestore_error_handler.dart';
 import '../firebase_constants.dart';
 import '../mappers/complaint_firestore_mapper.dart';
 import '../mappers/firestore_mapper_helpers.dart';
 import 'firestore_pagination.dart';
+import '../../services/supabase_complaint_verification_service.dart';
+import '../../services/civic_rewards_sync_service.dart';
 
 /// Remote Firestore Data Source for managing Civic Grievance complaints and timeline updates.
 class FirebaseComplaintDataSource {
   final FirebaseFirestore? _firestore;
 
   FirebaseComplaintDataSource({FirebaseFirestore? firestore})
-      : _firestore = firestore;
+    : _firestore = firestore;
 
   FirebaseFirestore get _db => _firestore ?? FirebaseFirestore.instance;
 
   CollectionReference<Map<String, dynamic>> get _complaintsRef =>
       _db.collection(FirestoreCollections.complaints);
 
-  /// Creates a new complaint document and initial status update atomically.
+  /// Creates a new complaint document and initial status update atomically in a single batch.
   Future<ComplaintModel> createComplaint(ComplaintModel complaint) async {
     try {
       final docRef = complaint.id.isNotEmpty && !complaint.id.startsWith('cmp_')
           ? _complaintsRef.doc(complaint.id)
           : _complaintsRef.doc();
 
-      final data = ComplaintFirestoreMapper.toFirestore(complaint, isCreate: true);
+      final data = ComplaintFirestoreMapper.toFirestore(
+        complaint,
+        isCreate: true,
+      );
       data['localId'] = complaint.id;
 
-      await docRef.set(data);
+      final initialStatus =
+          complaint.status == ComplaintStatus.underVerification
+          ? ComplaintStatus.underVerification
+          : ComplaintStatus.reported;
+      data['status'] = initialStatus.name;
+      data['upvotes'] = 0;
 
       // Create initial timeline audit event
       final initialEvent = TimelineEvent(
-        title: 'Issue Reported',
-        description: 'Ticket created and assigned to Ward ${complaint.location.ward ?? "Central"}.',
+        title: initialStatus == ComplaintStatus.underVerification
+            ? 'Grievance Submitted'
+            : 'Issue Reported',
+        description: 'Ticket created and queued for two-stage verification.',
         timestamp: DateTime.now(),
-        status: ComplaintStatus.reported,
+        status: initialStatus,
         updatedBy: complaint.citizenId,
       );
 
-      final timelineRef = docRef.collection(FirestoreCollections.complaintUpdates).doc();
-      await timelineRef.set(ComplaintFirestoreMapper.timelineEventToFirestore(initialEvent));
+      final timelineRef = docRef
+          .collection(FirestoreCollections.complaintUpdates)
+          .doc();
+      final timelineData = ComplaintFirestoreMapper.timelineEventToFirestore(
+        initialEvent,
+      );
+
+      // Perform atomic batch write ensuring complaint and timeline are created together
+      final batch = _db.batch();
+      batch.set(docRef, data);
+      batch.set(timelineRef, timelineData);
+      await batch.commit();
+
+      // Verification runs on Supabase after the Firestore write succeeds.
+      // A failed invocation must never turn a saved complaint into a submit error.
+      unawaited(
+        SupabaseComplaintVerificationService.start(
+          docRef.id,
+          complaint.citizenId,
+        ),
+      );
 
       return ComplaintFirestoreMapper.fromFirestore(
         documentId: docRef.id,
@@ -54,12 +89,29 @@ class FirebaseComplaintDataSource {
   }
 
   /// Fetches a single complaint document by ID with its chronological timeline updates.
-  Future<ComplaintModel?> getComplaintById(String id, {bool includeTimeline = true}) async {
+  Future<ComplaintModel?> getComplaintById(
+    String id, {
+    bool includeTimeline = true,
+  }) async {
     try {
       final doc = await _complaintsRef.doc(id).get();
       if (!doc.exists || doc.data() == null) {
         // Fallback: search by ticketNumber or localId
         return await getComplaintByTicketNumber(id);
+      }
+
+      final currentData = doc.data()!;
+      if (currentData['status'] == 'underVerification' &&
+          (currentData['evidenceVerificationStatus'] == 'pending' ||
+              currentData['evidenceVerificationStatus'] == 'temporarily_unavailable' ||
+              currentData['departmentVerificationStatus'] == 'temporarily_unavailable' ||
+              currentData['aiAnalysisStatus'] == 'error')) {
+        unawaited(
+          SupabaseComplaintVerificationService.start(
+            doc.id,
+            currentData['citizenId'] as String? ?? '',
+          ),
+        );
       }
 
       List<TimelineEvent> timeline = [];
@@ -78,7 +130,9 @@ class FirebaseComplaintDataSource {
   }
 
   /// Queries a complaint by human-readable ticket number (e.g. 'CF-2026-000024').
-  Future<ComplaintModel?> getComplaintByTicketNumber(String ticketNumber) async {
+  Future<ComplaintModel?> getComplaintByTicketNumber(
+    String ticketNumber,
+  ) async {
     try {
       final query = await _complaintsRef
           .where('ticketNumber', isEqualTo: ticketNumber)
@@ -150,7 +204,9 @@ class FirebaseComplaintDataSource {
     try {
       Query<Map<String, dynamic>> query = _complaintsRef;
 
-      if (departmentId != null && departmentId.isNotEmpty && departmentId != 'all') {
+      if (departmentId != null &&
+          departmentId.isNotEmpty &&
+          departmentId != 'all') {
         query = query.where('departmentId', isEqualTo: departmentId);
       }
 
@@ -201,7 +257,10 @@ class FirebaseComplaintDataSource {
           .get();
 
       return snapshot.docs
-          .map((d) => ComplaintFirestoreMapper.timelineEventFromFirestore(d.data()))
+          .map(
+            (d) =>
+                ComplaintFirestoreMapper.timelineEventFromFirestore(d.data()),
+          )
           .toList();
     } catch (e, st) {
       throw FirestoreErrorHandler.handle(e, st);
@@ -236,7 +295,9 @@ class FirebaseComplaintDataSource {
       if (title != null) updates['title'] = title;
       if (description != null) updates['description'] = description;
       if (imageUrls != null) updates['imageUrls'] = imageUrls;
-      if (location != null) updates['location'] = FirestoreMapperHelpers.locationToMap(location);
+      if (location != null) {
+        updates['location'] = FirestoreMapperHelpers.locationToMap(location);
+      }
 
       await _complaintsRef.doc(complaintId).update(updates);
     } catch (e, st) {
@@ -266,7 +327,11 @@ class FirebaseComplaintDataSource {
       if (departmentId != null) updates['departmentId'] = departmentId;
       if (departmentName != null) updates['departmentName'] = departmentName;
       if (officerNotes != null) updates['officerNotes'] = officerNotes;
-      if (resolvedAt != null) updates['resolvedAt'] = FirestoreMapperHelpers.dateTimeToTimestamp(resolvedAt);
+      if (resolvedAt != null) {
+        updates['resolvedAt'] = FirestoreMapperHelpers.dateTimeToTimestamp(
+          resolvedAt,
+        );
+      }
 
       await _complaintsRef.doc(complaintId).update(updates);
     } catch (e, st) {
@@ -275,35 +340,51 @@ class FirebaseComplaintDataSource {
   }
 
   /// Atomic community upvote increment on a complaint with user deduplication.
-  Future<void> upvoteComplaint(String complaintId, {String? userId}) async {
+  Future<ComplaintUpvoteResult> upvoteComplaint(
+    String complaintId, {
+    required String userId,
+  }) async {
     try {
-      if (userId != null && userId.isNotEmpty) {
-        final docRef = _complaintsRef.doc(complaintId);
-        final upvoteRef = docRef.collection('upvotes').doc(userId);
+      if (userId.trim().isEmpty) {
+        throw StateError('You must be signed in to support a complaint.');
+      }
 
-        await _db.runTransaction((transaction) async {
-          final upvoteSnapshot = await transaction.get(upvoteRef);
-          if (upvoteSnapshot.exists) {
-            // Already upvoted by this user - idempotent no-op
-            return;
-          }
+      final docRef = _complaintsRef.doc(complaintId);
+      final upvoteRef = docRef.collection('upvotes').doc(userId);
 
-          transaction.set(upvoteRef, {
-            'userId': userId,
-            'timestamp': FieldValue.serverTimestamp(),
-          });
+      final result = await _db.runTransaction((transaction) async {
+        // Firestore transactions require every read to happen before writes.
+        final complaintSnapshot = await transaction.get(docRef);
+        final upvoteSnapshot = await transaction.get(upvoteRef);
 
-          transaction.update(docRef, {
-            'upvotes': FieldValue.increment(1),
-            'updatedAt': FieldValue.serverTimestamp(),
-          });
+        if (!complaintSnapshot.exists) {
+          throw StateError('Complaint not found.');
+        }
+
+        final currentCount =
+            (complaintSnapshot.data()?['upvotes'] as num?)?.toInt() ?? 0;
+        if (upvoteSnapshot.exists) {
+          return ComplaintUpvoteResult(added: false, upvotes: currentCount);
+        }
+
+        final updatedCount = currentCount + 1;
+        transaction.set(upvoteRef, {
+          'userId': userId,
+          'timestamp': FieldValue.serverTimestamp(),
         });
-      } else {
-        await _complaintsRef.doc(complaintId).update({
-          'upvotes': FieldValue.increment(1),
+        transaction.update(docRef, {
+          'upvotes': updatedCount,
           'updatedAt': FieldValue.serverTimestamp(),
         });
+
+        return ComplaintUpvoteResult(added: true, upvotes: updatedCount);
+      });
+
+      if (result.added) {
+        unawaited(CivicRewardsSyncService.recordUpvoteAction(complaintId: complaintId));
       }
+
+      return result;
     } catch (e, st) {
       throw FirestoreErrorHandler.handle(e, st);
     }
@@ -334,10 +415,12 @@ class FirebaseComplaintDataSource {
           .get();
 
       return snapshot.docs
-          .map((doc) => ComplaintFirestoreMapper.fromFirestore(
-                documentId: doc.id,
-                data: doc.data(),
-              ))
+          .map(
+            (doc) => ComplaintFirestoreMapper.fromFirestore(
+              documentId: doc.id,
+              data: doc.data(),
+            ),
+          )
           .toList();
     } catch (e, st) {
       throw FirestoreErrorHandler.handle(e, st);
@@ -374,10 +457,14 @@ class FirebaseComplaintDataSource {
           .orderBy('timestamp', descending: false)
           .snapshots()
           .map((snapshot) {
-        return snapshot.docs
-            .map((d) => ComplaintFirestoreMapper.timelineEventFromFirestore(d.data()))
-            .toList();
-      });
+            return snapshot.docs
+                .map(
+                  (d) => ComplaintFirestoreMapper.timelineEventFromFirestore(
+                    d.data(),
+                  ),
+                )
+                .toList();
+          });
     } catch (e, st) {
       throw FirestoreErrorHandler.handle(e, st);
     }
@@ -395,13 +482,13 @@ class FirebaseComplaintDataSource {
           .limit(limit)
           .snapshots()
           .map((snapshot) {
-        return snapshot.docs.map((doc) {
-          return ComplaintFirestoreMapper.fromFirestore(
-            documentId: doc.id,
-            data: doc.data(),
-          );
-        }).toList();
-      });
+            return snapshot.docs.map((doc) {
+              return ComplaintFirestoreMapper.fromFirestore(
+                documentId: doc.id,
+                data: doc.data(),
+              );
+            }).toList();
+          });
     } catch (e, st) {
       throw FirestoreErrorHandler.handle(e, st);
     }
@@ -418,7 +505,9 @@ class FirebaseComplaintDataSource {
     try {
       Query<Map<String, dynamic>> query = _complaintsRef;
 
-      if (departmentId != null && departmentId.isNotEmpty && departmentId != 'all') {
+      if (departmentId != null &&
+          departmentId.isNotEmpty &&
+          departmentId != 'all') {
         query = query.where('departmentId', isEqualTo: departmentId);
       }
 
@@ -449,6 +538,153 @@ class FirebaseComplaintDataSource {
     }
   }
 
+  /// Fetches citizen-visible complaints (public hazards where isHazard == true + current citizen's own complaints)
+  /// without triggering Firestore PERMISSION_DENIED on unfiltered collection scans.
+  Future<List<ComplaintModel>> getCitizenVisibleComplaints({
+    String? citizenId,
+    int limit = 100,
+  }) async {
+    try {
+      if (citizenId == null || citizenId.isEmpty) {
+        return await getNearbyHazards(limit: limit);
+      }
+
+      final futures = await Future.wait([
+        getNearbyHazards(limit: limit),
+        _complaintsRef
+            .where('citizenId', isEqualTo: citizenId)
+            .orderBy('createdAt', descending: true)
+            .limit(limit)
+            .get(),
+      ]);
+
+      final hazards = futures[0] as List<ComplaintModel>;
+      final ownDocs = futures[1] as QuerySnapshot<Map<String, dynamic>>;
+      final ownComplaints = ownDocs.docs.map((doc) {
+        return ComplaintFirestoreMapper.fromFirestore(
+          documentId: doc.id,
+          data: doc.data(),
+        );
+      }).toList();
+
+      final Map<String, ComplaintModel> dedup = {};
+      for (final c in hazards) {
+        dedup[c.id] = c;
+      }
+      for (final c in ownComplaints) {
+        dedup[c.id] = c;
+      }
+
+      final merged = dedup.values.toList()
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+      if (merged.length > limit) {
+        return merged.sublist(0, limit);
+      }
+      return merged;
+    } catch (e, st) {
+      throw FirestoreErrorHandler.handle(e, st);
+    }
+  }
+
+  /// Fetches citizen-visible complaints within specific geographic chunk IDs (e.g. Geohash 5 cells).
+  ///
+  /// Conforms strictly to Firestore security rules: public hazards query where `isHazard == true`,
+  /// plus citizen's own grievances where `citizenId == auth.uid`.
+  Future<List<ComplaintModel>> getComplaintsBySpatialChunks({
+    required List<String> chunkIds,
+    String? citizenId,
+    int limit = 100,
+  }) async {
+    try {
+      if (chunkIds.isEmpty) return [];
+
+      // Chunk whereIn slices (max 30 items per Firestore 'in' query)
+      final List<List<String>> batches = [];
+      for (var i = 0; i < chunkIds.length; i += 30) {
+        batches.add(chunkIds.sublist(i, i + 30 > chunkIds.length ? chunkIds.length : i + 30));
+      }
+
+      final Map<String, ComplaintModel> dedup = {};
+
+      for (final batch in batches) {
+        final List<Future<QuerySnapshot<Map<String, dynamic>>>> queries = [
+          _complaintsRef
+              .where('isHazard', isEqualTo: true)
+              .where('spatialChunkId', whereIn: batch)
+              .limit(limit)
+              .get(),
+        ];
+
+        if (citizenId != null && citizenId.isNotEmpty) {
+          queries.add(
+            _complaintsRef
+                .where('citizenId', isEqualTo: citizenId)
+                .where('spatialChunkId', whereIn: batch)
+                .limit(limit)
+                .get(),
+          );
+        }
+
+        final snapshots = await Future.wait(queries);
+        for (final snap in snapshots) {
+          for (final doc in snap.docs) {
+            dedup[doc.id] = ComplaintFirestoreMapper.fromFirestore(
+              documentId: doc.id,
+              data: doc.data(),
+            );
+          }
+        }
+      }
+
+      final merged = dedup.values.toList()
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+      if (merged.length > limit) {
+        return merged.sublist(0, limit);
+      }
+      return merged;
+    } catch (e, st) {
+      throw FirestoreErrorHandler.handle(e, st);
+    }
+  }
+
+  /// Safely backfills missing spatialChunkId and geohash on existing complaints in Firestore.
+  Future<int> backfillSpatialChunksOnLegacyComplaints() async {
+    try {
+      final snapshot = await _complaintsRef.limit(100).get();
+      int updatedCount = 0;
+      final batch = _db.batch();
+
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        if (data['spatialChunkId'] == null && data['location'] is Map) {
+          final loc = data['location'] as Map;
+          final lat = (loc['latitude'] as num?)?.toDouble();
+          final lng = (loc['longitude'] as num?)?.toDouble();
+          if (lat != null && lng != null && lat != 0.0 && lng != 0.0) {
+            final chunkId = GeohashUtils.encode(lat, lng, precision: 5);
+            final hash = GeohashUtils.encode(lat, lng, precision: 7);
+            batch.update(doc.reference, {
+              'spatialChunkId': chunkId,
+              'geohash': hash,
+              'updatedAt': FieldValue.serverTimestamp(),
+            });
+            updatedCount++;
+          }
+        }
+      }
+
+      if (updatedCount > 0) {
+        await batch.commit();
+      }
+      return updatedCount;
+    } catch (e) {
+      debugPrint('[FirebaseComplaintDataSource] Migration note: $e');
+      return 0;
+    }
+  }
+
   /// Subscribes to real-time community hazards.
   Stream<List<ComplaintModel>> watchNearbyHazards({int limit = 50}) {
     try {
@@ -458,13 +694,93 @@ class FirebaseComplaintDataSource {
           .limit(limit)
           .snapshots()
           .map((snapshot) {
-        return snapshot.docs.map((doc) {
-          return ComplaintFirestoreMapper.fromFirestore(
-            documentId: doc.id,
-            data: doc.data(),
-          );
-        }).toList();
-      });
+            return snapshot.docs.map((doc) {
+              return ComplaintFirestoreMapper.fromFirestore(
+                documentId: doc.id,
+                data: doc.data(),
+              );
+            }).toList();
+          });
+    } catch (e, st) {
+      throw FirestoreErrorHandler.handle(e, st);
+    }
+  }
+
+  /// Subscribes to real-time citizen-visible complaints (public hazards + citizen's own complaints).
+  Stream<List<ComplaintModel>> watchCitizenVisibleComplaints({
+    String? citizenId,
+    int limit = 100,
+  }) {
+    try {
+      // Validate Firestore reference access
+      final _ = _complaintsRef;
+
+      if (citizenId == null || citizenId.isEmpty) {
+        return watchNearbyHazards(limit: limit);
+      }
+
+      late StreamController<List<ComplaintModel>> controller;
+      StreamSubscription<List<ComplaintModel>>? hazardsSub;
+      StreamSubscription<List<ComplaintModel>>? ownSub;
+      List<ComplaintModel> latestHazards = [];
+      List<ComplaintModel> latestOwn = [];
+
+      void emitMerged() {
+        if (controller.isClosed) return;
+        final Map<String, ComplaintModel> dedupMap = {};
+        for (final c in latestHazards) {
+          dedupMap[c.id] = c;
+        }
+        for (final c in latestOwn) {
+          dedupMap[c.id] = c;
+        }
+        final merged = dedupMap.values.toList()
+          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        if (merged.length > limit) {
+          controller.add(merged.sublist(0, limit));
+        } else {
+          controller.add(merged);
+        }
+      }
+
+      controller = StreamController<List<ComplaintModel>>.broadcast(
+        onListen: () {
+          try {
+            hazardsSub = watchNearbyHazards(limit: limit).listen(
+              (hazards) {
+                latestHazards = hazards;
+                emitMerged();
+              },
+              onError: (err, st) {
+                if (!controller.isClosed) controller.addError(err, st);
+              },
+            );
+          } catch (e, st) {
+            if (!controller.isClosed) controller.addError(e, st);
+          }
+
+          try {
+            ownSub = watchCitizenComplaints(citizenId: citizenId, limit: limit)
+                .listen(
+                  (own) {
+                    latestOwn = own;
+                    emitMerged();
+                  },
+                  onError: (err, st) {
+                    if (!controller.isClosed) controller.addError(err, st);
+                  },
+                );
+          } catch (e, st) {
+            if (!controller.isClosed) controller.addError(e, st);
+          }
+        },
+        onCancel: () async {
+          await hazardsSub?.cancel();
+          await ownSub?.cancel();
+        },
+      );
+
+      return controller.stream;
     } catch (e, st) {
       throw FirestoreErrorHandler.handle(e, st);
     }

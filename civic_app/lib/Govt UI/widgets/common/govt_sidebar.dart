@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
-import '../../../core/auth/auth_service_locator.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
+import '../../../core/localization/app_localizations.dart';
 import '../../models/govt_user_model.dart';
 import '../../navigation/govt_nav_item.dart';
 import '../../navigation/govt_navigation_config.dart';
 import '../../theme/govt_theme_tokens.dart';
 import '../../theme/govt_typography.dart';
-import 'government_confirmation_dialog.dart';
 
 // Re-export GovtNavItem for compatibility
 export '../../navigation/govt_nav_item.dart';
@@ -36,32 +35,6 @@ class GovtSidebar extends StatelessWidget {
 
   /// Canonical default navigation items for backward compatibility
   static List<GovtNavItem> get navItems => GovtNavigationConfig.defaultNavItems;
-
-  void _confirmLogout(BuildContext context) {
-    if (onLogout != null) {
-      onLogout!();
-      return;
-    }
-
-    GovernmentConfirmationDialog.show(
-      context,
-      title: 'Sign Out Officer Session',
-      message:
-          'Are you sure you want to log out of the CivicFix Municipal Administration portal?',
-      confirmLabel: 'Sign Out',
-      type: GovtDialogType.destructive,
-      onConfirm: () async {
-        final auth = AuthServiceLocator.govtAuth;
-        await auth.logout();
-        if (context.mounted) {
-          Navigator.of(context, rootNavigator: true).pushNamedAndRemoveUntil(
-            '/govt/login',
-            (route) => false,
-          );
-        }
-      },
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -167,7 +140,7 @@ class GovtSidebar extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        'GOVERNMENT PORTAL',
+                        AppLocalizations.of(context)?.govPortalTitle.toUpperCase() ?? 'GOVERNMENT PORTAL',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: CivicFixTypography.captionMedium.copyWith(
@@ -181,16 +154,6 @@ class GovtSidebar extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (onToggleCollapse != null)
-                  IconButton(
-                    icon: const Icon(
-                      Icons.menu_open_rounded,
-                      color: Color(0xFFB0BEC5),
-                      size: 20,
-                    ),
-                    onPressed: onToggleCollapse,
-                    tooltip: 'Collapse Sidebar',
-                  ),
               ],
             ),
     );
@@ -302,12 +265,13 @@ class GovtSidebar extends StatelessWidget {
 
   Widget _buildNavItem(BuildContext context, GovtNavItem item) {
     final isSelected = selectedIndex == item.index;
+    final displayTitle = localizedGovtNavTitle(item.title, context: context);
 
     if (isCollapsed) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: CivicFixSpacing.xs),
         child: Tooltip(
-          message: item.title,
+          message: displayTitle,
           preferBelow: false,
           child: InkWell(
             onTap: item.isDisabled ? null : () => onDestinationSelected(item.index),
@@ -372,7 +336,7 @@ class GovtSidebar extends StatelessWidget {
                 CivicFixSpacing.hSpaceMd,
                 Expanded(
                   child: Text(
-                    item.title,
+                    displayTitle,
                     style: CivicFixTypography.bodySmallMedium.copyWith(
                       color: item.isDisabled
                           ? const Color(0xFF78909C)
@@ -422,58 +386,43 @@ class GovtSidebar extends StatelessWidget {
   }
 
   Widget _buildFooter(BuildContext context) {
+    if (onToggleCollapse == null) return const SizedBox.shrink();
+    final l10n = AppLocalizations.of(context);
+
     if (isCollapsed) {
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (onToggleCollapse != null)
-            Tooltip(
-              message: 'Expand Sidebar',
-              child: IconButton(
-                icon: const Icon(Icons.chevron_right_rounded, color: Color(0xFFB0BEC5), size: 20),
-                onPressed: onToggleCollapse,
-              ),
-            ),
-          Tooltip(
-            message: 'Sign Out',
-            child: IconButton(
-              icon: const Icon(Icons.logout_rounded, color: Color(0xFFEF9A9A), size: 20),
-              onPressed: () => _confirmLogout(context),
-            ),
-          ),
-        ],
+      return Tooltip(
+        message: l10n?.govExpandSidebar ?? 'Expand Sidebar',
+        child: IconButton(
+          icon: const Icon(Icons.chevron_right_rounded, color: Color(0xFFB0BEC5), size: 20),
+          onPressed: onToggleCollapse,
+        ),
       );
     }
 
     return Padding(
       padding: const EdgeInsets.all(CivicFixSpacing.sm),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          InkWell(
-            onTap: () => _confirmLogout(context),
-            borderRadius: BorderRadius.circular(8),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: CivicFixSpacing.md,
-                vertical: CivicFixSpacing.sm + 2,
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.logout_rounded, color: Color(0xFFEF9A9A), size: 18),
-                  CivicFixSpacing.hSpaceMd,
-                  Text(
-                    'Sign Out',
-                    style: CivicFixTypography.bodySmallMedium.copyWith(
-                      color: const Color(0xFFEF9A9A),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+      child: InkWell(
+        onTap: onToggleCollapse,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: CivicFixSpacing.md,
+            vertical: CivicFixSpacing.sm + 2,
           ),
-        ],
+          child: Row(
+            children: [
+              const Icon(Icons.chevron_left_rounded, color: Color(0xFFB0BEC5), size: 18),
+              CivicFixSpacing.hSpaceMd,
+              Text(
+                l10n?.govCollapseSidebar ?? 'Collapse',
+                style: CivicFixTypography.bodySmallMedium.copyWith(
+                  color: const Color(0xFFB0BEC5),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
