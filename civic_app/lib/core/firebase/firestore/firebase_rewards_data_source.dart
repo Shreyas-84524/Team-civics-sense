@@ -23,17 +23,19 @@ class FirebaseRewardsDataSource {
       if (!doc.exists || doc.data() == null) {
         return RewardDataModel(
           userId: userId,
-          currentPoints: 20,
+          currentPoints: 0,
           nextMilestoneTarget: 1000,
           reportsSubmitted: 0,
           reportsResolved: 0,
           achievements: CivicAchievement.defaultAchievements(),
+          syncPending: false,
         );
       }
 
       return RewardFirestoreMapper.fromFirestore(
         documentId: doc.id,
         data: doc.data()!,
+        syncPending: false,
       );
     } catch (e, st) {
       throw FirestoreErrorHandler.handle(e, st);
@@ -43,5 +45,23 @@ class FirebaseRewardsDataSource {
   /// Retrieves the standard catalog of Civic Achievements.
   Future<List<CivicAchievement>> getAchievements() async {
     return CivicAchievement.defaultAchievements();
+  }
+
+  /// Retrieves the list of canonical reward events for a citizen from the authoritative subcollection.
+  Future<List<RewardEvent>> getRewardEvents(String userId) async {
+    try {
+      final query = await _rewardsRef
+          .doc(userId)
+          .collection('events')
+          .orderBy('createdAt', descending: true)
+          .get();
+
+      return query.docs.map((d) {
+        final data = d.data();
+        return RewardEvent.fromJson({'id': d.id, ...data});
+      }).toList();
+    } catch (e, st) {
+      throw FirestoreErrorHandler.handle(e, st);
+    }
   }
 }

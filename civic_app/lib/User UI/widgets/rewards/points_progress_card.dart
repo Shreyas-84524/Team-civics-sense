@@ -3,23 +3,34 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_radius.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
+import '../../../core/localization/app_localizations.dart';
+import '../../../core/models/reward_model.dart';
 import '../../../core/widgets/civic_fix_card.dart';
 
 /// Hero points and level progress card for Rewards screen.
+///
+/// Implements Phase 2 Gamification:
+/// - Level 1: 0–99 pts   -> Civic Starter
+/// - Level 2: 100–249 pts -> Civic Contributor
+/// - Level 3: 250–499 pts -> Civic Champion
+/// - Level 4: 500–999 pts -> Civic Leader
+/// - Level 5: 1000+ pts   -> Civic Hero (Max level, complete progress, no fake next level)
 class PointsProgressCard extends StatelessWidget {
   final int points;
   final int nextMilestone;
+  final CivicLevelInfo? levelInfoOverride;
 
   const PointsProgressCard({
     super.key,
     required this.points,
     this.nextMilestone = 1000,
+    this.levelInfoOverride,
   });
 
   @override
   Widget build(BuildContext context) {
-    final remaining = (nextMilestone - points).clamp(0, nextMilestone);
-    final progress = nextMilestone > 0 ? (points / nextMilestone).clamp(0.0, 1.0) : 1.0;
+    final levelInfo = levelInfoOverride ?? CivicLevelInfo.calculate(points);
+    final isMax = levelInfo.isMaxLevel;
 
     return CivicFixCard(
       backgroundColor: CivicFixColors.primary,
@@ -28,6 +39,60 @@ class PointsProgressCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Level Chip Header
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.18),
+                  borderRadius: CivicFixRadius.chipRadius,
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.25),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      levelInfo.symbol,
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Level ${levelInfo.level} • ${levelInfo.title}',
+                      style: CivicFixTypography.captionMedium.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (isMax)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: CivicFixColors.accent.withValues(alpha: 0.25),
+                    borderRadius: CivicFixRadius.chipRadius,
+                    border: Border.all(color: CivicFixColors.accent),
+                  ),
+                  child: Text(
+                    'MAX LEVEL',
+                    style: CivicFixTypography.caption.copyWith(
+                      color: CivicFixColors.accent,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 10,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          CivicFixSpacing.vSpaceLg,
+
+          // Points Counter
           Row(
             children: [
               Container(
@@ -58,7 +123,7 @@ class PointsProgressCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      'Civic Points',
+                      context.l10nOrNull?.civicPoints ?? 'Civic Points',
                       style: CivicFixTypography.captionMedium.copyWith(
                         color: Colors.white70,
                         fontWeight: FontWeight.w600,
@@ -75,10 +140,12 @@ class PointsProgressCard extends StatelessWidget {
           ClipRRect(
             borderRadius: CivicFixRadius.chipRadius,
             child: LinearProgressIndicator(
-              value: progress,
+              value: levelInfo.progress,
               minHeight: 10,
               backgroundColor: Colors.white.withValues(alpha: 0.2),
-              valueColor: const AlwaysStoppedAnimation<Color>(CivicFixColors.accent),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                isMax ? CivicFixColors.secondaryLight : CivicFixColors.accent,
+              ),
             ),
           ),
           CivicFixSpacing.vSpaceSm,
@@ -87,17 +154,23 @@ class PointsProgressCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                remaining > 0
-                    ? '$remaining points to next milestone'
-                    : 'Milestone achieved!',
-                style: CivicFixTypography.captionMedium.copyWith(
-                  color: CivicFixColors.accent,
-                  fontWeight: FontWeight.w700,
+              Flexible(
+                child: Text(
+                  isMax
+                      ? 'Hero Tier Achieved — Top civic milestone unlocked!'
+                      : '${levelInfo.pointsRemaining} pts to Level ${levelInfo.nextLevelNumber}: ${levelInfo.nextLevelTitle}',
+                  style: CivicFixTypography.captionMedium.copyWith(
+                    color: isMax ? CivicFixColors.secondaryLight : CivicFixColors.accent,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
+              const SizedBox(width: 8),
               Text(
-                '$points / $nextMilestone',
+                isMax
+                    ? '$points pts'
+                    : '$points / ${levelInfo.nextLevelMinPoints} pts',
                 style: CivicFixTypography.caption.copyWith(
                   color: Colors.white70,
                   fontWeight: FontWeight.w600,

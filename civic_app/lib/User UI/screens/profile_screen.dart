@@ -4,6 +4,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_radius.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/constants/app_typography.dart';
+import '../../core/localization/app_localizations.dart';
 import '../../core/models/user_model.dart';
 import '../../core/repositories/repository_locator.dart';
 import '../../core/repositories/user_repository.dart';
@@ -41,21 +42,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.initState();
     _userRepository = widget.repository ?? RepositoryLocator.userRepository;
     _authService = widget.authService ?? AuthServiceLocator.citizenAuth;
+    _userRepository.getCurrentUser();
   }
 
   void _showLogoutConfirmation() {
+    final l10n = context.l10nOrNull;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: CivicFixRadius.cardRadius),
         title: Text(
-          'Log out?',
+          l10n?.logoutConfirmationTitle ?? 'Log out?',
           style: CivicFixTypography.h3.copyWith(
             color: CivicFixColors.primaryText,
           ),
         ),
         content: Text(
-          'Are you sure you want to log out?',
+          l10n?.logoutConfirmationMessage ?? 'Are you sure you want to log out?',
           style: CivicFixTypography.bodySmall.copyWith(
             color: CivicFixColors.secondaryText,
           ),
@@ -63,7 +66,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            child: Text(l10n?.commonCancel ?? 'Cancel'),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -81,7 +84,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               backgroundColor: CivicFixColors.error,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Log Out'),
+            child: Text(l10n?.logout ?? 'Log Out'),
           ),
         ],
       ),
@@ -90,10 +93,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10nOrNull;
     return Scaffold(
       backgroundColor: CivicFixColors.background,
-      appBar: const CivicFixAppBar(
-        title: 'Citizen Profile',
+      appBar: CivicFixAppBar(
+        title: l10n?.citizenProfile ?? 'Citizen Profile',
         automaticallyImplyLeading: false,
       ),
       body: SafeArea(
@@ -102,118 +106,123 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: ValueListenableBuilder<UserModel>(
             valueListenable: _userRepository.getUserListenable(),
             builder: (context, user, _) {
-              return SingleChildScrollView(
-                padding: CivicFixSpacing.pagePadding,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // 1. Profile Header Card (Avatar + Details + Edit Button)
-                    ProfileHeader(
-                      user: user,
-                      onEditPressed: () async {
-                        await Navigator.pushNamed(context, AppRoutes.editProfile);
-                      },
-                    ),
-                    CivicFixSpacing.vSpaceLg,
-
-                    // 2. Civic Contribution 3-Column Metrics Card
-                    ProfileStatCard(
-                      reportsSubmitted: user.reportsSubmitted,
-                      reportsResolved: user.reportsResolved,
-                      civicPoints: user.civicPoints,
-                      onRewardsTap: () => Navigator.pushNamed(context, AppRoutes.rewards),
-                    ),
-                    CivicFixSpacing.vSpaceXl,
-
-                    // 3. Civic Engagement & Services
-                    const SectionHeader(title: 'Civic Engagement'),
-                    CivicFixSpacing.vSpaceSm,
-                    CivicFixCard(
-                      padding: EdgeInsets.zero,
-                      child: Column(
-                        children: [
-                          _buildMenuTile(
-                            icon: Icons.stars_rounded,
-                            title: 'Civic Rewards & Achievements',
-                            subtitle: '${user.civicPoints} points • View Milestones',
-                            iconColor: CivicFixColors.alertDark,
-                            onTap: () => Navigator.pushNamed(context, AppRoutes.rewards),
-                          ),
-                          const Divider(height: 1),
-                          _buildMenuTile(
-                            icon: Icons.smart_toy_outlined,
-                            title: 'Civic Assistant',
-                            subtitle: 'FAQ, complaint rules & category help',
-                            iconColor: CivicFixColors.primary,
-                            onTap: () => Navigator.pushNamed(context, AppRoutes.assistant),
-                          ),
-                        ],
+              return RefreshIndicator(
+                onRefresh: () async => _userRepository.getCurrentUser(),
+                color: CivicFixColors.primary,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: CivicFixSpacing.pagePadding,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // 1. Profile Header Card (Avatar + Details + Edit Button)
+                      ProfileHeader(
+                        user: user,
+                        onEditPressed: () async {
+                          await Navigator.pushNamed(context, AppRoutes.editProfile);
+                        },
                       ),
-                    ),
-                    CivicFixSpacing.vSpaceXl,
+                      CivicFixSpacing.vSpaceLg,
 
-                    // 4. Account Settings & Preferences
-                    const SectionHeader(title: 'Settings & Privacy'),
-                    CivicFixSpacing.vSpaceSm,
-                    CivicFixCard(
-                      padding: EdgeInsets.zero,
-                      child: Column(
-                        children: [
-                          _buildMenuTile(
-                            icon: Icons.language_rounded,
-                            title: 'Language',
-                            subtitle: user.languageName,
-                            onTap: () async {
-                              await LanguageSelectorSheet.show(
-                                context,
-                                currentCode: user.languageCode,
-                              );
-                            },
-                          ),
-                          const Divider(height: 1),
-                          _buildMenuTile(
-                            icon: Icons.notifications_outlined,
-                            title: 'Notification Preferences',
-                            subtitle: 'Status alerts, hazard warnings & sound',
-                            onTap: () => Navigator.pushNamed(context, AppRoutes.notificationSettings),
-                          ),
-                          const Divider(height: 1),
-                          _buildMenuTile(
-                            icon: Icons.privacy_tip_outlined,
-                            title: 'Privacy & Safety',
-                            subtitle: 'Confidentiality and public map policy',
-                            onTap: () => Navigator.pushNamed(context, AppRoutes.privacySettings),
-                          ),
-                          const Divider(height: 1),
-                          _buildMenuTile(
-                            icon: Icons.info_outline_rounded,
-                            title: 'About CivicFix',
-                            subtitle: 'Mission, governance & technology',
-                            onTap: () => Navigator.pushNamed(context, AppRoutes.about),
-                          ),
-                        ],
+                      // 2. Civic Contribution 3-Column Metrics Card
+                      ProfileStatCard(
+                        reportsSubmitted: user.reportsSubmitted,
+                        reportsResolved: user.reportsResolved,
+                        civicPoints: user.civicPoints,
+                        onRewardsTap: () => Navigator.pushNamed(context, AppRoutes.rewards),
                       ),
-                    ),
-                    CivicFixSpacing.vSpaceXl,
+                      CivicFixSpacing.vSpaceXl,
 
-                    // 5. Logout Button
-                    CivicFixCard(
-                      padding: EdgeInsets.zero,
-                      child: ListTile(
-                        leading: const Icon(Icons.logout_rounded, color: CivicFixColors.error),
-                        title: Text(
-                          'Log Out',
-                          style: CivicFixTypography.bodySmallMedium.copyWith(
-                            color: CivicFixColors.error,
-                            fontWeight: FontWeight.w700,
-                          ),
+                      // 3. Civic Engagement & Services
+                      SectionHeader(title: l10n?.civicEngagement ?? 'Civic Engagement'),
+                      CivicFixSpacing.vSpaceSm,
+                      CivicFixCard(
+                        padding: EdgeInsets.zero,
+                        child: Column(
+                          children: [
+                            _buildMenuTile(
+                              icon: Icons.stars_rounded,
+                              title: l10n?.civicRewardsAndAchievements ?? 'Civic Rewards & Achievements',
+                              subtitle: '${user.civicPoints} ${l10n?.civicPoints ?? "points"} • ${l10n?.viewMilestones ?? "View Milestones"}',
+                              iconColor: CivicFixColors.alertDark,
+                              onTap: () => Navigator.pushNamed(context, AppRoutes.rewards),
+                            ),
+                            const Divider(height: 1),
+                            _buildMenuTile(
+                              icon: Icons.smart_toy_outlined,
+                              title: l10n?.civicAssistant ?? 'Civic Assistant',
+                              subtitle: l10n?.civicAssistantSubtitle ?? 'FAQ, complaint rules & category help',
+                              iconColor: CivicFixColors.primary,
+                              onTap: () => Navigator.pushNamed(context, AppRoutes.assistant),
+                            ),
+                          ],
                         ),
-                        trailing: const Icon(Icons.chevron_right_rounded, color: CivicFixColors.secondaryText),
-                        onTap: _showLogoutConfirmation,
                       ),
-                    ),
-                    CivicFixSpacing.vSpaceXxl,
-                  ],
+                      CivicFixSpacing.vSpaceXl,
+
+                      // 4. Account Settings & Preferences
+                      SectionHeader(title: l10n?.settingsAndPrivacy ?? 'Settings & Privacy'),
+                      CivicFixSpacing.vSpaceSm,
+                      CivicFixCard(
+                        padding: EdgeInsets.zero,
+                        child: Column(
+                          children: [
+                            _buildMenuTile(
+                              icon: Icons.language_rounded,
+                              title: l10n?.selectLanguage ?? 'Language',
+                              subtitle: user.languageName,
+                              onTap: () async {
+                                await LanguageSelectorSheet.show(
+                                  context,
+                                  currentCode: user.languageCode,
+                                );
+                              },
+                            ),
+                            const Divider(height: 1),
+                            _buildMenuTile(
+                              icon: Icons.notifications_outlined,
+                              title: l10n?.notificationPreferences ?? 'Notification Preferences',
+                              subtitle: l10n?.notificationPreferencesSubtitle ?? 'Status alerts, hazard warnings & sound',
+                              onTap: () => Navigator.pushNamed(context, AppRoutes.notificationSettings),
+                            ),
+                            const Divider(height: 1),
+                            _buildMenuTile(
+                              icon: Icons.privacy_tip_outlined,
+                              title: l10n?.privacyAndSafety ?? 'Privacy & Safety',
+                              subtitle: l10n?.privacyAndSafetySubtitle ?? 'Confidentiality and public map policy',
+                              onTap: () => Navigator.pushNamed(context, AppRoutes.privacySettings),
+                            ),
+                            const Divider(height: 1),
+                            _buildMenuTile(
+                              icon: Icons.info_outline_rounded,
+                              title: l10n?.aboutCivicFix ?? 'About CivicFix',
+                              subtitle: l10n?.aboutCivicFixSubtitle ?? 'Mission, governance & technology',
+                              onTap: () => Navigator.pushNamed(context, AppRoutes.about),
+                            ),
+                          ],
+                        ),
+                      ),
+                      CivicFixSpacing.vSpaceXl,
+
+                      // 5. Logout Button
+                      CivicFixCard(
+                        padding: EdgeInsets.zero,
+                        child: ListTile(
+                          leading: const Icon(Icons.logout_rounded, color: CivicFixColors.error),
+                          title: Text(
+                            l10n?.logout ?? 'Log Out',
+                            style: CivicFixTypography.bodySmallMedium.copyWith(
+                              color: CivicFixColors.error,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          trailing: const Icon(Icons.chevron_right_rounded, color: CivicFixColors.secondaryText),
+                          onTap: _showLogoutConfirmation,
+                        ),
+                      ),
+                      CivicFixSpacing.vSpaceXxl,
+                    ],
+                  ),
                 ),
               );
             },

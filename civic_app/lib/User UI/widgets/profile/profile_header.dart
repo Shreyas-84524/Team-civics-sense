@@ -3,6 +3,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_radius.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
+import '../../../core/localization/app_localizations.dart';
 import '../../../core/models/user_model.dart';
 import '../../../core/widgets/civic_fix_card.dart';
 
@@ -173,7 +174,7 @@ class ProfileHeader extends StatelessWidget {
             child: OutlinedButton.icon(
               onPressed: onEditPressed,
               icon: const Icon(Icons.edit_outlined, size: 16),
-              label: const Text('Edit Profile'),
+              label: Text(context.l10nOrNull?.editProfile ?? 'Edit Profile'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: CivicFixColors.primary,
                 side: const BorderSide(color: CivicFixColors.primary),

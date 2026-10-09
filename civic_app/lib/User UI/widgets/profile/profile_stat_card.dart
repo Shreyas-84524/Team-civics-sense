@@ -4,6 +4,7 @@ import '../../../core/constants/app_radius.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
 import '../../../core/widgets/civic_fix_card.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 /// 3-column civic contribution statistics card for Citizen Profile.
 class ProfileStatCard extends StatelessWidget {
@@ -22,6 +23,8 @@ class ProfileStatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
     return CivicFixCard(
       padding: const EdgeInsets.all(CivicFixSpacing.md),
       child: Column(
@@ -30,13 +33,17 @@ class ProfileStatCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Civic Contribution',
-                style: CivicFixTypography.bodyMedium.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: CivicFixColors.primaryText,
+              Expanded(
+                child: Text(
+                  l10n?.civicContribution ?? 'Civic Contribution',
+                  style: CivicFixTypography.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: CivicFixColors.primaryText,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
+              const SizedBox(width: 8),
               if (onRewardsTap != null)
                 InkWell(
                   onTap: onRewardsTap,
@@ -44,9 +51,10 @@ class ProfileStatCard extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                     child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          'View Achievements',
+                          l10n?.viewAchievements ?? 'View Achievements',
                           style: CivicFixTypography.captionMedium.copyWith(
                             color: CivicFixColors.primary,
                             fontWeight: FontWeight.w700,
@@ -68,7 +76,7 @@ class ProfileStatCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _buildStatItem(
-                  label: 'Reports',
+                  label: l10n?.reports ?? 'Reports',
                   value: '$reportsSubmitted',
                   icon: Icons.assignment_outlined,
                   color: CivicFixColors.info,
@@ -77,7 +85,7 @@ class ProfileStatCard extends StatelessWidget {
               Container(width: 1, height: 48, color: CivicFixColors.border),
               Expanded(
                 child: _buildStatItem(
-                  label: 'Resolved',
+                  label: l10n?.resolved ?? 'Resolved',
                   value: '$reportsResolved',
                   icon: Icons.check_circle_outline_rounded,
                   color: CivicFixColors.secondary,
@@ -86,7 +94,7 @@ class ProfileStatCard extends StatelessWidget {
               Container(width: 1, height: 48, color: CivicFixColors.border),
               Expanded(
                 child: _buildStatItem(
-                  label: 'Civic Points',
+                  label: l10n?.civicPoints ?? 'Civic Points',
                   value: '$civicPoints',
                   icon: Icons.stars_rounded,
                   color: CivicFixColors.alertDark,

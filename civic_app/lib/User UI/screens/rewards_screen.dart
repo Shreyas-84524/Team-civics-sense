@@ -3,14 +3,22 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_radius.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/constants/app_typography.dart';
+import '../../core/localization/app_localizations.dart';
+import '../../core/models/certificate_model.dart';
+import '../../core/models/complaint_model.dart';
 import '../../core/models/reward_model.dart';
 import '../../core/models/user_model.dart';
 import '../../core/network/connectivity_service.dart';
-import '../../core/repositories/rewards_repository.dart';
+import '../../core/repositories/certificate_repository.dart';
+import '../../core/repositories/complaint_repository.dart';
+import '../../core/repositories/hive_user_repository.dart';
+import '../../core/repositories/offline_first_user_repository.dart';
 import '../../core/repositories/repository_locator.dart';
+import '../../core/repositories/rewards_repository.dart';
 import '../../core/repositories/user_repository.dart';
+import '../../core/services/achievement_evaluator.dart';
+import '../../core/services/reward_evaluation_service.dart';
 import '../../core/widgets/civic_fix_app_bar.dart';
-import '../../core/widgets/civic_fix_card.dart';
 import '../../core/widgets/empty_state.dart';
 import '../../core/widgets/error_state.dart';
 import '../../core/widgets/loading_state.dart';
@@ -18,18 +26,26 @@ import '../../core/widgets/offline_cache_banner.dart';
 import '../../core/widgets/responsive_container.dart';
 import '../../core/widgets/section_header.dart';
 import '../widgets/rewards/achievement_card.dart';
+import '../widgets/rewards/civic_impact_card.dart';
+import '../widgets/rewards/my_certificates_section.dart';
 import '../widgets/rewards/points_progress_card.dart';
+import '../widgets/rewards/recent_reward_activity_card.dart';
 
-/// Screen for Civic Points, Level Milestones, MVP Achievements, and Community Perks.
+/// Screen for Civic Points, Civic Levels, Real-world Impact, Milestone Progress,
+/// Recent Reward Activity, MVP Achievements, and My Certificates.
 class RewardsScreen extends StatefulWidget {
   final RewardsRepository? rewardsRepository;
   final UserRepository? userRepository;
+  final ComplaintRepository? complaintRepository;
+  final CertificateRepository? certificateRepository;
   final ConnectivityService? connectivityService;
 
   const RewardsScreen({
     super.key,
     this.rewardsRepository,
     this.userRepository,
+    this.complaintRepository,
+    this.certificateRepository,
     this.connectivityService,
   });
 
@@ -40,17 +56,22 @@ class RewardsScreen extends StatefulWidget {
 class _RewardsScreenState extends State<RewardsScreen> {
   late final RewardsRepository _rewardsRepository;
   late final UserRepository _userRepository;
+  late final ComplaintRepository _complaintRepository;
+  late final CertificateRepository _certificateRepository;
   late final ConnectivityService _connectivityService;
 
   bool _isLoading = true;
   String? _errorMessage;
   RewardDataModel? _rewardData;
+  List<CivicCertificate> _certificates = const [];
 
   @override
   void initState() {
     super.initState();
     _rewardsRepository = widget.rewardsRepository ?? RepositoryLocator.rewardsRepository;
     _userRepository = widget.userRepository ?? RepositoryLocator.userRepository;
+    _complaintRepository = widget.complaintRepository ?? RepositoryLocator.complaintRepository;
+    _certificateRepository = widget.certificateRepository ?? RepositoryLocator.certificateRepository;
     _connectivityService = widget.connectivityService ?? AppConnectivityService();
     _loadData();
   }
@@ -64,13 +85,88 @@ class _RewardsScreenState extends State<RewardsScreen> {
     try {
       final user = await _userRepository.getCurrentUser();
       final data = await _rewardsRepository.getRewardData(user.id);
+      
+      // Load real canonical reward history
+      List<RewardEvent> recentEvents = await _rewardsRepository.getRewardEvents(user.id);
+      if (recentEvents.isEmpty) {
+        recentEvents = await RewardEvaluationService.instance.getRewardHistory(user.id);
+      }
+      if (recentEvents.isEmpty && data.recentActivity.isNotEmpty) {
+        recentEvents = data.recentActivity;
+      }
+
+      // Synchronize profile points with server reward points if needed
+      final authoritativePoints = data.currentPoints > 0 ? data.currentPoints : user.civicPoints;
+      if (user.civicPoints != authoritativePoints) {
+        final updatedUser = user.copyWith(civicPoints: authoritativePoints);
+        final userRepo = _userRepository;
+        if (userRepo is HiveUserRepository) {
+          await userRepo.cacheUser(updatedUser);
+        } else if (userRepo is OfflineFirstUserRepository) {
+          await userRepo.cacheUser(updatedUser);
+        }
+      }
+
+      // Derive real-world impact metrics from canonical complaint data without duplicate counters
+      int submittedCount = user.reportsSubmitted;
+      int verifiedCount = data.reportsVerified;
+      int resolvedCount = user.reportsResolved;
+      int upvotesCount = data.communityUpvotes;
+
+      List<ComplaintModel> citizenComplaints = [];
+      try {
+        citizenComplaints = await _complaintRepository.getCitizenComplaints(user.id);
+        if (citizenComplaints.isNotEmpty) {
+          submittedCount = citizenComplaints.length;
+          verifiedCount = citizenComplaints.where((c) =>
+              c.isEvidenceVerified ||
+              c.departmentVerificationStatus == 'passed' ||
+              c.status == ComplaintStatus.verified ||
+              c.status == ComplaintStatus.assigned ||
+              c.status == ComplaintStatus.inProgress ||
+              c.status == ComplaintStatus.resolved ||
+              c.status == ComplaintStatus.closed).length;
+          resolvedCount = citizenComplaints.where((c) =>
+              c.status == ComplaintStatus.resolved ||
+              c.status == ComplaintStatus.closed).length;
+          upvotesCount = citizenComplaints.fold<int>(0, (sum, c) => sum + c.upvotes);
+        }
+      } catch (_) {}
+
+      // Evaluates the 5 canonical achievement badges with live progress and server metrics
+      final evaluatedAchievements = AchievementEvaluator.evaluateAchievements(
+        user: user,
+        complaints: citizenComplaints,
+        existingAchievements: data.achievements,
+        supportedComplaintsCount: data.supportedComplaints,
+      );
+
+      // Load issued certificates for this citizen
+      List<CivicCertificate> userCertificates = [];
+      try {
+        userCertificates = await _certificateRepository.getCertificatesForUser(user.id);
+      } catch (_) {}
+
+      final enrichedData = data.copyWith(
+        currentPoints: authoritativePoints,
+        reportsSubmitted: submittedCount,
+        reportsVerified: verifiedCount,
+        reportsResolved: resolvedCount,
+        communityUpvotes: upvotesCount,
+        supportedComplaints: data.supportedComplaints,
+        achievements: evaluatedAchievements,
+        recentActivity: recentEvents,
+      );
+
       if (mounted) {
         setState(() {
-          _rewardData = data;
+          _rewardData = enrichedData;
+          _certificates = userCertificates;
           _isLoading = false;
         });
       }
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[RewardsScreen] _loadData error: $e');
       if (mounted) {
         setState(() {
           _errorMessage = "Couldn't load rewards. Please retry.";
@@ -80,39 +176,13 @@ class _RewardsScreenState extends State<RewardsScreen> {
     }
   }
 
-  Future<void> _claimPerk(CivicRewardItem perk) async {
-    final user = await _userRepository.getCurrentUser();
-    if (user.civicPoints < perk.pointsCost) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('You need ${perk.pointsCost - user.civicPoints} more points to claim this perk.'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-      return;
-    }
-
-    final success = await _rewardsRepository.redeemReward(perk.id);
-    if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: CivicFixColors.secondary,
-          content: Text('Voucher Claimed: ${perk.title}. Check registered email!'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      _loadData();
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10nOrNull;
     return Scaffold(
       backgroundColor: CivicFixColors.background,
-      appBar: const CivicFixAppBar(
-        title: 'Civic Rewards & Badges',
+      appBar: CivicFixAppBar(
+        title: l10n?.civicRewardsAndAchievements ?? 'Civic Rewards & Badges',
       ),
       body: SafeArea(
         child: ResponsiveContainer(
@@ -124,8 +194,9 @@ class _RewardsScreenState extends State<RewardsScreen> {
   }
 
   Widget _buildBody() {
+    final l10n = context.l10nOrNull;
     if (_isLoading) {
-      return const Center(child: LoadingState(message: 'Loading your civic milestones...'));
+      return Center(child: LoadingState(message: l10n?.loadingRewards ?? 'Loading your civic milestones...'));
     }
 
     if (_errorMessage != null) {
@@ -133,7 +204,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
         child: Padding(
           padding: CivicFixSpacing.pagePadding,
           child: ErrorState(
-            title: "Couldn't load rewards",
+            title: l10n?.couldNotLoadComplaint ?? "Couldn't load rewards",
             message: _errorMessage!,
             onRetry: _loadData,
           ),
@@ -145,6 +216,17 @@ class _RewardsScreenState extends State<RewardsScreen> {
       valueListenable: _userRepository.getUserListenable(),
       builder: (context, user, _) {
         final achievements = _rewardData?.achievements ?? [];
+        final effectivePoints = user.civicPoints;
+        final levelInfo = CivicLevelInfo.calculate(effectivePoints);
+
+        final impactSummary = _rewardData?.impactSummary ??
+            CivicImpactSummary(
+              complaintsSubmitted: user.reportsSubmitted,
+              complaintsVerified: _rewardData?.reportsVerified ?? 0,
+              complaintsResolved: user.reportsResolved,
+              communityUpvotes: _rewardData?.communityUpvotes ?? 0,
+              achievementsUnlocked: achievements.where((a) => a.isUnlocked).length,
+            );
 
         return RefreshIndicator(
           onRefresh: _loadData,
@@ -159,66 +241,28 @@ class _RewardsScreenState extends State<RewardsScreen> {
                   OfflineCacheBanner(
                     onRefresh: _loadData,
                   ),
-                // 1. Points Hero Card with Milestone Progress
+
+                // 1. Level & Points Hero Card with Progress
                 PointsProgressCard(
-                  points: user.civicPoints,
-                  nextMilestone: 1000,
+                  points: effectivePoints,
+                  levelInfoOverride: levelInfo,
                 ),
                 CivicFixSpacing.vSpaceLg,
 
-                // 2. Contribution Summary Card
-                CivicFixCard(
-                  padding: const EdgeInsets.all(CivicFixSpacing.md),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Your Contribution',
-                        style: CivicFixTypography.bodyMedium.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: CivicFixColors.primaryText,
-                        ),
-                      ),
-                      CivicFixSpacing.vSpaceMd,
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildSummaryMetric(
-                              label: 'Total Reports',
-                              value: '${user.reportsSubmitted}',
-                              icon: Icons.send_rounded,
-                              color: CivicFixColors.info,
-                            ),
-                          ),
-                          Container(width: 1, height: 40, color: CivicFixColors.border),
-                          Expanded(
-                            child: _buildSummaryMetric(
-                              label: 'Resolved Reports',
-                              value: '${user.reportsResolved}',
-                              icon: Icons.check_circle_rounded,
-                              color: CivicFixColors.secondary,
-                            ),
-                          ),
-                          Container(width: 1, height: 40, color: CivicFixColors.border),
-                          Expanded(
-                            child: _buildSummaryMetric(
-                              label: 'Points Earned',
-                              value: '${user.civicPoints}',
-                              icon: Icons.stars_rounded,
-                              color: CivicFixColors.alertDark,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                // 2. Civic Impact Summary Card
+                CivicImpactCard(impact: impactSummary),
+                CivicFixSpacing.vSpaceLg,
+
+                // 3. Recent Reward Activity Card
+                RecentRewardActivityCard(
+                  events: _rewardData?.recentActivity ?? [],
                 ),
                 CivicFixSpacing.vSpaceXl,
 
-                // 3. MVP Achievements Section
-                const SectionHeader(
-                  title: 'Achievements',
-                  subtitle: 'Earn badges for active neighborhood participation',
+                // 4. MVP Achievements Section
+                SectionHeader(
+                  title: l10n?.achievements ?? 'Achievements',
+                  subtitle: l10n?.achievementsSubtitle ?? 'Earn badges for active neighborhood participation',
                 ),
                 CivicFixSpacing.vSpaceSm,
 
@@ -248,129 +292,18 @@ class _RewardsScreenState extends State<RewardsScreen> {
                   ),
                 CivicFixSpacing.vSpaceXl,
 
-                // 4. Community Perks Catalog
-                const SectionHeader(
-                  title: 'Community Perks',
-                  subtitle: 'Redeem your points for local government & partner benefits',
+                // 5. My Certificates Section
+                MyCertificatesSection(
+                  certificates: _certificates,
+                  user: user,
+                  onCertificateGenerated: _loadData,
                 ),
-                CivicFixSpacing.vSpaceSm,
-
-                ...(_rewardData?.perks ?? []).map((perk) {
-                  final canAfford = user.civicPoints >= perk.pointsCost;
-
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: CivicFixSpacing.md),
-                    child: CivicFixCard(
-                      padding: const EdgeInsets.all(CivicFixSpacing.md),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(CivicFixSpacing.md),
-                            decoration: BoxDecoration(
-                              color: CivicFixColors.accentLight,
-                              borderRadius: CivicFixRadius.chipRadius,
-                            ),
-                            child: Icon(perk.icon, color: CivicFixColors.secondaryDark, size: 26),
-                          ),
-                          CivicFixSpacing.hSpaceMd,
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  perk.title,
-                                  style: CivicFixTypography.bodySmallMedium.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                CivicFixSpacing.vSpaceXs,
-                                Text(
-                                  'Partner: ${perk.partner}',
-                                  style: CivicFixTypography.captionMedium.copyWith(
-                                    color: CivicFixColors.secondary,
-                                    fontSize: 11,
-                                  ),
-                                ),
-                                CivicFixSpacing.vSpaceXs,
-                                Text(
-                                  perk.description,
-                                  style: CivicFixTypography.caption.copyWith(
-                                    color: CivicFixColors.secondaryText,
-                                  ),
-                                ),
-                                CivicFixSpacing.vSpaceSm,
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      '${perk.pointsCost} Points',
-                                      style: CivicFixTypography.bodySmallMedium.copyWith(
-                                        color: CivicFixColors.primary,
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                                    ),
-                                    ElevatedButton(
-                                      onPressed: canAfford ? () => _claimPerk(perk) : null,
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: CivicFixColors.secondary,
-                                        foregroundColor: Colors.white,
-                                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                                        minimumSize: const Size(70, 32),
-                                      ),
-                                      child: const Text('Claim', style: TextStyle(fontSize: 12)),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }),
                 CivicFixSpacing.vSpaceXxl,
               ],
             ),
           ),
         );
       },
-    );
-  }
-
-  Widget _buildSummaryMetric({
-    required String label,
-    required String value,
-    required IconData icon,
-    required Color color,
-  }) {
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 14, color: color),
-            const SizedBox(width: 4),
-            Text(
-              value,
-              style: CivicFixTypography.bodyMedium.copyWith(
-                fontWeight: FontWeight.w800,
-                color: CivicFixColors.primaryText,
-              ),
-            ),
-          ],
-        ),
-        CivicFixSpacing.vSpaceXs,
-        Text(
-          label,
-          style: CivicFixTypography.caption.copyWith(
-            color: CivicFixColors.secondaryText,
-            fontSize: 10,
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ],
     );
   }
 }

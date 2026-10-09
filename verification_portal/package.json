@@ -1,0 +1,18 @@
+{
+  "name": "civicfix-verification-portal",
+  "version": "1.0.0",
+  "description": "Public QR Certificate Verification Portal for CivicFix Rewards & Gamification",
+  "main": "api/verify.js",
+  "scripts": {
+    "start": "npx serve public",
+    "test": "node test/verify_api.test.js"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "serve": "^14.2.4"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "license": "UNLICENSED"
+}
