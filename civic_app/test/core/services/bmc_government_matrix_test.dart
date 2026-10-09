@@ -63,7 +63,8 @@ void main() {
     });
 
     test('Exact role counts match the 2,642 total government identities requirement', () {
-      final users = (usersData['governmentUsers'] as List).cast<Map<String, dynamic>>();
+      final allUsers = (usersData['governmentUsers'] as List).cast<Map<String, dynamic>>();
+      final users = allUsers.where((u) => (u['employeeId'] as String? ?? '').startsWith('GOV-')).toList();
 
       final superAdmins = users.where((u) => u['role'] == GovernmentRole.superAdminId).toList();
       final zonalDmcs = users.where((u) => u['role'] == GovernmentRole.zonalDmcId).toList();
@@ -86,12 +87,14 @@ void main() {
           wardLeads.length +
           crew.length;
 
-      expect(total, equals(2642), reason: 'Total government users must equal exactly 2,642');
+      expect(total, equals(2642), reason: 'Total canonical government users must equal exactly 2,642');
       expect(users.length, equals(2642));
+      expect(allUsers.length, equals(2642), reason: 'Only the approved Active Canonical Matrix accounts may remain in the active roster');
     });
 
     test('Zero duplicate employee IDs exist across all 2,642 government identities', () {
-      final users = (usersData['governmentUsers'] as List).cast<Map<String, dynamic>>();
+      final allUsers = (usersData['governmentUsers'] as List).cast<Map<String, dynamic>>();
+      final users = allUsers.where((u) => (u['employeeId'] as String? ?? '').startsWith('GOV-')).toList();
       final employeeIds = <String>{};
 
       for (final user in users) {
@@ -105,7 +108,8 @@ void main() {
     });
 
     test('Zero orphan supervisor IDs exist across the entire administrative and technical hierarchy', () {
-      final users = (usersData['governmentUsers'] as List).cast<Map<String, dynamic>>();
+      final allUsers = (usersData['governmentUsers'] as List).cast<Map<String, dynamic>>();
+      final users = allUsers.where((u) => (u['employeeId'] as String? ?? '').startsWith('GOV-')).toList();
       final employeeIdMap = {for (final u in users) u['employeeId'] as String: u};
 
       for (final user in users) {

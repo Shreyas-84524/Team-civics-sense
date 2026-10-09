@@ -15,7 +15,7 @@ typedef GenerateContentRunner = Future<GenerateContentResponse> Function(Iterabl
 /// Production implementation of [AiAuthenticityService] utilizing Firebase AI Logic & Gemini multimodal vision.
 class GeminiAiAuthenticityService implements AiAuthenticityService {
   /// Default recommended Gemini model for fast multimodal visual authenticity assessment.
-  static const String defaultModelName = 'gemini-3.6-flash';
+  static const String defaultModelName = 'gemini-2.5-flash';
 
   /// Standard request timeout for AI authenticity analysis.
   static const Duration defaultTimeout = Duration(seconds: 30);

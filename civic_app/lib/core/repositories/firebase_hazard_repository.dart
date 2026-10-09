@@ -4,7 +4,7 @@ import '../models/hazard_model.dart';
 import 'hazard_repository.dart';
 
 /// Firebase Firestore remote implementation of [HazardRepository].
-class FirebaseHazardRepository implements HazardRepository {
+class FirebaseHazardRepository extends HazardRepository {
   final FirebaseHazardDataSource _dataSource;
 
   FirebaseHazardRepository({FirebaseHazardDataSource? dataSource})

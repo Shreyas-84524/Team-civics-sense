@@ -24,13 +24,15 @@ abstract class EvidenceStorageService {
     int minSizeBytes,
   });
 
-  /// Uploads a single complaint photo evidence to Firebase Storage.
+  /// Uploads a single complaint photo evidence to cloud storage.
   /// Emits progress ratio (0.0 to 1.0) via [onProgress] if provided.
   Future<EvidenceUploadResult> uploadComplaintEvidence({
     required String complaintId,
     required String fileName,
     required Uint8List fileBytes,
     EvidenceMetadata? metadata,
+    String? ticketNumber,
+    int? evidenceIndex,
     void Function(double progress)? onProgress,
   });
 
@@ -39,6 +41,7 @@ abstract class EvidenceStorageService {
   Future<List<EvidenceUploadResult>> uploadMultipleEvidence({
     required String complaintId,
     required List<EvidenceUploadInput> items,
+    String? ticketNumber,
     void Function(int itemIndex, double progress)? onProgress,
   });
 
@@ -51,8 +54,8 @@ abstract class EvidenceStorageService {
     void Function(double progress)? onProgress,
   });
 
-  /// Retrieves a publicly accessible or authenticated download URL for a storage path.
-  Future<String> getDownloadUrl(String storagePath);
+  /// Retrieves a publicly accessible or authenticated signed download URL for a storage path.
+  Future<String> getDownloadUrl(String storagePath, {int? expiresInSeconds});
 
   /// Deletes a file from Cloud Storage by path.
   Future<void> deleteEvidence(String storagePath);

@@ -24,6 +24,8 @@ enum GovernmentRole {
   static const String wardOfficerId = 'ward_officer';
   static const String wardDepartmentLeadId = 'ward_department_lead';
   static const String departmentCrewId = 'department_crew';
+  static const String juniorEngineerId = departmentCrewId;
+  static const String fieldOfficerId = departmentCrewId;
 
   static const List<String> allRoleIds = [
     superAdminId,
@@ -37,8 +39,11 @@ enum GovernmentRole {
   static GovernmentRole fromString(String? role) {
     if (role == null) return GovernmentRole.wardDepartmentLead;
     final normalized = role.trim().toLowerCase();
+    final stripped = normalized.replaceAll('_', '').replaceAll('-', '');
     for (final r in GovernmentRole.values) {
-      if (r.id == normalized) return r;
+      if (r.id == normalized || r.name.toLowerCase() == stripped || r.id.replaceAll('_', '') == stripped) {
+        return r;
+      }
     }
     // Fallback for legacy role string
     if (normalized == 'super_admin' || normalized == 'government_super_admin') {
@@ -73,6 +78,8 @@ enum GovernmentRole {
   bool get isWardOfficer => this == GovernmentRole.wardOfficer;
   bool get isWardLead => this == GovernmentRole.wardDepartmentLead;
   bool get isCrew => this == GovernmentRole.departmentCrew;
+  bool get isJuniorEngineer => this == GovernmentRole.departmentCrew;
+  bool get isFieldOfficer => this == GovernmentRole.departmentCrew;
 
   /// Administrative oversight level (higher numbers have higher jurisdiction)
   int get hierarchyLevel {

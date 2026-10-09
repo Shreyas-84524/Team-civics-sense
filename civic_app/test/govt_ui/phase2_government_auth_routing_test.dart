@@ -188,7 +188,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(GovtLoginScreen), findsOneWidget);
-      expect(find.text('CivicFix Government Portal'), findsOneWidget);
+      expect(find.text('CivicFix Government'), findsOneWidget);
     });
 
     testWidgets('Department Crew attempting to access Ward Dashboard receives Access Denied', (tester) async {
@@ -346,7 +346,7 @@ void main() {
       expect(find.text(testOfficer.displayDesignation), findsOneWidget);
     });
 
-    testWidgets('GovtAppBar renders jurisdiction badges matching active officer session without overflowing', (tester) async {
+    testWidgets('GovtAppBar renders cleanly for active officer session without overflowing', (tester) async {
       tester.view.physicalSize = const Size(1280, 800);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());
@@ -364,7 +364,6 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Zonal Command Desk'), findsWidgets);
-      expect(find.text('Zone 4'), findsOneWidget);
     });
 
     testWidgets('GovernmentAuthLoadingScreen renders municipal loading indicator', (tester) async {

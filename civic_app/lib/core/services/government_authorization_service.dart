@@ -73,8 +73,9 @@ class GovernmentAuthorizationService {
     return wardMatches && deptMatches;
   }
 
-  /// Validates whether [user] can submit work resolution evidence.
-  bool canSubmitResolution(GovtUserModel user, ComplaintModel complaint) {
+  /// Validates whether [user] can assign a Field Officer to [complaint].
+  /// The assigned Junior Engineer (or Lead / Super Admin) has authority to assign field officers.
+  bool canAssignFieldOfficer(GovtUserModel user, ComplaintModel complaint) {
     if (user.isSuperAdmin || user.hasPermission('admin_override')) {
       return true;
     }
@@ -83,6 +84,107 @@ class GovernmentAuthorizationService {
       return complaint.assignedCrewMemberId == user.employeeId ||
           complaint.assignedCrewMemberId == user.id ||
           complaint.assignedTo == user.fullName;
+    }
+
+    if (user.isWardLead) {
+      return canAssignCrew(user, complaint);
+    }
+
+    return false;
+  }
+
+  /// Validates whether [user] can start field execution on [complaint].
+  /// Strictly the assigned Field Officer (or Super Admin).
+  bool canStartFieldWork(GovtUserModel user, ComplaintModel complaint) {
+    if (user.isSuperAdmin || user.hasPermission('admin_override')) {
+      return true;
+    }
+
+    if (complaint.assignedFieldOfficerId != null &&
+        complaint.assignedFieldOfficerId!.trim().isNotEmpty) {
+      final cleanFO = complaint.assignedFieldOfficerId!.trim().toUpperCase();
+      return cleanFO == user.employeeId.trim().toUpperCase() ||
+          cleanFO == user.id.trim().toUpperCase();
+    }
+
+    // Legacy single-crew fallback (when no dedicated field officer is assigned)
+    if (user.isCrew) {
+      final cleanCrew = complaint.assignedCrewMemberId?.trim().toUpperCase();
+      return (cleanCrew != null &&
+              (cleanCrew == user.employeeId.trim().toUpperCase() ||
+                  cleanCrew == user.id.trim().toUpperCase())) ||
+          (complaint.assignedTo != null &&
+              complaint.assignedTo!.trim().toLowerCase() ==
+                  user.fullName.trim().toLowerCase());
+    }
+
+    return false;
+  }
+
+  /// Validates whether [user] can submit work resolution evidence and close [complaint].
+  /// Strictly the assigned Field Officer (or Super Admin).
+  bool canSubmitFieldResolution(GovtUserModel user, ComplaintModel complaint) {
+    return canStartFieldWork(user, complaint);
+  }
+
+  /// Validates whether [user] can report an operational blockage or on-site issue.
+  /// Strictly the assigned Field Officer (or assigned crew member / Super Admin).
+  bool canReportFieldObstacle(GovtUserModel user, ComplaintModel complaint) {
+    return canStartFieldWork(user, complaint);
+  }
+
+  /// Validates whether [user] can resume field rework.
+  /// Strictly the assigned Field Officer (or assigned crew member / Super Admin).
+  bool canResumeFieldWork(GovtUserModel user, ComplaintModel complaint) {
+    return canStartFieldWork(user, complaint);
+  }
+
+  /// Validates whether [user] can reopen an improperly resolved [complaint].
+  /// Ward Department Leads, Ward Officers, Central HODs, and Super Admins have quality-control reopen authority.
+  bool canReopenComplaint(GovtUserModel user, ComplaintModel complaint) {
+    if (user.isSuperAdmin || user.hasPermission('admin_override')) {
+      return true;
+    }
+
+    final complaintWard = complaint.wardId ?? complaint.location.ward;
+    final complaintDept = complaint.assignedDepartmentId ?? complaint.category.id;
+
+    if (user.isWardLead) {
+      final wardMatches = user.wardId != null &&
+          complaintWard != null &&
+          user.wardId!.trim().toLowerCase() == complaintWard.trim().toLowerCase();
+      final deptMatches = user.departmentId != null &&
+          complaintDept.trim().toLowerCase().contains(user.departmentId!.trim().toLowerCase());
+      return wardMatches && deptMatches;
+    }
+
+    if (user.isWardOfficer) {
+      return user.wardId != null &&
+          complaintWard != null &&
+          user.wardId!.trim().toLowerCase() == complaintWard.trim().toLowerCase();
+    }
+
+    if (user.isCentralHod) {
+      return user.departmentId != null &&
+          complaintDept.toLowerCase().contains(user.departmentId!.toLowerCase());
+    }
+
+    return false;
+  }
+
+  /// Validates whether [user] can submit work resolution evidence.
+  bool canSubmitResolution(GovtUserModel user, ComplaintModel complaint) {
+    if (user.isSuperAdmin || user.hasPermission('admin_override')) {
+      return true;
+    }
+
+    if (user.isCrew) {
+      final isFO = complaint.assignedFieldOfficerId == user.employeeId ||
+          complaint.assignedFieldOfficerId == user.id;
+      final isJE = complaint.assignedCrewMemberId == user.employeeId ||
+          complaint.assignedCrewMemberId == user.id ||
+          complaint.assignedTo == user.fullName;
+      return isFO || isJE;
     }
 
     if (user.isWardLead) {
@@ -148,10 +250,12 @@ class GovernmentAuthorizationService {
           complaintDept.toLowerCase().contains(user.departmentId!.toLowerCase());
     }
 
-    // 5. Department Crew: can view assigned work or unit complaints
+    // 5. Department Crew: can view assigned work (as JE or FO) or unit complaints
     if (user.isCrew) {
       if (complaint.assignedCrewMemberId == user.employeeId ||
           complaint.assignedCrewMemberId == user.id ||
+          complaint.assignedFieldOfficerId == user.employeeId ||
+          complaint.assignedFieldOfficerId == user.id ||
           complaint.assignedTo == user.fullName) {
         return true;
       }

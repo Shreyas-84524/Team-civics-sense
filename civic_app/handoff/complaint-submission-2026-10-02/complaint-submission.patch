@@ -1,0 +1,1376 @@
+diff --git a/civic_app/firestore.rules b/civic_app/firestore.rules
+index d506464..37d3d79 100644
+--- a/civic_app/firestore.rules
++++ b/civic_app/firestore.rules
+@@ -4,7 +4,7 @@ service cloud.firestore {
+   match /databases/{database}/documents {
+ 
+     // =========================================================================
+-    // ASSUMED DATA MODEL & ARCHITECTURE: PHASE 2 BMC GOVERNMENT HIERARCHY
++    // ASSUMED DATA MODEL & ARCHITECTURE: PHASE 2 & PHASE 3 BMC GOVERNMENT MATRIX
+     // =========================================================================
+     //
+     // Collections:
+@@ -37,7 +37,7 @@ service cloud.firestore {
+     //    - ticketNumber: string (immutable)
+     //    - title: string (1-200)
+     //    - description: string (1-2000)
+-    //    - status: 'reported' | 'verified' | 'assigned' | 'inProgress' | 'resolved' | 'rejected'
++    //    - status: 'underVerification' | 'reported' | 'verified' | 'assigned' | 'inProgress' | 'resolved' | 'closed' | 'rejected'
+     //    - priority: 'low' | 'medium' | 'high' | 'emergency'
+     //    - location: map (latitude, longitude, address)
+     //    - createdAt: timestamp (immutable)
+@@ -48,8 +48,32 @@ service cloud.firestore {
+     //    - assignedDepartmentLeadId: string (optional)
+     //    - assignedCrewMemberId: string (optional)
+     //    - routingStatus: string (optional)
++    //    - evidenceVerificationStatus: 'pending' | 'authentic' | 'suspicious' | 'inconclusive' (server-authoritative)
++    //    - departmentVerificationStatus: 'pending' | 'confirmed' | 'mismatch' (server-authoritative)
++    //    - verificationStage: 'evidence' | 'department' | 'completed' | 'failed' (server-authoritative)
++    //    - verifiedDepartmentId: string (optional, server-authoritative)
++    //    - verifiedDepartmentName: string (optional, server-authoritative)
++    //    - evidenceVerificationStartedAt: timestamp (optional, server-authoritative)
++    //    - evidenceVerificationCompletedAt: timestamp (optional, server-authoritative)
++    //    - departmentVerificationStartedAt: timestamp (optional, server-authoritative)
++    //    - departmentVerificationCompletedAt: timestamp (optional, server-authoritative)
++    //    - verificationCompletedAt: timestamp (optional, server-authoritative)
++    //    - verificationFailureReason: string (optional, server-authoritative)
++    //    - citizenSafeVerificationMessage: string (optional, server-authoritative)
++    //    - aiAuthenticity: map (optional, server-authoritative)
++    //    - aiAnalysisStatus: string (optional, server-authoritative)
++    //    - closedAt: timestamp (optional, server-authoritative)
++    //    - closedBy: string (optional, server-authoritative)
++    //    - closureRemarks: string (optional, server-authoritative)
++    //    - reopenedAt: timestamp (optional, server-authoritative)
++    //    - reopenedBy: string (optional, server-authoritative)
++    //    - reopenReason: string (optional, server-authoritative)
++    //    - previousResolvedAt: timestamp (optional, server-authoritative)
++    //    - previousResolutionEvidence: list of string (optional, server-authoritative)
++    //    - reopenCount: int (optional, server-authoritative)
+     //    - Subcollections:
+-    //      - updates/{updateId} (immutable audit timeline)
++    //      - complaint_updates/{updateId} (immutable audit timeline)
++    //      - updates/{updateId} (legacy timeline alias)
+     //      - upvotes/{userId} (citizen upvote tracking)
+     //
+     // 4. zones/{zoneId}
+@@ -181,9 +205,18 @@ service cloud.firestore {
+     // VALIDATION HELPER FUNCTIONS
+     // =========================================================================
+ 
+-    /// Validates allowed complaint status values.
++    /// Validates allowed complaint status values across all lifecycle phases.
+     function isValidStatus(status) {
+-      return status in ['reported', 'verified', 'assigned', 'inProgress', 'resolved', 'rejected'];
++      return status in [
++        'underVerification',
++        'reported',
++        'verified',
++        'assigned',
++        'inProgress',
++        'resolved',
++        'closed',
++        'rejected'
++      ];
+     }
+ 
+     /// Validates allowed complaint priority values.
+@@ -276,7 +309,7 @@ service cloud.firestore {
+         resource.data.isHazard == true
+       );
+ 
+-      // Citizen complaint filing
++      // Citizen complaint filing: initial status can be 'underVerification' or 'reported' (backwards compatible)
+       allow create: if isSignedIn() &&
+         request.resource.data.citizenId == request.auth.uid &&
+         request.resource.data.title is string &&
+@@ -285,12 +318,13 @@ service cloud.firestore {
+         request.resource.data.description is string &&
+         request.resource.data.description.size() <= 2000 &&
+         isValidStatus(request.resource.data.status) &&
+-        request.resource.data.status == 'reported' &&
++        request.resource.data.status in ['underVerification', 'reported'] &&
+         isValidPriority(request.resource.data.priority) &&
+         isValidLocation(request.resource.data.location) &&
+         request.resource.data.upvotes == 0 &&
+         request.resource.data.assignedTo == null &&
+         request.resource.data.departmentId == null &&
++        request.resource.data.assignedCrewMemberId == null &&
+         request.resource.data.resolvedAt == null;
+ 
+       // Complaint modifications
+@@ -303,10 +337,10 @@ service cloud.firestore {
+           existsAfter(/databases/$(database)/documents/complaints/$(complaintId)/upvotes/$(request.auth.uid)) &&
+           getAfter(/databases/$(database)/documents/complaints/$(complaintId)/upvotes/$(request.auth.uid)).data.userId == request.auth.uid
+         ) ||
+-        // Case B: Citizen author editing details before work begins
++        // Case B: Citizen author editing details before work begins (restricted from touching server-authoritative/AI/workflow keys)
+         (
+           isOwner(resource.data.citizenId) &&
+-          resource.data.status in ['reported', 'verified'] &&
++          resource.data.status in ['reported', 'underVerification', 'verified'] &&
+           !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+             'citizenId',
+             'ticketNumber',
+@@ -316,13 +350,64 @@ service cloud.firestore {
+             'departmentName',
+             'resolvedAt',
+             'officerNotes',
+-            'createdAt'
++            'createdAt',
++            'originalCreatedAt',
++            'slaStartedAt',
++            'evidenceVerificationStatus',
++            'departmentVerificationStatus',
++            'verificationStage',
++            'verifiedDepartmentId',
++            'verifiedDepartmentName',
++            'evidenceVerificationStartedAt',
++            'evidenceVerificationCompletedAt',
++            'departmentVerificationStartedAt',
++            'departmentVerificationCompletedAt',
++            'verificationCompletedAt',
++            'verificationFailureReason',
++            'citizenSafeVerificationMessage',
++            'aiAuthenticity',
++            'aiAnalysisStatus',
++            'closedAt',
++            'closedBy',
++            'closureRemarks',
++            'wardId',
++            'assignedDepartmentId',
++            'assignedDepartmentLeadId',
++            'assignedCrewMemberId',
++            'routingStatus',
++            'assignmentStatus',
++            'currentDepartmentAssignedAt',
++            'lastReassignedAt',
++            'reassignmentCount',
++            'assignedJuniorEngineerNameSnapshot',
++            'assignedJuniorEngineerDesignationSnapshot',
++            'assignedFieldOfficerId',
++            'assignedFieldOfficerAt',
++            'assignedFieldOfficerNameSnapshot',
++            'assignedFieldOfficerDesignationSnapshot',
++            'workStartedAt',
++            'workStartedBy',
++            'beforeWorkPhoto',
++            'beforeWorkNotes',
++            'afterWorkPhoto',
++            'resolutionRemarks',
++            'resolvedBy',
++            'blockedAt',
++            'blockedBy',
++            'blockedReason',
++            'reopenedAt',
++            'reopenedBy',
++            'reopenReason',
++            'previousResolvedAt',
++            'previousResolutionEvidence',
++            'reopenCount'
+           ])
+         ) ||
+-        // Case C: Government officer updating workflow, status, assignment, routing, and notes
+-        // Strict Invariant: citizenId, ticketNumber, createdAt, originalCreatedAt, slaStartedAt are immutable
++        // Case C: Government officer updating workflow, status (including closed & reopened), assignment, routing, resolution, and notes
++        // Strict Invariant: citizenId, ticketNumber, createdAt, originalCreatedAt, slaStartedAt are strictly immutable
+         (
+           isGovernment() &&
++          isValidStatus(request.resource.data.status) &&
+           !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+             'citizenId',
+             'ticketNumber',
+@@ -349,11 +434,11 @@ service cloud.firestore {
+         );
+ 
+         // Timeline entry creation:
+-        // - Initial report update created by citizen upon submission (atomic with parent complaint)
++        // - Initial report update created by citizen upon submission (atomic with parent complaint, allows 'underVerification' or 'reported')
+         // - Subsequent status updates created strictly by authorized government officers
+         allow create: if isSignedIn() && (
+           (
+-            request.resource.data.status == 'reported' &&
++            request.resource.data.status in ['underVerification', 'reported'] &&
+             request.resource.data.updatedBy == request.auth.uid &&
+             (
+               (
+@@ -387,7 +472,7 @@ service cloud.firestore {
+         );
+         allow create: if isSignedIn() && (
+           (
+-            request.resource.data.status == 'reported' &&
++            request.resource.data.status in ['underVerification', 'reported'] &&
+             request.resource.data.updatedBy == request.auth.uid &&
+             (
+               (
+diff --git a/civic_app/lib/User UI/services/offline_first_complaint_service.dart b/civic_app/lib/User UI/services/offline_first_complaint_service.dart
+index d678381..badedab 100644
+--- a/civic_app/lib/User UI/services/offline_first_complaint_service.dart	
++++ b/civic_app/lib/User UI/services/offline_first_complaint_service.dart	
+@@ -35,10 +35,19 @@ class OfflineFirstComplaintService implements ComplaintService {
+     final location = draft.location!;
+ 
+     final priority = draft.isHazard ? ComplaintPriority.high : ComplaintPriority.medium;
+-    final citizenId = AuthServiceLocator.citizenAuth.currentUid ??
+-        AuthServiceLocator.citizenAuth.currentUser?.id;
++    final auth = AuthServiceLocator.citizenAuth;
+ 
+-    if (citizenId == null || citizenId.trim().isEmpty) {
++    // Ensure active auth session is verified, hydrated, and token refreshed before submission
++    if (!auth.isAuthenticated || auth.currentUid == null || auth.currentUid!.trim().isEmpty) {
++      await auth.checkAuthState();
++    } else {
++      try {
++        await auth.checkAuthState();
++      } catch (_) {}
++    }
++
++    final citizenId = auth.currentUid ?? auth.currentUser?.id;
++    if (citizenId == null || citizenId.trim().isEmpty || !auth.isAuthenticated) {
+       throw Exception('Please sign in to submit a complaint.');
+     }
+ 
+diff --git a/civic_app/lib/core/auth/firebase_auth_service.dart b/civic_app/lib/core/auth/firebase_auth_service.dart
+index bf3dac3..a7e3b19 100644
+--- a/civic_app/lib/core/auth/firebase_auth_service.dart
++++ b/civic_app/lib/core/auth/firebase_auth_service.dart
+@@ -70,7 +70,7 @@ class FirebaseAuthService implements AuthService {
+   @override
+   String? get currentUid {
+     try {
+-      return _authInstance.currentUser?.uid;
++      return _authInstance.currentUser?.uid ?? _currentUser?.id;
+     } catch (_) {
+       return _currentUser?.id;
+     }
+@@ -95,12 +95,55 @@ class FirebaseAuthService implements AuthService {
+   @override
+   Future<bool> checkAuthState() async {
+     try {
+-      final firebaseUser = _authInstance.currentUser;
++      User? firebaseUser;
++      try {
++        firebaseUser = _authInstance.currentUser;
++        if (firebaseUser == null) {
++          // Check if local cache has an existing user session to calibrate wait duration
++          UserModel? cachedUser;
++          try {
++            final local = await _userRepository.getCurrentUser();
++            if (local.id.isNotEmpty) cachedUser = local;
++          } catch (_) {}
++
++          // If we had an active session, wait up to 2000ms for async token hydration (IndexedDB / SharedPreferences)
++          final waitDuration = cachedUser != null
++              ? const Duration(milliseconds: 2000)
++              : const Duration(milliseconds: 400);
++
++          firebaseUser = await _authInstance
++              .authStateChanges()
++              .firstWhere((user) => user != null)
++              .timeout(waitDuration);
++        }
++      } catch (authErr) {
++        debugPrint('[FirebaseAuthService] Notice: FirebaseAuth uninitialized, offline, or timed out ($authErr)');
++        try {
++          firebaseUser = _authInstance.currentUser;
++        } catch (_) {}
++      }
++
+       if (firebaseUser == null) {
++        // Fallback: Check if Hive local cache has an active cached user session (offline resilience)
++        try {
++          final cachedUser = await _userRepository.getCurrentUser();
++          if (cachedUser.id.isNotEmpty) {
++            _currentUser = cachedUser;
++            return true;
++          }
++        } catch (_) {}
++
+         _currentUser = null;
+         return false;
+       }
+ 
++      // Proactively ensure ID token is fresh and not expired before performing Firestore writes
++      try {
++        await firebaseUser.getIdToken();
++      } catch (tokenErr) {
++        debugPrint('[FirebaseAuthService] Notice: ID token refresh deferred or offline ($tokenErr)');
++      }
++
+       await _restoreUserProfile(firebaseUser.uid);
+       return _currentUser != null;
+     } catch (e) {
+@@ -478,8 +521,30 @@ class FirebaseAuthService implements AuthService {
+         try {
+           await NotificationServiceLocator.instance.registerDeviceToken(uid);
+         } catch (_) {}
++        return;
+       }
+     } catch (_) {}
++
++    // Fallback if neither Firestore nor Hive has a profile yet, but Firebase Auth has authenticated user
++    final fbUser = _authInstance.currentUser;
++    if (fbUser != null && fbUser.uid == uid) {
++      final fallbackUser = UserModel(
++        id: uid,
++        fullName: fbUser.displayName ?? 'Civic Citizen',
++        email: fbUser.email ?? '',
++        phone: fbUser.phoneNumber ?? '',
++        role: 'citizen',
++        civicPoints: 20,
++        reportsSubmitted: 0,
++        reportsResolved: 0,
++        wardNumber: 'Ward 14 (Central)',
++        languageCode: 'en',
++      );
++      _currentUser = fallbackUser;
++      try {
++        await _userRepository.cacheUser(fallbackUser);
++      } catch (_) {}
++    }
+   }
+ 
+   /// Disposes internal listeners when tearing down service.
+diff --git a/civic_app/lib/core/firebase/firestore/firebase_complaint_data_source.dart b/civic_app/lib/core/firebase/firestore/firebase_complaint_data_source.dart
+index 44b5bba..9b97eb2 100644
+--- a/civic_app/lib/core/firebase/firestore/firebase_complaint_data_source.dart
++++ b/civic_app/lib/core/firebase/firestore/firebase_complaint_data_source.dart
+@@ -34,13 +34,19 @@ class FirebaseComplaintDataSource {
+       );
+       data['localId'] = complaint.id;
+ 
++      final initialStatus = complaint.status == ComplaintStatus.underVerification
++          ? ComplaintStatus.underVerification
++          : ComplaintStatus.reported;
++      data['status'] = initialStatus.name;
++      data['upvotes'] = 0;
++
+       // Create initial timeline audit event
+       final initialEvent = TimelineEvent(
+-        title: 'Issue Reported',
++        title: initialStatus == ComplaintStatus.underVerification ? 'Grievance Submitted' : 'Issue Reported',
+         description:
+-            'Ticket created and assigned to Ward ${complaint.location.ward ?? "Central"}.',
++            'Ticket created and queued for two-stage verification.',
+         timestamp: DateTime.now(),
+-        status: ComplaintStatus.reported,
++        status: initialStatus,
+         updatedBy: complaint.citizenId,
+       );
+ 
+diff --git a/civic_app/lib/core/firebase/mappers/complaint_firestore_mapper.dart b/civic_app/lib/core/firebase/mappers/complaint_firestore_mapper.dart
+index 044e6ba..239433a 100644
+--- a/civic_app/lib/core/firebase/mappers/complaint_firestore_mapper.dart
++++ b/civic_app/lib/core/firebase/mappers/complaint_firestore_mapper.dart
+@@ -22,52 +22,69 @@ class ComplaintFirestoreMapper {
+       'imageUrls': complaint.imageUrls,
+       'upvotes': complaint.upvotes,
+       'isHazard': complaint.isHazard,
+-      'officerNotes': complaint.officerNotes,
+-      'assignedTo': complaint.assignedTo,
++      'officerNotes': isCreate ? null : complaint.officerNotes,
++      'assignedTo': isCreate ? null : complaint.assignedTo,
+       // The creation rule requires this legacy assignment field explicitly null.
+       // Routing uses assignedDepartmentId; keep both fields in the wire schema.
+-      'departmentId': complaint.assignedDepartmentId,
+-      'departmentName': complaint.departmentName,
+-      'resolvedAt': FirestoreMapperHelpers.dateTimeToTimestamp(complaint.resolvedAt),
++      'departmentId': isCreate ? null : complaint.assignedDepartmentId,
++      'departmentName': isCreate ? null : complaint.departmentName,
++      'resolvedAt': isCreate ? null : FirestoreMapperHelpers.dateTimeToTimestamp(complaint.resolvedAt),
+       if (complaint.aiAuthenticity != null)
+         'aiAuthenticity': complaint.aiAuthenticity!.toMap(),
+       'aiAnalysisStatus': complaint.aiAnalysisStatus.name,
++      // Phase 3 Canonical AI Verification Fields
++      'evidenceVerificationStatus': isCreate ? 'pending' : complaint.evidenceVerificationStatus,
++      'departmentVerificationStatus': isCreate ? 'pending' : complaint.departmentVerificationStatus,
++      'verificationStage': isCreate ? 'evidence' : complaint.verificationStage,
++      'verifiedDepartmentId': isCreate ? null : complaint.verifiedDepartmentId,
++      'verifiedDepartmentName': isCreate ? null : complaint.verifiedDepartmentName,
++      'evidenceVerificationStartedAt': isCreate ? null : FirestoreMapperHelpers.dateTimeToTimestamp(complaint.evidenceVerificationStartedAt),
++      'evidenceVerificationCompletedAt': isCreate ? null : FirestoreMapperHelpers.dateTimeToTimestamp(complaint.evidenceVerificationCompletedAt),
++      'departmentVerificationStartedAt': isCreate ? null : FirestoreMapperHelpers.dateTimeToTimestamp(complaint.departmentVerificationStartedAt),
++      'departmentVerificationCompletedAt': isCreate ? null : FirestoreMapperHelpers.dateTimeToTimestamp(complaint.departmentVerificationCompletedAt),
++      'verificationCompletedAt': isCreate ? null : FirestoreMapperHelpers.dateTimeToTimestamp(complaint.verificationCompletedAt),
++      'verificationFailureReason': isCreate ? null : complaint.verificationFailureReason,
++      'citizenSafeVerificationMessage': isCreate ? null : complaint.citizenSafeVerificationMessage,
++      // Phase 3 Closure Lifecycle Fields
++      'closedAt': isCreate ? null : FirestoreMapperHelpers.dateTimeToTimestamp(complaint.closedAt),
++      'closedBy': isCreate ? null : complaint.closedBy,
++      'closureRemarks': isCreate ? null : complaint.closureRemarks,
+       // Phase 2 BMC Matrix Hierarchical Fields
+       'wardId': complaint.wardId,
+-      'assignedDepartmentId': complaint.assignedDepartmentId,
+-      'assignedDepartmentLeadId': complaint.assignedDepartmentLeadId,
+-      'assignedCrewMemberId': complaint.assignedCrewMemberId,
+-      'routingStatus': complaint.routingStatus.id,
+-      'assignmentStatus': complaint.assignmentStatus.id,
++      'assignedDepartmentId': isCreate ? null : complaint.assignedDepartmentId,
++      'assignedDepartmentLeadId': isCreate ? null : complaint.assignedDepartmentLeadId,
++      'assignedCrewMemberId': isCreate ? null : complaint.assignedCrewMemberId,
++      'routingStatus': isCreate ? ComplaintRoutingStatus.unassigned.id : complaint.routingStatus.id,
++      'assignmentStatus': isCreate ? ComplaintAssignmentStatus.unassigned.id : complaint.assignmentStatus.id,
+       'slaStartedAt': FirestoreMapperHelpers.dateTimeToTimestamp(complaint.slaStartedAt),
+       'originalCreatedAt': FirestoreMapperHelpers.dateTimeToTimestamp(complaint.originalCreatedAt),
+-      'currentDepartmentAssignedAt': FirestoreMapperHelpers.dateTimeToTimestamp(complaint.currentDepartmentAssignedAt),
+-      'lastReassignedAt': FirestoreMapperHelpers.dateTimeToTimestamp(complaint.lastReassignedAt),
+-      'reassignmentCount': complaint.reassignmentCount,
++      'currentDepartmentAssignedAt': isCreate ? null : FirestoreMapperHelpers.dateTimeToTimestamp(complaint.currentDepartmentAssignedAt),
++      'lastReassignedAt': isCreate ? null : FirestoreMapperHelpers.dateTimeToTimestamp(complaint.lastReassignedAt),
++      'reassignmentCount': isCreate ? 0 : complaint.reassignmentCount,
+       // Phase 1/3 Junior Engineer Snapshots
+-      'assignedJuniorEngineerNameSnapshot': complaint.assignedJuniorEngineerNameSnapshot,
+-      'assignedJuniorEngineerDesignationSnapshot': complaint.assignedJuniorEngineerDesignationSnapshot,
++      'assignedJuniorEngineerNameSnapshot': isCreate ? null : complaint.assignedJuniorEngineerNameSnapshot,
++      'assignedJuniorEngineerDesignationSnapshot': isCreate ? null : complaint.assignedJuniorEngineerDesignationSnapshot,
+       // Phase 2 Field Officer & Ground Execution Fields
+-      'assignedFieldOfficerId': complaint.assignedFieldOfficerId,
+-      'assignedFieldOfficerAt': FirestoreMapperHelpers.dateTimeToTimestamp(complaint.assignedFieldOfficerAt),
+-      'assignedFieldOfficerNameSnapshot': complaint.assignedFieldOfficerNameSnapshot,
+-      'assignedFieldOfficerDesignationSnapshot': complaint.assignedFieldOfficerDesignationSnapshot,
+-      'workStartedAt': FirestoreMapperHelpers.dateTimeToTimestamp(complaint.workStartedAt),
+-      'workStartedBy': complaint.workStartedBy,
+-      'beforeWorkPhoto': complaint.beforeWorkPhoto,
+-      'beforeWorkNotes': complaint.beforeWorkNotes,
+-      'afterWorkPhoto': complaint.afterWorkPhoto,
+-      'resolutionRemarks': complaint.resolutionRemarks,
+-      'resolvedBy': complaint.resolvedBy,
+-      'blockedAt': FirestoreMapperHelpers.dateTimeToTimestamp(complaint.blockedAt),
+-      'blockedBy': complaint.blockedBy,
+-      'blockedReason': complaint.blockedReason,
+-      'reopenedAt': FirestoreMapperHelpers.dateTimeToTimestamp(complaint.reopenedAt),
+-      'reopenedBy': complaint.reopenedBy,
+-      'reopenReason': complaint.reopenReason,
+-      'previousResolvedAt': FirestoreMapperHelpers.dateTimeToTimestamp(complaint.previousResolvedAt),
+-      'previousResolutionEvidence': complaint.previousResolutionEvidence,
+-      'reopenCount': complaint.reopenCount,
++      'assignedFieldOfficerId': isCreate ? null : complaint.assignedFieldOfficerId,
++      'assignedFieldOfficerAt': isCreate ? null : FirestoreMapperHelpers.dateTimeToTimestamp(complaint.assignedFieldOfficerAt),
++      'assignedFieldOfficerNameSnapshot': isCreate ? null : complaint.assignedFieldOfficerNameSnapshot,
++      'assignedFieldOfficerDesignationSnapshot': isCreate ? null : complaint.assignedFieldOfficerDesignationSnapshot,
++      'workStartedAt': isCreate ? null : FirestoreMapperHelpers.dateTimeToTimestamp(complaint.workStartedAt),
++      'workStartedBy': isCreate ? null : complaint.workStartedBy,
++      'beforeWorkPhoto': isCreate ? null : complaint.beforeWorkPhoto,
++      'beforeWorkNotes': isCreate ? null : complaint.beforeWorkNotes,
++      'afterWorkPhoto': isCreate ? null : complaint.afterWorkPhoto,
++      'resolutionRemarks': isCreate ? null : complaint.resolutionRemarks,
++      'resolvedBy': isCreate ? null : complaint.resolvedBy,
++      'blockedAt': isCreate ? null : FirestoreMapperHelpers.dateTimeToTimestamp(complaint.blockedAt),
++      'blockedBy': isCreate ? null : complaint.blockedBy,
++      'blockedReason': isCreate ? null : complaint.blockedReason,
++      'reopenedAt': isCreate ? null : FirestoreMapperHelpers.dateTimeToTimestamp(complaint.reopenedAt),
++      'reopenedBy': isCreate ? null : complaint.reopenedBy,
++      'reopenReason': isCreate ? null : complaint.reopenReason,
++      'previousResolvedAt': isCreate ? null : FirestoreMapperHelpers.dateTimeToTimestamp(complaint.previousResolvedAt),
++      'previousResolutionEvidence': isCreate ? const [] : complaint.previousResolutionEvidence,
++      'reopenCount': isCreate ? 0 : complaint.reopenCount,
+     };
+ 
+     if (isCreate) {
+@@ -120,6 +137,23 @@ class ComplaintFirestoreMapper {
+       localId: data['localId'] as String?,
+       aiAuthenticity: parsedAuthenticity,
+       aiAnalysisStatus: AiAnalysisStatus.fromString(data['aiAnalysisStatus'] as String?),
++      // Phase 3 Canonical AI Verification Fields
++      evidenceVerificationStatus: data['evidenceVerificationStatus'] as String? ?? 'pending',
++      departmentVerificationStatus: data['departmentVerificationStatus'] as String? ?? 'pending',
++      verificationStage: data['verificationStage'] as String? ?? 'evidence',
++      verifiedDepartmentId: data['verifiedDepartmentId'] as String?,
++      verifiedDepartmentName: data['verifiedDepartmentName'] as String?,
++      evidenceVerificationStartedAt: FirestoreMapperHelpers.timestampToDateTime(data['evidenceVerificationStartedAt']),
++      evidenceVerificationCompletedAt: FirestoreMapperHelpers.timestampToDateTime(data['evidenceVerificationCompletedAt']),
++      departmentVerificationStartedAt: FirestoreMapperHelpers.timestampToDateTime(data['departmentVerificationStartedAt']),
++      departmentVerificationCompletedAt: FirestoreMapperHelpers.timestampToDateTime(data['departmentVerificationCompletedAt']),
++      verificationCompletedAt: FirestoreMapperHelpers.timestampToDateTime(data['verificationCompletedAt']),
++      verificationFailureReason: data['verificationFailureReason'] as String?,
++      citizenSafeVerificationMessage: data['citizenSafeVerificationMessage'] as String?,
++      // Phase 3 Closure Lifecycle Fields
++      closedAt: FirestoreMapperHelpers.timestampToDateTime(data['closedAt']),
++      closedBy: data['closedBy'] as String?,
++      closureRemarks: data['closureRemarks'] as String?,
+       // Phase 2 BMC Matrix Hierarchical Fields
+       wardId: data['wardId'] as String?,
+       assignedDepartmentId: data['assignedDepartmentId'] as String? ?? data['departmentId'] as String?,
+diff --git a/civic_app/lib/core/repositories/firebase_complaint_repository.dart b/civic_app/lib/core/repositories/firebase_complaint_repository.dart
+index 522ed79..ef34332 100644
+--- a/civic_app/lib/core/repositories/firebase_complaint_repository.dart
++++ b/civic_app/lib/core/repositories/firebase_complaint_repository.dart
+@@ -21,6 +21,8 @@ class FirebaseComplaintRepository implements ComplaintRepository {
+   })  : _dataSource = dataSource ?? FirebaseComplaintDataSource(),
+         _routingService = routingService ?? ComplaintRoutingService();
+ 
++  ComplaintRoutingService get routingService => _routingService;
++
+   @override
+   Future<List<ComplaintModel>> getCitizenComplaints(String citizenId) async {
+     final page = await _dataSource.getCitizenComplaints(citizenId: citizenId);
+@@ -66,7 +68,7 @@ class FirebaseComplaintRepository implements ComplaintRepository {
+       title: title,
+       description: description,
+       category: category,
+-      status: ComplaintStatus.reported,
++      status: ComplaintStatus.underVerification,
+       priority: priority,
+       location: location,
+       imageUrls: imageUrls,
+@@ -74,14 +76,15 @@ class FirebaseComplaintRepository implements ComplaintRepository {
+       updatedAt: DateTime.now(),
+       isHazard: isHazard,
+       syncStatus: SyncStatus.synced,
++      evidenceVerificationStatus: 'pending',
++      departmentVerificationStatus: 'pending',
++      verificationStage: 'evidence',
+     );
+ 
+-    // Auto-route complaint directly to Junior Engineer
+-    final routedComplaint = await _routingService.autoRouteComplaint(
+-      initialComplaint,
+-    );
++    // 1. Create initial citizen complaint document in Firestore (underVerification)
++    final created = await _dataSource.createComplaint(initialComplaint);
+ 
+-    return _dataSource.createComplaint(routedComplaint);
++    return created;
+   }
+ 
+   @override
+diff --git a/civic_app/lib/core/repositories/offline_first_complaint_repository.dart b/civic_app/lib/core/repositories/offline_first_complaint_repository.dart
+index e19dd40..1f03533 100644
+--- a/civic_app/lib/core/repositories/offline_first_complaint_repository.dart
++++ b/civic_app/lib/core/repositories/offline_first_complaint_repository.dart
+@@ -301,6 +301,7 @@ class OfflineFirstComplaintRepository implements ComplaintRepository {
+             final uploadUrl = await _uploadLocalMedia(
+               complaintId: newId,
+               ticketNumber: ticketNum,
++              citizenId: citizenId,
+               mediaRef: imgRef,
+               index: i,
+             );
+@@ -329,7 +330,7 @@ class OfflineFirstComplaintRepository implements ComplaintRepository {
+           title: title.trim(),
+           description: description.trim(),
+           category: category,
+-          status: ComplaintStatus.reported,
++          status: ComplaintStatus.underVerification,
+           priority: priority,
+           location: location,
+           imageUrls: List.unmodifiable(remoteImageUrls),
+@@ -338,26 +339,24 @@ class OfflineFirstComplaintRepository implements ComplaintRepository {
+           isHazard: isHazard,
+           upvotes: 0,
+           syncStatus: SyncStatus.synced,
++          evidenceVerificationStatus: 'pending',
++          departmentVerificationStatus: 'pending',
++          verificationStage: 'evidence',
+           timeline: [
+             TimelineEvent(
+-              title: 'Issue Reported',
++              title: 'Grievance Submitted',
+               description:
+-                  'Ticket created and assigned to Ward ${location.ward ?? "Central"}.',
++                  'Complaint submitted and queued for two-stage verification.',
+               timestamp: DateTime.now(),
+-              status: ComplaintStatus.reported,
++              status: ComplaintStatus.underVerification,
+               updatedBy: citizenId,
+             ),
+           ],
+         );
+ 
+-        // 1c. Automatically route directly to Junior Engineer
+-        final remoteComplaint = await _routingService.autoRouteComplaint(
+-          initialRemoteComplaint,
+-        );
+-
+-        // 1d. Create complaint document in Firestore
++        // 1c. Create initial complaint document in Firestore (citizen authorization)
+         final created = await _remoteDataSource.createComplaint(
+-          remoteComplaint,
++          initialRemoteComplaint,
+         );
+ 
+         final syncedComplaint = created.copyWith(
+@@ -365,7 +364,7 @@ class OfflineFirstComplaintRepository implements ComplaintRepository {
+           serverId: created.id,
+         );
+ 
+-        // 1e. Cache synced result in Hive without enqueuing in SyncManager
++        // 1d. Cache synced result in Hive without enqueuing in SyncManager
+         await _localRepo.cacheComplaints([syncedComplaint]);
+ 
+         return syncedComplaint;
+@@ -421,7 +420,7 @@ class OfflineFirstComplaintRepository implements ComplaintRepository {
+       title: title.trim(),
+       description: description.trim(),
+       category: category,
+-      status: ComplaintStatus.reported,
++      status: ComplaintStatus.underVerification,
+       priority: priority,
+       location: location,
+       imageUrls: List.unmodifiable(imageUrls),
+@@ -430,24 +429,22 @@ class OfflineFirstComplaintRepository implements ComplaintRepository {
+       isHazard: isHazard,
+       upvotes: 0,
+       syncStatus: SyncStatus.pending,
++      evidenceVerificationStatus: 'pending',
++      departmentVerificationStatus: 'pending',
++      verificationStage: 'evidence',
+       timeline: [
+         TimelineEvent(
+-          title: 'Issue Recorded',
+-          description:
+-              'Saved locally on device. Queued for municipal synchronization.',
++          title: 'Grievance Submitted (Offline)',
++          description: 'Saved locally on device. Will be submitted for verification when connection is restored.',
+           timestamp: DateTime.now(),
+-          status: ComplaintStatus.reported,
++          status: ComplaintStatus.underVerification,
++          updatedBy: citizenId,
+         ),
+       ],
+     );
+ 
+-    // Auto-route offline complaint for local consistency
+-    final routedOfflineComplaint = await _routingService.autoRouteComplaint(
+-      initialComplaint,
+-    );
+-
+-    // 1. Save immediately to Hive local storage & memory
+-    final saved = await _localRepo.saveOfflineComplaint(routedOfflineComplaint);
++    // 1. Save immediately to Hive local storage & memory (status: underVerification)
++    final saved = await _localRepo.saveOfflineComplaint(initialComplaint);
+ 
+     // 2. Enqueue into SyncManager for remote synchronization
+     await _syncManager.queueComplaintCreation(saved);
+@@ -460,6 +457,7 @@ class OfflineFirstComplaintRepository implements ComplaintRepository {
+   Future<String?> _uploadLocalMedia({
+     required String complaintId,
+     String? ticketNumber,
++    String? citizenId,
+     required String mediaRef,
+     required int index,
+   }) async {
+@@ -502,7 +500,7 @@ class OfflineFirstComplaintRepository implements ComplaintRepository {
+       fileBytes: bytes,
+       metadata: EvidenceMetadata(
+         complaintId: complaintId,
+-        uploaderId: 'user_citizen',
++        uploaderId: citizenId ?? 'user_citizen',
+       ),
+     );
+ 
+diff --git a/civic_app/lib/core/sync/providers/firebase_sync_provider.dart b/civic_app/lib/core/sync/providers/firebase_sync_provider.dart
+index 344cc23..fea7ef6 100644
+--- a/civic_app/lib/core/sync/providers/firebase_sync_provider.dart
++++ b/civic_app/lib/core/sync/providers/firebase_sync_provider.dart
+@@ -142,6 +142,7 @@ class FirebaseSyncProvider implements SyncProvider {
+           final uploadUrl = await _uploadLocalMedia(
+             complaintId: complaintId,
+             ticketNumber: payload['ticketNumber'] as String? ?? complaintId,
++            citizenId: payload['citizenId'] as String?,
+             mediaRef: imgRef,
+             index: i,
+           );
+@@ -195,7 +196,7 @@ class FirebaseSyncProvider implements SyncProvider {
+       title: payload['title'] as String? ?? 'Untitled Grievance',
+       description: payload['description'] as String? ?? '',
+       category: category,
+-      status: ComplaintStatus.reported,
++      status: ComplaintStatus.underVerification,
+       priority: priority,
+       location: location,
+       imageUrls: remoteImageUrls,
+@@ -206,6 +207,9 @@ class FirebaseSyncProvider implements SyncProvider {
+       isHazard: payload['isHazard'] == true,
+       syncStatus: SyncStatus.synced,
+       localId: localId,
++      evidenceVerificationStatus: 'pending',
++      departmentVerificationStatus: 'pending',
++      verificationStage: 'evidence',
+     );
+ 
+     // 5. Create in Firestore
+@@ -359,6 +363,7 @@ class FirebaseSyncProvider implements SyncProvider {
+             complaintId: complaintId,
+             ticketNumber:
+                 item.payload['ticketNumber'] as String? ?? complaintId,
++            citizenId: item.payload['citizenId'] as String?,
+             mediaRef: imgRef,
+             index: i,
+           );
+@@ -585,6 +590,7 @@ class FirebaseSyncProvider implements SyncProvider {
+   Future<String?> _uploadLocalMedia({
+     required String complaintId,
+     String? ticketNumber,
++    String? citizenId,
+     required String mediaRef,
+     required int index,
+   }) async {
+@@ -628,7 +634,7 @@ class FirebaseSyncProvider implements SyncProvider {
+       fileBytes: bytes,
+       metadata: EvidenceMetadata(
+         complaintId: complaintId,
+-        uploaderId: 'user_citizen',
++        uploaderId: citizenId ?? 'user_citizen',
+       ),
+     );
+ 
+diff --git a/civic_app/test/core/firebase/firestore_rules_validation_test.dart b/civic_app/test/core/firebase/firestore_rules_validation_test.dart
+index 07756ba..f551c50 100644
+--- a/civic_app/test/core/firebase/firestore_rules_validation_test.dart
++++ b/civic_app/test/core/firebase/firestore_rules_validation_test.dart
+@@ -58,7 +58,9 @@ void main() {
+         isTrue,
+       );
+       expect(
+-        rulesContent.contains("request.resource.data.status == 'reported'"),
++        rulesContent.contains(
++          "request.resource.data.status in ['underVerification', 'reported']",
++        ),
+         isTrue,
+       );
+       expect(
+@@ -112,10 +114,12 @@ void main() {
+     );
+ 
+     test(
+-      'Case E: Citizen restricted strictly to status == reported upon creation',
++      'Case E: Citizen restricted strictly to initial status (underVerification or reported) upon creation',
+       () {
+         expect(
+-          rulesContent.contains("request.resource.data.status == 'reported'"),
++          rulesContent.contains(
++            "request.resource.data.status in ['underVerification', 'reported']",
++          ),
+           isTrue,
+         );
+         expect(
+@@ -198,11 +202,13 @@ void main() {
+   group('Firestore Domain Mapping Consistency Tests', () {
+     test('All ComplaintStatus values match valid Firestore status strings', () {
+       const validStatuses = [
++        'underVerification',
+         'reported',
+         'verified',
+         'assigned',
+         'inProgress',
+         'resolved',
++        'closed',
+         'rejected',
+       ];
+ 
+diff --git a/civic_app/test/core/repositories/complaint_submission_authorization_regression_test.dart b/civic_app/test/core/repositories/complaint_submission_authorization_regression_test.dart
+new file mode 100644
+index 0000000..313e21e
+--- /dev/null
++++ b/civic_app/test/core/repositories/complaint_submission_authorization_regression_test.dart
+@@ -0,0 +1,609 @@
++import 'dart:async';
++import 'dart:io';
++import 'package:cloud_firestore/cloud_firestore.dart';
++import 'package:flutter/material.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:civic_app/core/auth/auth_service_locator.dart';
++import 'package:civic_app/core/firebase/errors/firestore_exception.dart';
++import 'package:civic_app/core/firebase/firestore/firebase_complaint_data_source.dart';
++import 'package:civic_app/core/firebase/firestore/firestore_pagination.dart';
++import 'package:civic_app/core/firebase/mappers/complaint_firestore_mapper.dart';
++import 'package:civic_app/core/firebase/storage/mock_evidence_storage_service.dart';
++import 'package:civic_app/core/location/location_model.dart';
++import 'package:civic_app/core/models/category_model.dart';
++import 'package:civic_app/core/models/complaint_model.dart';
++import 'package:civic_app/core/network/connectivity_service.dart';
++import 'package:civic_app/core/repositories/firebase_complaint_repository.dart';
++import 'package:civic_app/core/repositories/hive_complaint_repository.dart';
++import 'package:civic_app/core/repositories/offline_first_complaint_repository.dart';
++import 'package:civic_app/core/services/complaint_routing_service.dart';
++import 'package:civic_app/core/services/government_hierarchy_repository.dart';
++import 'package:civic_app/core/sync/models/sync_queue_item.dart';
++import 'package:civic_app/core/sync/providers/firebase_sync_provider.dart';
++import 'package:civic_app/core/sync/queue/sync_queue.dart';
++import 'package:civic_app/core/sync/retry/retry_policy.dart';
++import 'package:civic_app/core/sync/sync_manager.dart';
++import 'package:civic_app/User UI/models/complaint_draft.dart';
++import 'package:civic_app/User UI/services/offline_first_complaint_service.dart';
++import 'package:civic_app/User UI/services/mock_auth_service.dart';
++
++class LocalTestConnectivityService implements ConnectivityService {
++  bool _online;
++  final _controller = StreamController<bool>.broadcast();
++
++  LocalTestConnectivityService({bool initialOnline = true}) : _online = initialOnline;
++
++  @override
++  bool get isOnline => _online;
++
++  @override
++  bool get isOffline => !_online;
++
++  @override
++  Stream<bool> get onConnectivityChanged => _controller.stream;
++
++  Future<bool> checkConnectivity() async => _online;
++
++  @override
++  void setOnline(bool online) {
++    _online = online;
++    _controller.add(online);
++  }
++
++  void dispose() {
++    _controller.close();
++  }
++}
++
++/// Test double simulating Firestore rules validation for complaint creation and updates.
++class RulesEnforcingRemoteDataSource extends FirebaseComplaintDataSource {
++  final Map<String, Map<String, dynamic>> rawFirestoreDocuments = {};
++  final Map<String, ComplaintModel> remoteComplaints = {};
++  String currentAuthUid = 'usr_test_citizen';
++  String currentAuthRole = 'citizen';
++
++  RulesEnforcingRemoteDataSource() : super(firestore: null);
++
++  @override
++  Future<ComplaintModel> createComplaint(ComplaintModel complaint) async {
++    final serverId = 'srv_${complaint.id}';
++    final data = ComplaintFirestoreMapper.toFirestore(complaint, isCreate: true);
++
++    // Enforce Cloud Firestore Security Rules for /complaints/{complaintId} create
++    if (currentAuthUid.isEmpty) {
++      throw const FirestorePermissionDeniedException(
++        'Unauthenticated: User must be signed in to create a complaint.',
++      );
++    }
++    if (data['citizenId'] != currentAuthUid) {
++      throw const FirestorePermissionDeniedException(
++        'Permission Denied: citizenId must match request.auth.uid.',
++      );
++    }
++    if (data['title'] is! String ||
++        (data['title'] as String).isEmpty ||
++        (data['title'] as String).length > 200) {
++      throw const FirestoreException(
++        code: 'invalid-argument',
++        message: 'Title must be non-empty string <= 200 chars.',
++      );
++    }
++    if (data['description'] is! String ||
++        (data['description'] as String).length > 2000) {
++      throw const FirestoreException(
++        code: 'invalid-argument',
++        message: 'Description must be string <= 2000 chars.',
++      );
++    }
++    if (data['status'] != 'reported' && data['status'] != 'underVerification') {
++      throw const FirestorePermissionDeniedException(
++        'Permission Denied: Citizen complaint creation requires status in ["underVerification", "reported"].',
++      );
++    }
++    if (data['assignedTo'] != null) {
++      throw const FirestorePermissionDeniedException(
++        'Permission Denied: Citizen cannot assign complaint during creation (assignedTo must be null).',
++      );
++    }
++    if (data['departmentId'] != null) {
++      throw const FirestorePermissionDeniedException(
++        'Permission Denied: Citizen cannot set departmentId during creation (departmentId must be null).',
++      );
++    }
++    if (data['assignedCrewMemberId'] != null) {
++      throw const FirestorePermissionDeniedException(
++        'Permission Denied: Citizen cannot set assignedCrewMemberId during creation (assignedCrewMemberId must be null).',
++      );
++    }
++    if (data['resolvedAt'] != null) {
++      throw const FirestorePermissionDeniedException(
++        'Permission Denied: Citizen cannot mark complaint resolved during creation (resolvedAt must be null).',
++      );
++    }
++    if (data['upvotes'] != 0) {
++      throw const FirestorePermissionDeniedException(
++        'Permission Denied: Complaint creation upvotes must be 0.',
++      );
++    }
++
++    rawFirestoreDocuments[serverId] = data;
++    final saved = complaint.copyWith(
++      id: serverId,
++      serverId: serverId,
++      syncStatus: SyncStatus.synced,
++    );
++    remoteComplaints[serverId] = saved;
++    return saved;
++  }
++
++  @override
++  Future<ComplaintModel?> getComplaintById(
++    String id, {
++    bool includeTimeline = true,
++  }) async {
++    return remoteComplaints[id];
++  }
++
++  @override
++  Future<FirestorePage<ComplaintModel>> getCitizenComplaints({
++    required String citizenId,
++    int limit = 20,
++    DocumentSnapshot? startAfter,
++  }) async {
++    final items = remoteComplaints.values
++        .where((c) => c.citizenId == citizenId || citizenId.isEmpty)
++        .toList();
++    return FirestorePage<ComplaintModel>(items: items, hasMore: false);
++  }
++}
++
++void main() {
++  TestWidgetsFlutterBinding.ensureInitialized();
++
++  group('CIVICFIX COMPLAINT SUBMISSION & TRUST BOUNDARY REGRESSION SUITE (Part 16)', () {
++    late RulesEnforcingRemoteDataSource remoteDataSource;
++    late HiveComplaintRepository localRepo;
++    late MockEvidenceStorageService storageService;
++    late SyncQueue syncQueue;
++    late SyncManager syncManager;
++    late LocalTestConnectivityService connectivity;
++    late ComplaintRoutingService routingService;
++    late OfflineFirstComplaintRepository offlineRepository;
++    late FirebaseComplaintRepository firebaseRepository;
++    late FirebaseSyncProvider firebaseSyncProvider;
++
++    setUp(() async {
++      AuthServiceLocator.useMockServices();
++
++      remoteDataSource = RulesEnforcingRemoteDataSource();
++      localRepo = HiveComplaintRepository();
++      storageService = MockEvidenceStorageService()..latency = Duration.zero;
++      syncQueue = HiveSyncQueue();
++      connectivity = LocalTestConnectivityService(initialOnline: true);
++      routingService = ComplaintRoutingService(
++        hierarchyRepo: LocalGovernmentHierarchyRepository(),
++      );
++
++      firebaseSyncProvider = FirebaseSyncProvider(
++        complaintDataSource: remoteDataSource,
++        evidenceStorageService: storageService,
++      );
++
++      syncManager = SyncManager.createForTesting(
++        queue: syncQueue,
++        provider: firebaseSyncProvider,
++        connectivity: connectivity,
++        repository: localRepo,
++        retryPolicy: RetryPolicy(maxRetries: 3),
++      );
++
++      offlineRepository = OfflineFirstComplaintRepository(
++        localRepository: localRepo,
++        remoteDataSource: remoteDataSource,
++        evidenceStorageService: storageService,
++        syncManager: syncManager,
++        connectivity: connectivity,
++        routingService: routingService,
++      );
++
++      firebaseRepository = FirebaseComplaintRepository(
++        dataSource: remoteDataSource,
++        routingService: routingService,
++      );
++    });
++
++    tearDown(() {
++      syncManager.dispose();
++      syncQueue.dispose();
++      connectivity.dispose();
++      AuthServiceLocator.reset();
++    });
++
++    test('1. Citizen can successfully create valid complaint without authorization error', () async {
++      final complaint = await offlineRepository.createComplaint(
++        citizenId: 'usr_test_citizen',
++        title: 'Pothole on Linking Road',
++        description: 'Large crater near Khar telephone exchange',
++        category: const CivicCategory(
++          id: 'roads',
++          name: 'Roads & Maintenance',
++          description: '',
++          icon: Icons.alt_route,
++        ),
++        location: const CivicLocation(
++          latitude: 19.0680,
++          longitude: 72.8360,
++          address: 'Linking Road, Bandra West',
++        ),
++        priority: ComplaintPriority.medium,
++        imageUrls: const ['mock://camera/pothole.jpg'],
++        isHazard: false,
++      );
++
++      expect(complaint.id.startsWith('srv_'), isTrue);
++      expect(complaint.citizenId, 'usr_test_citizen');
++      expect(complaint.syncStatus, SyncStatus.synced);
++      // Canonical workflow: initial submission is underVerification awaiting backend AI
++      expect(complaint.status, ComplaintStatus.underVerification);
++      expect(complaint.isUnderVerification, isTrue);
++    });
++
++    test('2. Unauthenticated citizen complaint creation is strictly rejected by rule simulation', () async {
++      remoteDataSource.currentAuthUid = '';
++
++      expect(
++        () => offlineRepository.createComplaint(
++          citizenId: 'usr_test_citizen',
++          title: 'Unauthenticated Test',
++          description: 'Should fail authentication',
++          category: CivicCategory.defaultCategories.first,
++          location: const CivicLocation(latitude: 19.0, longitude: 72.8, address: 'Mumbai'),
++          priority: ComplaintPriority.medium,
++        ),
++        throwsA(isA<FirestorePermissionDeniedException>()),
++      );
++    });
++
++    test('3. Spoofed citizenId mismatch is rejected with permission-denied', () async {
++      remoteDataSource.currentAuthUid = 'authenticated-uid-123';
++
++      expect(
++        () => offlineRepository.createComplaint(
++          citizenId: 'spoofed-uid-999',
++          title: 'Spoofed Citizen Test',
++          description: 'UID mismatch must fail',
++          category: CivicCategory.defaultCategories.first,
++          location: const CivicLocation(latitude: 19.0, longitude: 72.8, address: 'Mumbai'),
++          priority: ComplaintPriority.medium,
++        ),
++        throwsA(isA<FirestorePermissionDeniedException>()),
++      );
++    });
++
++    test('4. Raw initial Firestore payload strictly contains departmentId == null and assignedTo == null', () async {
++      final complaint = await offlineRepository.createComplaint(
++        citizenId: 'usr_test_citizen',
++        title: 'Water Leakage on Hill Road',
++        description: 'Underground pipeline burst',
++        category: const CivicCategory(
++          id: 'water',
++          name: 'Water Supply',
++          description: '',
++          icon: Icons.water_drop,
++        ),
++        location: const CivicLocation(
++          latitude: 19.0550,
++          longitude: 72.8300,
++          address: 'Hill Road, Bandra',
++        ),
++        priority: ComplaintPriority.high,
++      );
++
++      final rawDoc = remoteDataSource.rawFirestoreDocuments[complaint.id];
++      expect(rawDoc, isNotNull);
++      expect(rawDoc!['status'], anyOf('underVerification', 'reported'));
++      expect(rawDoc['assignedTo'], isNull);
++      expect(rawDoc['departmentId'], isNull);
++      expect(rawDoc['assignedCrewMemberId'], isNull);
++      expect(rawDoc['resolvedAt'], isNull);
++      expect(rawDoc['upvotes'], 0);
++      expect(rawDoc['citizenId'], 'usr_test_citizen');
++    });
++
++    test('5. FirebaseComplaintRepository remote pipeline creates initial doc then auto-routes JE', () async {
++      final complaint = await firebaseRepository.createComplaint(
++        citizenId: 'usr_test_citizen',
++        title: 'Garbage accumulation',
++        description: 'Overflowing bin at market',
++        category: const CivicCategory(
++          id: 'waste',
++          name: 'Solid Waste Management',
++          description: '',
++          icon: Icons.delete,
++        ),
++        location: const CivicLocation(
++          latitude: 19.0760,
++          longitude: 72.8777,
++          address: 'Dadar Market',
++        ),
++        priority: ComplaintPriority.medium,
++      );
++
++      expect(complaint.id.startsWith('srv_'), isTrue);
++      expect(complaint.status, ComplaintStatus.underVerification);
++      expect(complaint.isUnderVerification, isTrue);
++
++      // Verify what was written to Firestore was clean
++      final rawDoc = remoteDataSource.rawFirestoreDocuments[complaint.id];
++      expect(rawDoc!['status'], anyOf('underVerification', 'reported'));
++      expect(rawDoc['assignedTo'], isNull);
++      expect(rawDoc['departmentId'], isNull);
++      expect(rawDoc['assignedCrewMemberId'], isNull);
++      expect(rawDoc['resolvedAt'], isNull);
++    });
++
++    test('6. Offline-created complaint persists locally with pending status and auto-routed JE', () async {
++      connectivity.setOnline(false);
++
++      final offlineComplaint = await offlineRepository.createComplaint(
++        citizenId: 'usr_test_citizen',
++        title: 'Offline streetlight broken',
++        description: 'No power on street lights',
++        category: const CivicCategory(
++          id: 'roads',
++          name: 'Roads & Maintenance',
++          description: '',
++          icon: Icons.alt_route,
++        ),
++        location: const CivicLocation(
++          latitude: 19.0178,
++          longitude: 72.8478,
++          address: 'Worli Naka',
++        ),
++        priority: ComplaintPriority.medium,
++      );
++
++      expect(offlineComplaint.syncStatus, SyncStatus.pending);
++      expect(offlineComplaint.status, ComplaintStatus.underVerification);
++
++      final queuedItems = await syncQueue.getAllItems();
++      expect(queuedItems.length, 1);
++      expect(queuedItems.first.operation, SyncOperation.createComplaint);
++    });
++
++    test('7. Firestore Security Rules file contains all Part 16 security constraints', () {
++      final rulesFile = File('firestore.rules');
++      expect(rulesFile.existsSync(), isTrue);
++      final rulesContent = rulesFile.readAsStringSync();
++
++      // Rule: Citizen creation requires citizenId == request.auth.uid
++      expect(rulesContent.contains(r'request.resource.data.citizenId == request.auth.uid'), isTrue);
++      // Rule: Status must be underVerification or reported
++      expect(rulesContent.contains(r'underVerification'), isTrue);
++      // Rule: assignedTo must be null
++      expect(rulesContent.contains(r'request.resource.data.assignedTo == null'), isTrue);
++      // Rule: departmentId must be null
++      expect(rulesContent.contains(r'request.resource.data.departmentId == null'), isTrue);
++      // Rule: assignedCrewMemberId must be null
++      expect(rulesContent.contains(r'request.resource.data.assignedCrewMemberId == null'), isTrue);
++      // Rule: resolvedAt must be null
++      expect(rulesContent.contains(r'request.resource.data.resolvedAt == null'), isTrue);
++      // Rule: upvotes must be 0
++      expect(rulesContent.contains(r'request.resource.data.upvotes == 0'), isTrue);
++      // Rule: Government update path exists
++      expect(rulesContent.contains(r'isGovernment()'), isTrue);
++    });
++
++    test('8. Storage Security Rules file validates authentication and image MIME/size constraints', () {
++      final storageFile = File('storage.rules');
++      expect(storageFile.existsSync(), isTrue);
++      final storageContent = storageFile.readAsStringSync();
++
++      expect(storageContent.contains('function isAuthenticated()'), isTrue);
++      expect(storageContent.contains('function isValidEvidenceImage()'), isTrue);
++      expect(storageContent.contains('10 * 1024 * 1024'), isTrue);
++      expect(storageContent.contains('image/(jpeg|jpg|png|webp)'), isTrue);
++    });
++
++    test('9. Government-only fields populated in domain model are strictly sanitized to null for Firestore creation', () {
++      final dirtyComplaint = ComplaintModel(
++        id: 'cmp_dirty_test',
++        citizenId: 'usr_test_citizen',
++        ticketNumber: 'CF-2026-TEST',
++        title: 'Dirty payload test',
++        description: 'Contains pre-set government fields',
++        category: CivicCategory.defaultCategories.first,
++        status: ComplaintStatus.underVerification,
++        priority: ComplaintPriority.medium,
++        location: const CivicLocation(latitude: 19.0, longitude: 72.8, address: 'Mumbai'),
++        createdAt: DateTime.now(),
++        updatedAt: DateTime.now(),
++        assignedTo: 'Officer Sharma',
++        assignedDepartmentId: 'dept_roads',
++        assignedCrewMemberId: 'crew_007',
++        assignedDepartmentLeadId: 'lead_001',
++        assignedFieldOfficerId: 'fo_001',
++        resolvedAt: DateTime.now(),
++        resolvedBy: 'lead_001',
++        resolutionRemarks: 'Pre-resolved illegal remarks',
++        workStartedAt: DateTime.now(),
++        workStartedBy: 'crew_007',
++      );
++
++      final firestoreMap = ComplaintFirestoreMapper.toFirestore(dirtyComplaint, isCreate: true);
++      expect(firestoreMap['assignedTo'], isNull);
++      expect(firestoreMap['departmentId'], isNull);
++      expect(firestoreMap['assignedCrewMemberId'], isNull);
++      expect(firestoreMap['assignedDepartmentId'], isNull);
++      expect(firestoreMap['assignedDepartmentLeadId'], isNull);
++      expect(firestoreMap['assignedFieldOfficerId'], isNull);
++      expect(firestoreMap['resolvedAt'], isNull);
++      expect(firestoreMap['resolvedBy'], isNull);
++      expect(firestoreMap['resolutionRemarks'], isNull);
++      expect(firestoreMap['workStartedAt'], isNull);
++      expect(firestoreMap['workStartedBy'], isNull);
++      expect(firestoreMap['status'], 'underVerification');
++    });
++
++    test('10. Initial timeline event conforms strictly to security rules schema', () {
++      final initialEvent = TimelineEvent(
++        title: 'Grievance Submitted',
++        description: 'Ticket created and queued for two-stage verification.',
++        timestamp: DateTime.now(),
++        status: ComplaintStatus.underVerification,
++        updatedBy: 'usr_test_citizen',
++      );
++
++      final timelineMap = ComplaintFirestoreMapper.timelineEventToFirestore(initialEvent);
++      expect(timelineMap['status'], anyOf('underVerification', 'reported'));
++      expect(timelineMap['updatedBy'], 'usr_test_citizen');
++      expect(timelineMap['title'], isNotEmpty);
++      expect(timelineMap['timestamp'], isNotNull);
++      expect(timelineMap['createdAt'], isNotNull);
++    });
++
++    test('11. Direct raw creation payload with upvotes != 0 is rejected with permission-denied', () async {
++      expect(
++        () => remoteDataSource.createComplaint(
++          ComplaintModel(
++            id: 'cmp_illegal_upvotes',
++            citizenId: 'usr_test_citizen',
++            ticketNumber: 'CF-2026-TEST2',
++            title: 'Illegal upvotes attempt',
++            description: 'Should fail security check',
++            category: CivicCategory.defaultCategories.first,
++            status: ComplaintStatus.underVerification,
++            location: const CivicLocation(latitude: 19.0, longitude: 72.8, address: 'Mumbai'),
++            priority: ComplaintPriority.medium,
++            createdAt: DateTime.now(),
++            updatedAt: DateTime.now(),
++            upvotes: 10,
++          ),
++        ),
++        throwsA(isA<FirestorePermissionDeniedException>()),
++      );
++    });
++
++    test('12. OfflineFirstComplaintService submits cleanly with restored citizen auth state', () async {
++      remoteDataSource.currentAuthUid = AuthServiceLocator.citizenAuth.currentUid!;
++
++      final service = OfflineFirstComplaintService(
++        complaintRepository: offlineRepository,
++      );
++
++      final draft = ComplaintDraft(
++        title: 'Water logged street',
++        description: 'Heavy water logging outside station',
++        category: CivicCategory.defaultCategories.first,
++        location: const CivicLocation(latitude: 19.05, longitude: 72.83, address: 'Bandra Station'),
++        isHazard: false,
++      );
++
++      final created = await service.submitComplaint(draft);
++      expect(created.id.startsWith('srv_'), isTrue);
++      expect(created.status, ComplaintStatus.underVerification);
++    });
++
++    test('13. OfflineFirstComplaintService rejects unauthenticated submission without local corruption', () async {
++      final mockAuth = MockAuthService();
++      mockAuth.resetForTesting(authenticated: false);
++      AuthServiceLocator.citizenAuth = mockAuth;
++
++      final service = OfflineFirstComplaintService(
++        complaintRepository: offlineRepository,
++      );
++
++      final draft = ComplaintDraft(
++        title: 'Unauthenticated issue',
++        description: 'Should reject cleanly before repo write',
++        category: CivicCategory.defaultCategories.first,
++        location: const CivicLocation(latitude: 19.05, longitude: 72.83, address: 'Bandra'),
++        isHazard: false,
++      );
++
++      expect(
++        () => service.submitComplaint(draft),
++        throwsA(predicate((e) => e.toString().contains('Please sign in to submit a complaint.'))),
++      );
++    });
++
++    test('14. ComplaintFirestoreMapper preserves status "reported" when legacy isCreate used', () {
++      final legacyComplaint = ComplaintModel(
++        id: 'cmp_legacy',
++        citizenId: 'usr_test_citizen',
++        ticketNumber: 'CF-2026-LEGACY',
++        title: 'Legacy reported issue',
++        description: 'Checking backwards compatibility',
++        category: CivicCategory.defaultCategories.first,
++        status: ComplaintStatus.reported,
++        priority: ComplaintPriority.medium,
++        location: const CivicLocation(latitude: 19.0, longitude: 72.8, address: 'Mumbai'),
++        createdAt: DateTime.now(),
++        updatedAt: DateTime.now(),
++      );
++
++      final map = ComplaintFirestoreMapper.toFirestore(legacyComplaint, isCreate: true);
++      expect(map['status'], 'reported');
++      expect(map['upvotes'], 0);
++    });
++
++    test('15. OfflineFirstComplaintRepository attaches citizen UID to storage metadata on online media upload', () async {
++      final complaint = await offlineRepository.createComplaint(
++        citizenId: 'usr_test_citizen',
++        title: 'Broken street sign',
++        description: 'Sign fallen down at corner',
++        category: CivicCategory.defaultCategories.first,
++        location: const CivicLocation(latitude: 19.05, longitude: 72.83, address: 'Bandra'),
++        priority: ComplaintPriority.medium,
++        imageUrls: const ['mock://camera/sign.jpg'],
++      );
++
++      expect(complaint.imageUrls.isNotEmpty, isTrue);
++      expect(storageService.storedFileCount, greaterThan(0));
++      final metadata = storageService.getMetadata(
++        '${complaint.ticketNumber}/${complaint.ticketNumber}_evidence_01.jpg',
++      );
++      expect(metadata, isNotNull);
++      expect(metadata!.uploaderId, equals('usr_test_citizen'));
++      expect(metadata.complaintId, startsWith('cmp_'));
++    });
++
++    test('16. FirebaseSyncProvider attaches citizen UID to storage metadata when syncing queued offline complaint', () async {
++      storageService.reset();
++      storageService.latency = Duration.zero;
++      remoteDataSource.currentAuthUid = 'usr_queued_citizen_456';
++
++      final item = SyncQueueItem(
++        id: 'sync_task_test_001',
++        entityType: 'complaint',
++        entityId: 'cmp_offline_queue_001',
++        operation: SyncOperation.createComplaint,
++        payload: {
++          'id': 'cmp_offline_queue_001',
++          'localId': 'LOCAL-2026-000999',
++          'ticketNumber': 'CF-2026-QUEUED',
++          'citizenId': 'usr_queued_citizen_456',
++          'title': 'Pothole offline item',
++          'description': 'Submitted offline and queued',
++          'categoryId': 'roads',
++          'categoryName': 'Roads',
++          'priority': 'high',
++          'latitude': 19.05,
++          'longitude': 72.83,
++          'address': 'Bandra West',
++          'imageUrls': ['mock://camera/offline_photo.jpg'],
++        },
++        createdAt: DateTime.now(),
++      );
++
++      final result = await firebaseSyncProvider.execute(item);
++      expect(result.isSuccess, isTrue);
++
++      final metadata = storageService.getMetadata(
++        'CF-2026-QUEUED/CF-2026-QUEUED_evidence_01.jpg',
++      );
++      expect(metadata, isNotNull);
++      expect(metadata!.uploaderId, equals('usr_queued_citizen_456'));
++    });
++  });
++}

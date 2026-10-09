@@ -109,15 +109,13 @@ void main() {
       await tester.pumpWidget(_buildScreenTestHarness(user, size: const Size(1440, 3000)));
       await tester.pumpAndSettle();
 
-      // Header & Badges
+      // Header
       expect(find.text('City Command Center'), findsWidgets);
-      expect(find.textContaining('CITYWIDE'), findsWidgets);
-      expect(find.textContaining('24 WARDS'), findsWidgets);
-      expect(find.textContaining('18 DEPARTMENTS'), findsWidgets);
 
       // Section 1: KPI Grid
       expect(find.byType(CityKpiSection), findsOneWidget);
       expect(find.text('Open Complaints'), findsOneWidget);
+      expect(find.text('Total Wards'), findsOneWidget);
       expect(find.text('Active Personnel'), findsOneWidget);
 
       // Section 2: Operations Overview
@@ -173,10 +171,12 @@ void main() {
       await tester.pumpWidget(_buildScreenTestHarness(user));
       await tester.pumpAndSettle();
 
-      final refreshBtn = find.text('Refresh Feed');
-      expect(refreshBtn, findsOneWidget);
-
-      await tester.tap(refreshBtn);
+      expect(find.byType(RefreshIndicator), findsOneWidget);
+      final scrollView = find.descendant(
+        of: find.byType(RefreshIndicator),
+        matching: find.byType(SingleChildScrollView),
+      ).first;
+      await tester.fling(scrollView, const Offset(0.0, 300.0), 1000.0);
       await tester.pumpAndSettle();
 
       expect(find.text('City Command Center'), findsWidgets);

@@ -17,7 +17,7 @@ typedef GenerateContentRunner = Future<GenerateContentResponse> Function(Iterabl
 @Deprecated('Gemini scope has been corrected to Authenticity Verification only. Use GeminiAiAuthenticityService instead.')
 class GeminiAiDetectionService implements AiDetectionService {
   /// Default recommended Gemini model for fast multimodal civic visual analysis.
-  static const String defaultModelName = 'gemini-3.6-flash';
+  static const String defaultModelName = 'gemini-2.5-flash';
 
   /// Standard request timeout for AI visual verification.
   static const Duration defaultTimeout = Duration(seconds: 30);

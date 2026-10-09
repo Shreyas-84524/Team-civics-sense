@@ -93,8 +93,8 @@ void main() {
     });
   });
 
-  group('Phase 7 - Section 2: Header Badges & Authoritative Context', () {
-    testWidgets('Displays Ward, Department, and 5 Crew contextual badges', (tester) async {
+  group('Phase 7 - Section 2: Header & Authoritative Context', () {
+    testWidgets('Displays clean header title and subtitle', (tester) async {
       tester.view.physicalSize = const Size(1440, 900);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -103,9 +103,7 @@ void main() {
       await tester.pumpWidget(_buildScreenTestHarness(user));
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('N WARD'), findsWidgets);
-      expect(find.textContaining('ROADS & MAINTENANCE'), findsWidgets);
-      expect(find.textContaining('5 CREW'), findsWidgets);
+      expect(find.textContaining('Roads & Maintenance'), findsWidgets);
     });
   });
 

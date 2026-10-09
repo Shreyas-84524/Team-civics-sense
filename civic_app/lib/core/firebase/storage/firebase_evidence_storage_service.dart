@@ -36,6 +36,8 @@ class FirebaseEvidenceStorageService implements EvidenceStorageService {
     required String fileName,
     required Uint8List fileBytes,
     EvidenceMetadata? metadata,
+    String? ticketNumber,
+    int? evidenceIndex,
     void Function(double progress)? onProgress,
   }) async {
     final validation = validateBytes(bytes: fileBytes, fileName: fileName);
@@ -96,6 +98,7 @@ class FirebaseEvidenceStorageService implements EvidenceStorageService {
   Future<List<EvidenceUploadResult>> uploadMultipleEvidence({
     required String complaintId,
     required List<EvidenceUploadInput> items,
+    String? ticketNumber,
     void Function(int itemIndex, double progress)? onProgress,
   }) async {
     final List<EvidenceUploadResult> results = [];
@@ -107,6 +110,8 @@ class FirebaseEvidenceStorageService implements EvidenceStorageService {
         fileName: item.fileName,
         fileBytes: item.fileBytes,
         metadata: item.metadata,
+        ticketNumber: ticketNumber,
+        evidenceIndex: i + 1,
         onProgress: onProgress != null ? (p) => onProgress(i, p) : null,
       );
       results.add(result);
@@ -184,7 +189,7 @@ class FirebaseEvidenceStorageService implements EvidenceStorageService {
   }
 
   @override
-  Future<String> getDownloadUrl(String storagePath) async {
+  Future<String> getDownloadUrl(String storagePath, {int? expiresInSeconds}) async {
     try {
       return await _storageInstance.ref(storagePath).getDownloadURL();
     } catch (e, st) {

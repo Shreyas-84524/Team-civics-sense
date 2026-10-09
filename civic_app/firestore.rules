@@ -4,7 +4,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // =========================================================================
-    // ASSUMED DATA MODEL & ARCHITECTURE: PHASE 2 BMC GOVERNMENT HIERARCHY
+    // ASSUMED DATA MODEL & ARCHITECTURE: PHASE 2 & PHASE 3 BMC GOVERNMENT MATRIX
     // =========================================================================
     //
     // Collections:
@@ -37,7 +37,7 @@ service cloud.firestore {
     //    - ticketNumber: string (immutable)
     //    - title: string (1-200)
     //    - description: string (1-2000)
-    //    - status: 'reported' | 'verified' | 'assigned' | 'inProgress' | 'resolved' | 'rejected'
+    //    - status: 'underVerification' | 'reported' | 'verified' | 'assigned' | 'inProgress' | 'resolved' | 'closed' | 'rejected'
     //    - priority: 'low' | 'medium' | 'high' | 'emergency'
     //    - location: map (latitude, longitude, address)
     //    - createdAt: timestamp (immutable)
@@ -48,8 +48,44 @@ service cloud.firestore {
     //    - assignedDepartmentLeadId: string (optional)
     //    - assignedCrewMemberId: string (optional)
     //    - routingStatus: string (optional)
+    //    - evidenceVerificationStatus: 'pending' | 'authentic' | 'suspicious' | 'inconclusive' (server-authoritative)
+    //    - departmentVerificationStatus: 'pending' | 'confirmed' | 'mismatch' (server-authoritative)
+    //    - verificationStage: 'evidence' | 'department' | 'completed' | 'failed' (server-authoritative)
+    //    - verifiedDepartmentId: string (optional, server-authoritative)
+    //    - verifiedDepartmentName: string (optional, server-authoritative)
+    //    - evidenceVerificationStartedAt: timestamp (optional, server-authoritative)
+    //    - evidenceVerificationCompletedAt: timestamp (optional, server-authoritative)
+    //    - departmentVerificationStartedAt: timestamp (optional, server-authoritative)
+    //    - departmentVerificationCompletedAt: timestamp (optional, server-authoritative)
+    //    - verificationCompletedAt: timestamp (optional, server-authoritative)
+    //    - verificationFailureReason: string (optional, server-authoritative)
+    //    - citizenSafeVerificationMessage: string (optional, server-authoritative)
+    //    - aiAuthenticity: map (optional, server-authoritative)
+    //    - aiAnalysisStatus: string (optional, server-authoritative)
+    //    - aiVerificationAttempts: int (optional, server-authoritative)
+    //    - lastAiVerificationAttemptAt: timestamp (optional, server-authoritative)
+    //    - lastAiFailureCode: string (optional, server-authoritative)
+    //    - aiFallbackTriggeredAt: timestamp (optional, server-authoritative)
+    //    - initialReviewDepartmentId: string (optional, server-authoritative)
+    //    - initialReviewDepartmentName: string (optional, server-authoritative)
+    //    - humanReviewStatus: string (optional, server-authoritative)
+    //    - humanReviewerId: string (optional, server-authoritative)
+    //    - humanReviewerName: string (optional, server-authoritative)
+    //    - humanReviewRemarks: string (optional, server-authoritative)
+    //    - humanReviewedAt: timestamp (optional, server-authoritative)
+    //    - previousDepartmentId: string (optional, server-authoritative)
+    //    - closedAt: timestamp (optional, server-authoritative)
+    //    - closedBy: string (optional, server-authoritative)
+    //    - closureRemarks: string (optional, server-authoritative)
+    //    - reopenedAt: timestamp (optional, server-authoritative)
+    //    - reopenedBy: string (optional, server-authoritative)
+    //    - reopenReason: string (optional, server-authoritative)
+    //    - previousResolvedAt: timestamp (optional, server-authoritative)
+    //    - previousResolutionEvidence: list of string (optional, server-authoritative)
+    //    - reopenCount: int (optional, server-authoritative)
     //    - Subcollections:
-    //      - updates/{updateId} (immutable audit timeline)
+    //      - complaint_updates/{updateId} (immutable audit timeline)
+    //      - updates/{updateId} (legacy timeline alias)
     //      - upvotes/{userId} (citizen upvote tracking)
     //
     // 4. zones/{zoneId}
@@ -105,6 +141,7 @@ service cloud.firestore {
     //
     // 11. rewards/{userId}
     //     - Server-authoritative gamification points and rewards catalog
+    //     - Subcollection: events/{eventId} (server-authoritative reward events, owner read-only)
     //
     // 12. hazards/{hazardId}
     //     - complaintId: string
@@ -116,6 +153,31 @@ service cloud.firestore {
     //
     // 13. phoneIndex/{phone}
     //     - Server-authoritative uniqueness index (read/write: false)
+    //
+    // 14. translation_cache/{cacheId}
+    //     - Server-authoritative multilingual translation cache
+    //
+    // 15. chatbot_feedback/{feedbackId}
+    //     - feedbackId: string (optional, 1-250)
+    //     - ownerUid: string (immutable owner UID == request.auth.uid)
+    //     - feedbackType: 'upvote' | 'downvote'
+    //     - sessionId: string (1-100, immutable)
+    //     - assistantMessageId: string (1-100, immutable)
+    //     - userMessageId: string (1-100, immutable)
+    //     - userMessage: string (0-2000)
+    //     - assistantReply: string (0-2000)
+    //     - language: string (optional, 1-20)
+    //     - intentCategory: string (optional, 1-100)
+    //     - currentScreen: string (optional, 1-100)
+    //     - complaintStatus: string (optional, 1-100)
+    //     - retrievedKnowledgeIds: list of string (optional, max 50)
+    //     - retrievalSuccess: bool (optional)
+    //     - providerMode: string (optional, 1-50)
+    //     - responseLatencyMs: int (optional, >= 0)
+    //     - knowledgeVersion: string (optional, 1-50)
+    //     - assistantVersion: string (optional, 1-50)
+    //     - createdAt: timestamp (immutable)
+    //     - updatedAt: timestamp
     // =========================================================================
 
     // =========================================================================
@@ -181,9 +243,18 @@ service cloud.firestore {
     // VALIDATION HELPER FUNCTIONS
     // =========================================================================
 
-    /// Validates allowed complaint status values.
+    /// Validates allowed complaint status values across all lifecycle phases.
     function isValidStatus(status) {
-      return status in ['reported', 'verified', 'assigned', 'inProgress', 'resolved', 'rejected'];
+      return status in [
+        'underVerification',
+        'reported',
+        'verified',
+        'assigned',
+        'inProgress',
+        'resolved',
+        'closed',
+        'rejected'
+      ];
     }
 
     /// Validates allowed complaint priority values.
@@ -204,6 +275,41 @@ service cloud.firestore {
         loc.address is string &&
         loc.latitude >= -90.0 && loc.latitude <= 90.0 &&
         loc.longitude >= -180.0 && loc.longitude <= 180.0;
+    }
+
+    /// Validates allowed feedback types for chatbot responses.
+    function isValidFeedbackType(type) {
+      return type in ['upvote', 'downvote'];
+    }
+
+    /// Validates domain fields for chatbot assistant quality feedback records.
+    function isValidChatbotFeedback(data) {
+      return data.feedbackType is string &&
+        isValidFeedbackType(data.feedbackType) &&
+        data.sessionId is string &&
+        data.sessionId.size() > 0 &&
+        data.sessionId.size() <= 100 &&
+        data.assistantMessageId is string &&
+        data.assistantMessageId.size() > 0 &&
+        data.assistantMessageId.size() <= 100 &&
+        data.userMessageId is string &&
+        data.userMessageId.size() > 0 &&
+        data.userMessageId.size() <= 100 &&
+        data.userMessage is string &&
+        data.userMessage.size() <= 2000 &&
+        data.assistantReply is string &&
+        data.assistantReply.size() <= 2000 &&
+        (!('language' in data) || (data.language is string && data.language.size() <= 20)) &&
+        (!('intentCategory' in data) || (data.intentCategory is string && data.intentCategory.size() <= 100)) &&
+        (!('currentScreen' in data) || (data.currentScreen is string && data.currentScreen.size() <= 100)) &&
+        (!('complaintStatus' in data) || (data.complaintStatus is string && data.complaintStatus.size() <= 100)) &&
+        (!('retrievedKnowledgeIds' in data) || (data.retrievedKnowledgeIds is list && data.retrievedKnowledgeIds.size() <= 50)) &&
+        (!('retrievalSuccess' in data) || data.retrievalSuccess is bool) &&
+        (!('providerMode' in data) || (data.providerMode is string && data.providerMode.size() <= 50)) &&
+        (!('responseLatencyMs' in data) || (data.responseLatencyMs is int && data.responseLatencyMs >= 0)) &&
+        (!('knowledgeVersion' in data) || (data.knowledgeVersion is string && data.knowledgeVersion.size() <= 50)) &&
+        (!('assistantVersion' in data) || (data.assistantVersion is string && data.assistantVersion.size() <= 50)) &&
+        (!('feedbackId' in data) || (data.feedbackId is string && data.feedbackId.size() <= 250));
     }
 
     // =========================================================================
@@ -276,7 +382,7 @@ service cloud.firestore {
         resource.data.isHazard == true
       );
 
-      // Citizen complaint filing
+      // Citizen complaint filing: initial status can be 'underVerification' or 'reported' (backwards compatible)
       allow create: if isSignedIn() &&
         request.resource.data.citizenId == request.auth.uid &&
         request.resource.data.title is string &&
@@ -285,25 +391,31 @@ service cloud.firestore {
         request.resource.data.description is string &&
         request.resource.data.description.size() <= 2000 &&
         isValidStatus(request.resource.data.status) &&
-        request.resource.data.status == 'reported' &&
+        request.resource.data.status in ['underVerification', 'reported'] &&
         isValidPriority(request.resource.data.priority) &&
         isValidLocation(request.resource.data.location) &&
         request.resource.data.upvotes == 0 &&
-        request.resource.data.assignedTo == null &&
-        request.resource.data.departmentId == null &&
-        request.resource.data.resolvedAt == null;
+        (!('assignedTo' in request.resource.data) || request.resource.data.assignedTo == null) &&
+        (!('departmentId' in request.resource.data) || request.resource.data.departmentId == null) &&
+        (!('assignedDepartmentId' in request.resource.data) || request.resource.data.assignedDepartmentId == null) &&
+        (!('assignedCrewMemberId' in request.resource.data) || request.resource.data.assignedCrewMemberId == null) &&
+        (!('assignedFieldOfficerId' in request.resource.data) || request.resource.data.assignedFieldOfficerId == null) &&
+        (!('resolvedAt' in request.resource.data) || request.resource.data.resolvedAt == null);
 
       // Complaint modifications
       allow update: if isSignedIn() && (
         // Case A: Citizen upvoting
         (
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['upvotes', 'updatedAt']) &&
-          request.resource.data.upvotes == resource.data.upvotes + 1
+          request.resource.data.upvotes == resource.data.upvotes + 1 &&
+          !exists(/databases/$(database)/documents/complaints/$(complaintId)/upvotes/$(request.auth.uid)) &&
+          existsAfter(/databases/$(database)/documents/complaints/$(complaintId)/upvotes/$(request.auth.uid)) &&
+          getAfter(/databases/$(database)/documents/complaints/$(complaintId)/upvotes/$(request.auth.uid)).data.userId == request.auth.uid
         ) ||
-        // Case B: Citizen author editing details before work begins
+        // Case B: Citizen author editing details before work begins (restricted from touching server-authoritative/AI/workflow keys)
         (
           isOwner(resource.data.citizenId) &&
-          resource.data.status in ['reported', 'verified'] &&
+          resource.data.status in ['reported', 'underVerification', 'verified'] &&
           !request.resource.data.diff(resource.data).affectedKeys().hasAny([
             'citizenId',
             'ticketNumber',
@@ -313,13 +425,76 @@ service cloud.firestore {
             'departmentName',
             'resolvedAt',
             'officerNotes',
-            'createdAt'
+            'createdAt',
+            'originalCreatedAt',
+            'slaStartedAt',
+            'evidenceVerificationStatus',
+            'departmentVerificationStatus',
+            'verificationStage',
+            'verifiedDepartmentId',
+            'verifiedDepartmentName',
+            'evidenceVerificationStartedAt',
+            'evidenceVerificationCompletedAt',
+            'departmentVerificationStartedAt',
+            'departmentVerificationCompletedAt',
+            'verificationCompletedAt',
+            'verificationFailureReason',
+            'citizenSafeVerificationMessage',
+            'aiAuthenticity',
+            'aiAnalysisStatus',
+            'aiVerificationAttempts',
+            'lastAiVerificationAttemptAt',
+            'lastAiFailureCode',
+            'aiFallbackTriggeredAt',
+            'initialReviewDepartmentId',
+            'initialReviewDepartmentName',
+            'humanReviewStatus',
+            'humanReviewerId',
+            'humanReviewerName',
+            'humanReviewRemarks',
+            'humanReviewedAt',
+            'previousDepartmentId',
+            'closedAt',
+            'closedBy',
+            'closureRemarks',
+            'wardId',
+            'assignedDepartmentId',
+            'assignedDepartmentLeadId',
+            'assignedCrewMemberId',
+            'routingStatus',
+            'assignmentStatus',
+            'currentDepartmentAssignedAt',
+            'lastReassignedAt',
+            'reassignmentCount',
+            'assignedJuniorEngineerNameSnapshot',
+            'assignedJuniorEngineerDesignationSnapshot',
+            'assignedFieldOfficerId',
+            'assignedFieldOfficerAt',
+            'assignedFieldOfficerNameSnapshot',
+            'assignedFieldOfficerDesignationSnapshot',
+            'workStartedAt',
+            'workStartedBy',
+            'beforeWorkPhoto',
+            'beforeWorkNotes',
+            'afterWorkPhoto',
+            'resolutionRemarks',
+            'resolvedBy',
+            'blockedAt',
+            'blockedBy',
+            'blockedReason',
+            'reopenedAt',
+            'reopenedBy',
+            'reopenReason',
+            'previousResolvedAt',
+            'previousResolutionEvidence',
+            'reopenCount'
           ])
         ) ||
-        // Case C: Government officer updating workflow, status, assignment, routing, and notes
-        // Strict Invariant: citizenId, ticketNumber, createdAt, originalCreatedAt, slaStartedAt are immutable
+        // Case C: Government officer updating workflow, status (including closed & reopened), assignment, routing, resolution, and notes
+        // Strict Invariant: citizenId, ticketNumber, createdAt, originalCreatedAt, slaStartedAt are strictly immutable
         (
           isGovernment() &&
+          isValidStatus(request.resource.data.status) &&
           !request.resource.data.diff(resource.data).affectedKeys().hasAny([
             'citizenId',
             'ticketNumber',
@@ -334,23 +509,34 @@ service cloud.firestore {
       allow delete: if isGovernment();
 
       // =======================================================================
-      // 3.1 COMPLAINT UPDATES (complaints/{complaintId}/updates/{updateId})
+      // 3.1 COMPLAINT UPDATES (complaints/{complaintId}/complaint_updates/{updateId})
+      // Canonical subcollection for all timeline audit events and status changes
       // =======================================================================
-      match /updates/{updateId} {
+      match /complaint_updates/{updateId} {
         // Read timeline: complaint owner or government personnel
         allow read: if isSignedIn() && (
-          get(/databases/$(database)/documents/complaints/$(complaintId)).data.citizenId == request.auth.uid ||
+          (exists(/databases/$(database)/documents/complaints/$(complaintId)) &&
+           get(/databases/$(database)/documents/complaints/$(complaintId)).data.citizenId == request.auth.uid) ||
           isGovernment()
         );
 
         // Timeline entry creation:
-        // - Initial report update created by citizen upon submission
+        // - Initial report update created by citizen upon submission (atomic with parent complaint, allows 'underVerification' or 'reported')
         // - Subsequent status updates created strictly by authorized government officers
         allow create: if isSignedIn() && (
           (
-            isOwner(get(/databases/$(database)/documents/complaints/$(complaintId)).data.citizenId) &&
-            request.resource.data.status == 'reported' &&
-            request.resource.data.updatedBy == request.auth.uid
+            request.resource.data.status in ['underVerification', 'reported'] &&
+            request.resource.data.updatedBy == request.auth.uid &&
+            (
+              (
+                exists(/databases/$(database)/documents/complaints/$(complaintId)) &&
+                get(/databases/$(database)/documents/complaints/$(complaintId)).data.citizenId == request.auth.uid
+              ) ||
+              (
+                existsAfter(/databases/$(database)/documents/complaints/$(complaintId)) &&
+                getAfter(/databases/$(database)/documents/complaints/$(complaintId)).data.citizenId == request.auth.uid
+              )
+            )
           ) ||
           (
             isGovernment() &&
@@ -364,15 +550,50 @@ service cloud.firestore {
         allow delete: if false;
       }
 
+      // Legacy subcollection compatibility (/updates/{updateId})
+      match /updates/{updateId} {
+        allow read: if isSignedIn() && (
+          (exists(/databases/$(database)/documents/complaints/$(complaintId)) &&
+           get(/databases/$(database)/documents/complaints/$(complaintId)).data.citizenId == request.auth.uid) ||
+          isGovernment()
+        );
+        allow create: if isSignedIn() && (
+          (
+            request.resource.data.status in ['underVerification', 'reported'] &&
+            request.resource.data.updatedBy == request.auth.uid &&
+            (
+              (
+                exists(/databases/$(database)/documents/complaints/$(complaintId)) &&
+                get(/databases/$(database)/documents/complaints/$(complaintId)).data.citizenId == request.auth.uid
+              ) ||
+              (
+                existsAfter(/databases/$(database)/documents/complaints/$(complaintId)) &&
+                getAfter(/databases/$(database)/documents/complaints/$(complaintId)).data.citizenId == request.auth.uid
+              )
+            )
+          ) ||
+          (
+            isGovernment() &&
+            request.resource.data.updatedBy is string &&
+            isValidStatus(request.resource.data.status)
+          )
+        );
+        allow update: if false;
+        allow delete: if false;
+      }
+
       // =======================================================================
       // 3.2 COMPLAINT UPVOTES (complaints/{complaintId}/upvotes/{userId})
       // =======================================================================
       match /upvotes/{userId} {
         // Authenticated users can read upvotes
         allow read: if isSignedIn();
-        // A citizen can only create or delete their own upvote record
-        allow create: if isOwner(userId);
-        allow delete: if isOwner(userId);
+        // A citizen can create exactly one immutable upvote record. Deleting
+        // and recreating it would otherwise allow the count to be inflated.
+        allow create: if isOwner(userId) &&
+          request.resource.data.keys().hasOnly(['userId', 'timestamp']) &&
+          request.resource.data.userId == request.auth.uid;
+        allow delete: if false;
         allow update: if false;
       }
     }
@@ -496,6 +717,17 @@ service cloud.firestore {
 
       // Rewards and gamification points are strictly server-authoritative
       allow write: if false;
+
+      // =======================================================================
+      // 11.1 REWARD EVENTS SUBCOLLECTION (rewards/{userId}/events/{eventId})
+      // =======================================================================
+      match /events/{eventId} {
+        // Citizens can view their own reward event history
+        allow read: if isOwner(userId);
+
+        // Events are strictly server-authoritative
+        allow write: if false;
+      }
     }
 
     // =========================================================================
@@ -539,6 +771,46 @@ service cloud.firestore {
       // Strictly server-authoritative via Cloud Functions Admin SDK.
       // Direct client read or write is prohibited to protect citizen privacy and enforce uniqueness.
       allow read, write: if false;
+    }
+
+    // =========================================================================
+    // 14. TRANSLATION CACHE COLLECTION (translation_cache/{cacheId})
+    // =========================================================================
+    match /translation_cache/{cacheId} {
+      // Authenticated users can read cached multilingual presentations
+      allow read: if isSignedIn();
+
+      // Translations are authored and cached strictly server-side via Cloud Functions.
+      // Direct client writes are blocked to protect translation integrity and prevent poisoning.
+      allow write: if false;
+    }
+
+    // =========================================================================
+    // 15. CHATBOT FEEDBACK COLLECTION (chatbot_feedback/{feedbackId})
+    // =========================================================================
+    match /chatbot_feedback/{feedbackId} {
+      // Citizen can only read their own feedback records; government officers can read all feedback for quality analysis
+      allow read: if isSignedIn() && (isOwner(resource.data.ownerUid) || isGovernment());
+
+      // Feedback submission: Authenticated citizen or officer rating assistant responses
+      allow create: if isSignedIn() &&
+        request.resource.data.ownerUid == request.auth.uid &&
+        isValidChatbotFeedback(request.resource.data);
+
+      // Feedback updates: Author can change feedback type (e.g. toggle upvote/downvote) and timestamps,
+      // while immutable keys (ownerUid, sessionId, assistantMessageId, userMessageId, createdAt) remain strictly locked.
+      allow update: if isOwner(resource.data.ownerUid) &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'ownerUid',
+          'sessionId',
+          'assistantMessageId',
+          'userMessageId',
+          'createdAt'
+        ]) &&
+        isValidChatbotFeedback(request.resource.data);
+
+      // Deletion: Author can remove their own feedback record (e.g. untoggling an active rating)
+      allow delete: if isOwner(resource.data.ownerUid);
     }
   }
 }

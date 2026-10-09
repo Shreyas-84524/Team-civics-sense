@@ -235,7 +235,7 @@ class _FaultyAuditService implements GovernmentAuditService {
   }
 }
 
-class _FaultyHazardRepository implements HazardRepository {
+class _FaultyHazardRepository extends HazardRepository {
   @override
   Future<List<HazardModel>> getHazards({
     String? categoryId,

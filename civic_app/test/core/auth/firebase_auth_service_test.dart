@@ -275,5 +275,26 @@ void main() {
       final isCitizen = govtUser.role != 'government' && govtUser.role != 'admin';
       expect(isCitizen, isFalse);
     });
+
+    test('checkAuthState restores user session from Hive cache when offline or unhydrated', () async {
+      final fakeRemote = FakeFirebaseUserDataSource();
+      final fakeLocal = FakeHiveUserRepository();
+      fakeLocal.cachedUser = const UserModel(
+        id: 'usr_offline_cached_123',
+        fullName: 'Offline Citizen',
+        email: 'offline@civicfix.test',
+        phone: '',
+      );
+
+      final service = FirebaseAuthService(
+        userDataSource: fakeRemote,
+        userRepository: fakeLocal,
+      );
+
+      final restored = await service.checkAuthState();
+      expect(restored, isTrue);
+      expect(service.currentUid, equals('usr_offline_cached_123'));
+      expect(service.currentUser?.id, equals('usr_offline_cached_123'));
+    });
   });
 }

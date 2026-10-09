@@ -337,8 +337,8 @@ void main() {
     });
   });
 
-  group('Phase 8 - Section 4: Evidence Capture & Completion Submission', () {
-    test('Submits completion evidence and moves to Awaiting Verification without resolving', () async {
+  group('Phase 8 - Section 4: Evidence Capture & Direct Closure Submission', () {
+    test('Submits completion evidence and directly transitions to Closed without mandatory lead verification', () async {
       final updated = await workService.submitWorkCompletion(
         complaintId: 'CMP-CREW-TEST-002',
         crewId: testCrew01.employeeId,
@@ -347,12 +347,17 @@ void main() {
         workRemarks: 'Paver blocks reset and leveled with sand bedding.',
       );
 
-      // CRITICAL: Complaint must NOT be set to resolved by crew!
-      expect(updated.status, ComplaintStatus.verified);
-      expect(updated.status, isNot(ComplaintStatus.resolved));
+      // CRITICAL: Complaint transitions directly to Closed upon valid completion submission
+      expect(updated.status, equals(ComplaintStatus.closed));
+      expect(updated.closedAt, isNotNull);
+      expect(updated.closedBy, equals(testCrew01.employeeId));
+      expect(updated.resolvedAt, isNotNull);
+      expect(updated.resolvedBy, equals(testCrew01.employeeId));
       expect(updated.imageUrls, contains('https://images.unsplash.com/photo-before.jpg'));
       expect(updated.imageUrls, contains('https://images.unsplash.com/photo-after.jpg'));
       expect(updated.officerNotes, contains('Paver blocks reset'));
+      expect(updated.timeline.first.title, equals('Field Work Completed & Closed'));
+      expect(updated.timeline.first.description, contains('Field work completed with resolution evidence'));
     });
 
     test('Rejects completion submission if Before Photo is missing', () async {
@@ -381,17 +386,15 @@ void main() {
       );
     });
 
-    test('Rejects completion submission if remarks are empty', () async {
-      expect(
-        () => workService.submitWorkCompletion(
-          complaintId: 'CMP-CREW-TEST-002',
-          crewId: testCrew01.employeeId,
-          beforePhotoUrl: 'https://images.unsplash.com/photo-before.jpg',
-          afterPhotoUrl: 'https://images.unsplash.com/photo-after.jpg',
-          workRemarks: '   ',
-        ),
-        throwsA(isA<ArgumentError>()),
+    test('Accepts completion submission with empty remarks and closes complaint', () async {
+      final updated = await workService.submitWorkCompletion(
+        complaintId: 'CMP-CREW-TEST-002',
+        crewId: testCrew01.employeeId,
+        beforePhotoUrl: 'https://images.unsplash.com/photo-before.jpg',
+        afterPhotoUrl: 'https://images.unsplash.com/photo-after.jpg',
+        workRemarks: '   ',
       );
+      expect(updated.status, equals(ComplaintStatus.closed));
     });
   });
 
@@ -418,6 +421,180 @@ void main() {
       expect(updated.assignedDepartmentId, 'dept_roads');
       expect(updated.status, ComplaintStatus.assigned);
       expect(updated.officerNotes, contains('Specialized Equipment Required'));
+    });
+  });
+
+  group('Phase 8 - Section 6: Field Execution Officer (JE -> FO Separation & Start Job Auth Alignment)', () {
+    late GovtUserModel ganeshFO;
+    late GovtUserModel rameshJE;
+    late GovtUserModel otherCrew;
+    late ComplaintModel foAssignedComplaint;
+
+    setUp(() async {
+      rameshJE = const GovtUserModel(
+        id: 'GOV-CREW-R_SOUTH-MAINTENANCE_ROADS-01',
+        employeeId: 'GOV-CREW-R_SOUTH-MAINTENANCE_ROADS-01',
+        fullName: 'Ramesh Powar',
+        email: 'ramesh.powar@mcgm.gov.in',
+        role: 'department_crew',
+        wardId: 'R_SOUTH',
+        departmentId: 'maintenance_roads',
+        departmentName: 'Roads & Maintenance',
+        displayDesignation: 'Junior Engineer',
+        active: true,
+      );
+
+      ganeshFO = const GovtUserModel(
+        id: 'rbQflILEPabot9t9EScfQmdmvn73',
+        employeeId: 'GOV-CREW-R_SOUTH-MAINTENANCE_ROADS-02',
+        fullName: 'Ganesh Kulkarni',
+        email: 'crew.r_south.rds.02@civicfix.dev',
+        role: 'department_crew',
+        wardId: 'R_SOUTH',
+        departmentId: 'maintenance_roads',
+        departmentName: 'Roads & Maintenance',
+        displayDesignation: 'Field Crew Technician 2',
+        active: true,
+      );
+
+      otherCrew = const GovtUserModel(
+        id: 'GOV-CREW-R_SOUTH-MAINTENANCE_ROADS-03',
+        employeeId: 'GOV-CREW-R_SOUTH-MAINTENANCE_ROADS-03',
+        fullName: 'Sanjay Shinde',
+        email: 'sanjay.shinde@mcgm.gov.in',
+        role: 'department_crew',
+        wardId: 'R_SOUTH',
+        departmentId: 'maintenance_roads',
+        departmentName: 'Roads & Maintenance',
+        displayDesignation: 'Field Crew Technician 3',
+        active: true,
+      );
+
+      final now = DateTime.now();
+      foAssignedComplaint = ComplaintModel(
+        id: 'CF-2026-1791368464448000-a32fe69cef8b',
+        ticketNumber: 'CF-2026-1791368464448000-a32fe69cef8b',
+        title: 'Dangerous Pothole on Link Road',
+        description: 'Large crater in road creating traffic hazard.',
+        category: const CivicCategory(
+          id: 'maintenance_roads',
+          name: 'Roads & Maintenance',
+          description: 'Road damage and potholes',
+          icon: Icons.traffic,
+        ),
+        status: ComplaintStatus.assigned,
+        priority: ComplaintPriority.emergency,
+        location: const CivicLocation(
+          latitude: 19.2000,
+          longitude: 72.8500,
+          address: 'Link Road, Kandivali West',
+          ward: 'R_SOUTH',
+        ),
+        createdAt: now.subtract(const Duration(hours: 5)),
+        updatedAt: now.subtract(const Duration(hours: 1)),
+        wardId: 'R_SOUTH',
+        assignedDepartmentId: 'maintenance_roads',
+        assignedDepartmentLeadId: 'GOV-WDL-R_SOUTH-MAINTENANCE_ROADS',
+        assignedCrewMemberId: rameshJE.employeeId,
+        assignedJuniorEngineerNameSnapshot: rameshJE.fullName,
+        assignedJuniorEngineerDesignationSnapshot: rameshJE.displayDesignation,
+        assignedFieldOfficerId: ganeshFO.employeeId,
+        assignedFieldOfficerNameSnapshot: ganeshFO.fullName,
+        assignedFieldOfficerDesignationSnapshot: ganeshFO.displayDesignation,
+        assignedFieldOfficerAt: now.subtract(const Duration(hours: 1)),
+        assignmentStatus: ComplaintAssignmentStatus.fieldOfficerAssigned,
+        slaStartedAt: now.subtract(const Duration(hours: 5)),
+        originalCreatedAt: now.subtract(const Duration(hours: 5)),
+      );
+
+      MockDataSource().complaints.removeWhere((c) => c.id == foAssignedComplaint.id);
+      MockDataSource().complaints.add(foAssignedComplaint);
+      routingService.registerComplaint(foAssignedComplaint);
+    });
+
+    test('Assigned Field Officer (Ganesh) successfully starts the job and records workStartedAt', () async {
+      final updated = await workService.startJob(
+        complaintId: foAssignedComplaint.id,
+        crewId: ganeshFO.employeeId,
+      );
+
+      expect(updated.status, ComplaintStatus.inProgress);
+      expect(updated.routingStatus, ComplaintRoutingStatus.inProgress);
+      expect(updated.workStartedAt, isNotNull);
+      expect(updated.workStartedBy, ganeshFO.employeeId);
+      expect(updated.timeline.first.title, 'Work Started in Field');
+      expect(updated.assignedFieldOfficerId, ganeshFO.employeeId);
+      expect(updated.assignedCrewMemberId, rameshJE.employeeId);
+    });
+
+    test('Supervising Junior Engineer cannot start the job once Field Officer is assigned (JE/FO Separation)', () async {
+      expect(
+        () => workService.startJob(
+          complaintId: foAssignedComplaint.id,
+          crewId: rameshJE.employeeId,
+        ),
+        throwsA(isA<StateError>().having(
+          (e) => e.message,
+          'message',
+          contains('Security Violation'),
+        )),
+      );
+    });
+
+    test('Unassigned crew member in same Ward and Dept cannot start the job', () async {
+      expect(
+        () => workService.startJob(
+          complaintId: foAssignedComplaint.id,
+          crewId: otherCrew.employeeId,
+        ),
+        throwsA(isA<StateError>().having(
+          (e) => e.message,
+          'message',
+          contains('Security Violation'),
+        )),
+      );
+    });
+
+    test('Assigned Field Officer can submit completion and report obstacle', () async {
+      // 1. Ganesh reports obstacle
+      final blocked = await workService.reportBlockedIssue(
+        complaintId: foAssignedComplaint.id,
+        crewId: ganeshFO.employeeId,
+        reasonCategory: 'Site Inaccessible',
+        details: 'Blocked by parked vehicles.',
+      );
+      expect(blocked.officerNotes, contains('Site Inaccessible'));
+
+      // 2. Ganesh starts work
+      await workService.startJob(
+        complaintId: foAssignedComplaint.id,
+        crewId: ganeshFO.employeeId,
+      );
+
+      // 3. Ganesh submits completion
+      final completed = await workService.submitWorkCompletion(
+        complaintId: foAssignedComplaint.id,
+        crewId: ganeshFO.employeeId,
+        beforePhotoUrl: 'https://images.unsplash.com/before.jpg',
+        afterPhotoUrl: 'https://images.unsplash.com/after.jpg',
+        workRemarks: 'Pothole filled with cold asphalt mix.',
+      );
+      expect(completed.status, ComplaintStatus.closed);
+      expect(completed.imageUrls, contains('https://images.unsplash.com/before.jpg'));
+      expect(completed.imageUrls, contains('https://images.unsplash.com/after.jpg'));
+
+      // 4. Ward Department Lead reopens complaint for rework (SLA preserved, increments reopenCount)
+      final reopened = await workService.reopenComplaint(
+        complaintId: foAssignedComplaint.id,
+        actorId: 'GOV-LEAD-R_SOUTH-ROADS',
+        reopenReason: 'Cold mix uncompacted and already eroding.',
+      );
+      expect(reopened.status, ComplaintStatus.inProgress);
+      expect(reopened.reopenCount, 1);
+      expect(reopened.reopenReason, contains('Cold mix uncompacted'));
+      expect(reopened.slaStartedAt, equals(foAssignedComplaint.slaStartedAt));
+      expect(reopened.originalCreatedAt, equals(foAssignedComplaint.originalCreatedAt));
+      expect(reopened.previousResolutionEvidence, contains('https://images.unsplash.com/after.jpg'));
     });
   });
 }

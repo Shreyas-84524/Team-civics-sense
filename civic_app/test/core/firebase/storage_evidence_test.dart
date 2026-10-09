@@ -311,8 +311,8 @@ void main() {
         onProgress: (p) => progressValues.add(p),
       );
 
-      expect(result.storagePath, equals('complaint_evidence/cmp_test_01/damage_photo.jpg'));
-      expect(result.downloadUrl.contains('civicfix-38d53.appspot.com'), isTrue);
+      expect(result.storagePath, equals('cmp_test_01/cmp_test_01_evidence_01.jpg'));
+      expect(result.downloadUrl.contains('supabase.co'), isTrue);
       expect(result.sizeInBytes, equals(300));
       expect(progressValues.isNotEmpty, isTrue);
       expect(progressValues.last, equals(1.0));
