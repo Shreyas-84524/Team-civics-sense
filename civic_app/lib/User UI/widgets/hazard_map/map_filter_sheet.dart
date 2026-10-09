@@ -3,10 +3,12 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_radius.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
+import '../../../core/localization/mappers/canonical_display_mappers.dart';
 import '../../../core/map/spatial_data_service.dart';
 import '../../../core/models/complaint_model.dart';
 import '../../../core/widgets/civic_fix_button.dart';
 import '../../../core/widgets/civic_fix_outlined_button.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 /// Filter selection bottom sheet for the Hazard Map screen.
 class MapFilterSheet extends StatefulWidget {
@@ -53,23 +55,23 @@ class _MapFilterSheetState extends State<MapFilterSheet> {
   late SpatialTimeFilter? _selectedTimeFilter;
 
   final List<Map<String, dynamic>> _mapCategories = [
-    {'id': 'all', 'name': 'All Categories', 'icon': Icons.apps_rounded},
-    {'id': 'cat_roads', 'name': 'Road Damage', 'icon': Icons.edit_road_rounded},
-    {'id': 'cat_water', 'name': 'Waterlogging', 'icon': Icons.water_drop_rounded},
-    {'id': 'cat_manhole', 'name': 'Open Manhole', 'icon': Icons.warning_amber_rounded},
-    {'id': 'cat_garbage', 'name': 'Garbage', 'icon': Icons.delete_outline_rounded},
-    {'id': 'cat_drainage', 'name': 'Drainage', 'icon': Icons.waves_rounded},
-    {'id': 'cat_lights', 'name': 'Street Light', 'icon': Icons.lightbulb_outline_rounded},
-    {'id': 'cat_other', 'name': 'Other', 'icon': Icons.category_rounded},
+    {'id': 'all', 'canonicalId': 'all', 'icon': Icons.apps_rounded},
+    {'id': 'cat_roads', 'canonicalId': 'roads', 'icon': Icons.edit_road_rounded},
+    {'id': 'cat_water', 'canonicalId': 'water', 'icon': Icons.water_drop_rounded},
+    {'id': 'cat_manhole', 'canonicalId': 'manholes', 'icon': Icons.warning_amber_rounded},
+    {'id': 'cat_garbage', 'canonicalId': 'waste', 'icon': Icons.delete_outline_rounded},
+    {'id': 'cat_drainage', 'canonicalId': 'drainage', 'icon': Icons.waves_rounded},
+    {'id': 'cat_lights', 'canonicalId': 'streetlights', 'icon': Icons.lightbulb_outline_rounded},
+    {'id': 'cat_other', 'canonicalId': 'other', 'icon': Icons.category_rounded},
   ];
 
-  final List<Map<String, dynamic>> _statusFilters = [
-    {'status': null, 'label': 'All Statuses'},
-    {'status': ComplaintStatus.reported, 'label': 'Reported'},
-    {'status': ComplaintStatus.verified, 'label': 'Verified'},
-    {'status': ComplaintStatus.assigned, 'label': 'Assigned'},
-    {'status': ComplaintStatus.inProgress, 'label': 'In Progress'},
-    {'status': ComplaintStatus.resolved, 'label': 'Resolved'},
+  final List<ComplaintStatus?> _statusFilterValues = [
+    null,
+    ComplaintStatus.reported,
+    ComplaintStatus.verified,
+    ComplaintStatus.assigned,
+    ComplaintStatus.inProgress,
+    ComplaintStatus.resolved,
   ];
 
   @override
@@ -106,6 +108,8 @@ class _MapFilterSheetState extends State<MapFilterSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
     return Container(
       decoration: const BoxDecoration(
         color: CivicFixColors.surface,
@@ -139,12 +143,12 @@ class _MapFilterSheetState extends State<MapFilterSheet> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Filter Civic Issues',
+                l10n?.filterCivicIssues ?? 'Filter Civic Issues',
                 style: CivicFixTypography.h3,
               ),
               IconButton(
                 icon: const Icon(Icons.close_rounded, color: CivicFixColors.secondaryText),
-                tooltip: 'Close filter',
+                tooltip: l10n?.commonCancel ?? 'Close',
                 onPressed: () => Navigator.pop(context),
               ),
             ],
@@ -153,7 +157,7 @@ class _MapFilterSheetState extends State<MapFilterSheet> {
 
           // 1. Category Filter Section
           Text(
-            'Hazard Category',
+            l10n?.hazardCategory ?? 'Hazard Category',
             style: CivicFixTypography.bodySmallMedium.copyWith(
               fontWeight: FontWeight.w700,
               color: CivicFixColors.primaryText,
@@ -165,10 +169,16 @@ class _MapFilterSheetState extends State<MapFilterSheet> {
             runSpacing: CivicFixSpacing.sm,
             children: _mapCategories.map((cat) {
               final catId = cat['id'] as String;
+              final canonicalId = cat['canonicalId'] as String;
+              final isAll = canonicalId == 'all';
+              final label = isAll
+                  ? (l10n?.allCategories ?? 'All Categories')
+                  : localizedCategory(canonicalId, context: context, l10n: l10n);
+
               final isSelected = (_selectedCategoryId == null && catId == 'all') ||
                   _selectedCategoryId == catId ||
                   (_selectedCategoryId != null &&
-                      _selectedCategoryId!.toLowerCase().contains(cat['name'].toString().toLowerCase().split(' ').first));
+                      _selectedCategoryId!.toLowerCase().contains(canonicalId.toLowerCase()));
 
               return FilterChip(
                 avatar: Icon(
@@ -176,7 +186,7 @@ class _MapFilterSheetState extends State<MapFilterSheet> {
                   size: 16,
                   color: isSelected ? Colors.white : CivicFixColors.primary,
                 ),
-                label: Text(cat['name'] as String),
+                label: Text(label),
                 selected: isSelected,
                 selectedColor: CivicFixColors.primary,
                 backgroundColor: CivicFixColors.surfaceMuted,
@@ -203,7 +213,7 @@ class _MapFilterSheetState extends State<MapFilterSheet> {
 
           // 2. Status Filter Section
           Text(
-            'Issue Status',
+            l10n?.issueStatus ?? 'Issue Status',
             style: CivicFixTypography.bodySmallMedium.copyWith(
               fontWeight: FontWeight.w700,
               color: CivicFixColors.primaryText,
@@ -213,12 +223,14 @@ class _MapFilterSheetState extends State<MapFilterSheet> {
           Wrap(
             spacing: CivicFixSpacing.sm,
             runSpacing: CivicFixSpacing.sm,
-            children: _statusFilters.map((st) {
-              final ComplaintStatus? status = st['status'] as ComplaintStatus?;
+            children: _statusFilterValues.map((status) {
               final isSelected = _selectedStatus == status;
+              final label = status == null
+                  ? (l10n?.allStatuses ?? 'All Statuses')
+                  : localizedComplaintStatus(status, context: context, l10n: l10n);
 
               return FilterChip(
-                label: Text(st['label'] as String),
+                label: Text(label),
                 selected: isSelected,
                 selectedColor: CivicFixColors.secondary,
                 backgroundColor: CivicFixColors.surfaceMuted,
@@ -245,7 +257,7 @@ class _MapFilterSheetState extends State<MapFilterSheet> {
 
           // 3. Time Window Section
           Text(
-            'Report Timeframe',
+            l10n?.reportTimeframe ?? 'Report Timeframe',
             style: CivicFixTypography.bodySmallMedium.copyWith(
               fontWeight: FontWeight.w700,
               color: CivicFixColors.primaryText,
@@ -290,14 +302,14 @@ class _MapFilterSheetState extends State<MapFilterSheet> {
             children: [
               Expanded(
                 child: CivicFixOutlinedButton(
-                  text: 'Clear Filters',
+                  text: l10n?.clearFilters ?? 'Clear Filters',
                   onPressed: _clearFilters,
                 ),
               ),
               CivicFixSpacing.hSpaceMd,
               Expanded(
                 child: CivicFixButton(
-                  text: 'Apply Filters',
+                  text: l10n?.applyFilters ?? 'Apply Filters',
                   onPressed: _applyFilters,
                 ),
               ),

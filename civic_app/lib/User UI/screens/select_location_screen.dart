@@ -3,6 +3,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_radius.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/constants/app_typography.dart';
+import '../../core/localization/app_localizations.dart';
 import '../../core/location/location_model.dart';
 import '../../core/map/map_constants.dart';
 import '../../core/repositories/repository_locator.dart';
@@ -148,8 +149,8 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> {
         _isLocatingGps = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not acquire GPS position. Please adjust pin manually.'),
+        SnackBar(
+          content: Text(context.l10nOrNull?.couldNotAcquireGps ?? 'Could not acquire GPS position. Please adjust pin manually.'),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -159,8 +160,8 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const CivicFixAppBar(
-        title: 'Confirm Location',
+      appBar: CivicFixAppBar(
+        title: context.l10nOrNull?.confirmLocation ?? 'Confirm Location',
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
@@ -203,7 +204,7 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> {
                                       ],
                                     ),
                                     child: Text(
-                                      'Tap map to position pin',
+                                      context.l10nOrNull?.tapMapToPositionPin ?? 'Tap map to position pin',
                                       style: CivicFixTypography.captionMedium.copyWith(
                                         color: Colors.white,
                                         fontWeight: FontWeight.w600,
@@ -235,7 +236,7 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> {
                     backgroundColor: Colors.white,
                     foregroundColor: CivicFixColors.secondaryDark,
                     elevation: 3,
-                    tooltip: 'Center on My GPS',
+                    tooltip: context.l10nOrNull?.centerOnGps ?? 'Center on My GPS',
                     onPressed: _isLocatingGps ? null : _centerOnGps,
                     child: _isLocatingGps
                         ? const SizedBox(
@@ -269,8 +270,8 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> {
                                 controller: _searchController,
                                 style: CivicFixTypography.bodySmall,
                                 onChanged: _handleSearchQuery,
-                                decoration: const InputDecoration(
-                                  hintText: 'Search street, area or landmark...',
+                                decoration: InputDecoration(
+                                  hintText: context.l10nOrNull?.searchLocationHint ?? 'Search street, area or landmark...',
                                   border: InputBorder.none,
                                   enabledBorder: InputBorder.none,
                                   focusedBorder: InputBorder.none,
@@ -360,7 +361,7 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> {
                             ),
                             CivicFixSpacing.hSpaceSm,
                             Text(
-                              'Selected Location',
+                              context.l10nOrNull?.selectedLocation ?? 'Selected Location',
                               style: CivicFixTypography.bodySmallMedium.copyWith(
                                 fontWeight: FontWeight.w700,
                               ),
@@ -405,7 +406,7 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> {
                         ],
                         CivicFixSpacing.vSpaceLg,
                         CivicFixButton(
-                          text: 'Confirm This Location',
+                          text: context.l10nOrNull?.confirmThisLocation ?? 'Confirm This Location',
                           icon: Icons.check_circle_outline_rounded,
                           onPressed: () {
                             Navigator.pop(context, _currentLocation);

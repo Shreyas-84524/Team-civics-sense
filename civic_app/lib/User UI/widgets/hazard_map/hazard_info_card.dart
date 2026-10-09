@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
+import '../../../core/localization/mappers/canonical_display_mappers.dart';
 import '../../../core/models/hazard_model.dart';
 import '../../../core/repositories/complaint_repository.dart';
 import '../../../core/repositories/repository_locator.dart';
@@ -10,8 +11,9 @@ import '../../../core/utils/date_formatter.dart';
 import '../../../core/widgets/civic_fix_button.dart';
 import '../../../core/widgets/civic_fix_card.dart';
 import '../../../core/widgets/status_badge.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
-/// Compact floating card displayed when a citizen taps a map hazard marker.
+/// Compact floating card displayed when a citizen taps an individual map complaint dot.
 class HazardInfoCard extends StatelessWidget {
   final HazardModel hazard;
   final VoidCallback onClose;
@@ -27,13 +29,8 @@ class HazardInfoCard extends StatelessWidget {
   Future<void> _navigateToComplaintDetails(BuildContext context) async {
     final repo = complaintRepository ?? RepositoryLocator.complaintRepository;
     final complaintId = hazard.complaintId ?? hazard.id;
-    final ticketNumber = hazard.ticketNumber;
-
-    // Try finding by internal complaint ID or ticket number
-    var complaint = await repo.getComplaintById(complaintId);
-    if (complaint == null && ticketNumber != null) {
-      complaint = await repo.getComplaintByTicketId(ticketNumber);
-    }
+    // The display ticket number is never an internal document identifier.
+    final complaint = await repo.getComplaintById(complaintId);
 
     if (context.mounted) {
       if (complaint != null) {
@@ -55,13 +52,17 @@ class HazardInfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final displayCategory = localizedCategory(hazard.category, context: context, l10n: l10n);
+
     return CivicFixCard(
-      padding: const EdgeInsets.all(CivicFixSpacing.lg),
+      padding: const EdgeInsets.all(CivicFixSpacing.md),
+      elevation: 6,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header: Category, Status Badge & Close Button
+          // Header Row: Category Icon & Name + Ticket Number + Close 'X' Button
           Row(
             children: [
               Container(
@@ -73,7 +74,7 @@ class HazardInfoCard extends StatelessWidget {
                 child: Icon(
                   hazard.categoryIcon,
                   color: hazard.statusColor,
-                  size: 18,
+                  size: 16,
                 ),
               ),
               CivicFixSpacing.hSpaceSm,
@@ -82,7 +83,7 @@ class HazardInfoCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      hazard.category.name,
+                      displayCategory,
                       style: CivicFixTypography.captionMedium.copyWith(
                         fontWeight: FontWeight.w700,
                         color: CivicFixColors.primaryText,
@@ -96,83 +97,109 @@ class HazardInfoCard extends StatelessWidget {
                         style: CivicFixTypography.caption.copyWith(
                           color: CivicFixColors.secondaryText,
                           fontFamily: 'monospace',
+                          fontSize: 11,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                   ],
                 ),
               ),
-              StatusBadge(status: hazard.status),
-              CivicFixSpacing.hSpaceSm,
               IconButton(
                 icon: const Icon(
                   Icons.close_rounded,
                   size: 20,
                   color: CivicFixColors.secondaryText,
                 ),
-                tooltip: 'Close hazard details',
+                tooltip: l10n?.close ?? 'Close complaint card',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
                 onPressed: onClose,
               ),
             ],
           ),
-          CivicFixSpacing.vSpaceMd,
+          CivicFixSpacing.vSpaceSm,
 
-          // Hazard Title
+          // 1. Complaint / Report Title (Citizen input is preserved)
           Text(
             hazard.title,
-            style: CivicFixTypography.h3,
+            style: CivicFixTypography.h3.copyWith(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
-          CivicFixSpacing.vSpaceSm,
-
-          // Location info
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Icon(
-                Icons.location_on_outlined,
-                size: 16,
-                color: CivicFixColors.secondaryText,
-              ),
-              CivicFixSpacing.hSpaceXs,
-              Expanded(
-                child: Text(
-                  '${hazard.address}${hazard.landmark != null ? " (${hazard.landmark})" : ""}',
-                  style: CivicFixTypography.caption.copyWith(
-                    color: CivicFixColors.secondaryText,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
           CivicFixSpacing.vSpaceXs,
 
-          // Last Updated Timestamp
+          // 2. Reported Timestamp (authoritative createdAt)
           Row(
             children: [
               const Icon(
                 Icons.access_time_rounded,
                 size: 14,
-                color: CivicFixColors.disabledText,
+                color: CivicFixColors.secondaryText,
               ),
               CivicFixSpacing.hSpaceXs,
               Text(
-                'Updated ${DateFormatter.formatRelativeTime(hazard.updatedAt)}',
+                '${l10n?.reportedTime ?? 'Reported'} ${DateFormatter.formatRelativeTime(hazard.createdAt)}',
                 style: CivicFixTypography.caption.copyWith(
                   color: CivicFixColors.secondaryText,
-                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],
           ),
-          CivicFixSpacing.vSpaceLg,
 
-          // Primary Action: View Complaint Details
+          // Location Info (if address present)
+          if (hazard.address.isNotEmpty) ...[
+            CivicFixSpacing.vSpaceXs,
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  Icons.location_on_outlined,
+                  size: 14,
+                  color: CivicFixColors.secondaryText,
+                ),
+                CivicFixSpacing.hSpaceXs,
+                Expanded(
+                  child: Text(
+                    '${hazard.address}${hazard.landmark != null && hazard.landmark!.isNotEmpty ? " (${hazard.landmark})" : ""}',
+                    style: CivicFixTypography.caption.copyWith(
+                      color: CivicFixColors.secondaryText,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ],
+          CivicFixSpacing.vSpaceMd,
+
+          // 3. Current Working Phase / Status Badge
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                l10n?.currentPhase ?? 'Current Phase',
+                style: CivicFixTypography.captionMedium.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: CivicFixColors.primaryText,
+                ),
+              ),
+              StatusBadge(
+                status: hazard.status,
+                customLabel: hazard.citizenPhaseLabel,
+                isCompact: true,
+              ),
+            ],
+          ),
+          CivicFixSpacing.vSpaceMd,
+
+          // 4. Primary Action: View Details
           CivicFixButton(
-            text: 'View Complaint',
+            text: l10n?.viewDetails ?? 'View Details',
             icon: Icons.arrow_forward_rounded,
             onPressed: () => _navigateToComplaintDetails(context),
           ),

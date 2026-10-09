@@ -1,11 +1,16 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:maplibre_gl/maplibre_gl.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_radius.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/constants/app_typography.dart';
 import '../../core/location/location_model.dart';
+import '../../core/map/basemap_mode.dart';
 import '../../core/map/civic_map_canvas.dart';
 import '../../core/map/heatmap_legend.dart';
+import '../../core/map/map_chunk_manager.dart';
 import '../../core/map/map_constants.dart';
 import '../../core/map/spatial_data_service.dart';
 import '../../core/models/complaint_model.dart';
@@ -13,6 +18,7 @@ import '../../core/models/hazard_model.dart';
 import '../../core/network/connectivity_service.dart';
 import '../../core/repositories/complaint_repository.dart';
 import '../../core/repositories/hazard_repository.dart';
+import '../../core/localization/app_localizations.dart';
 import '../../core/repositories/repository_locator.dart';
 import '../../core/widgets/civic_fix_app_bar.dart';
 import '../../core/widgets/civic_fix_card.dart';
@@ -25,6 +31,7 @@ import '../services/location_service.dart';
 import '../widgets/hazard_map/hazard_info_card.dart';
 import '../widgets/hazard_map/hazard_marker.dart';
 import '../widgets/hazard_map/map_filter_sheet.dart';
+import '../widgets/map/basemap_selector_sheet.dart';
 
 /// Full interactive Citizen Hazard Map screen powered by MapTiler and MapLibre.
 class HazardMapScreen extends StatefulWidget {
@@ -52,7 +59,6 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
   late final ConnectivityService _connectivityService;
 
   final TextEditingController _searchController = TextEditingController();
-  final TransformationController _transformController = TransformationController();
   final GlobalKey<CivicMapCanvasState> _mapCanvasKey = GlobalKey<CivicMapCanvasState>();
 
   List<HazardModel> _allHazards = [];
@@ -65,12 +71,19 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
   bool _isLocatingGps = false;
   String? _locationWarningMessage;
 
-  // Active filters
+  // Active filters & Basemap configuration
+  BasemapMode _basemapMode = BasemapMode.streets;
   String? _selectedCategoryId;
   ComplaintStatus? _selectedStatus;
   SpatialTimeFilter? _selectedTimeFilter;
   bool _showLegend = false;
   bool _showHeatmap = true;
+
+  late final MapChunkManager _chunkManager;
+  StreamSubscription<ComplaintModel?>? _selectedComplaintSubscription;
+  StreamSubscription<HazardModel?>? _selectedHazardSubscription;
+  LatLngBounds? _lastBounds;
+  int _selectionGeneration = 0;
 
   @override
   void initState() {
@@ -79,35 +92,130 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
     _complaintRepository = widget.complaintRepository ?? RepositoryLocator.complaintRepository;
     _locationService = widget.locationService ?? RepositoryLocator.locationService;
     _connectivityService = widget.connectivityService ?? AppConnectivityService();
-    _loadHazards();
+    _chunkManager = MapChunkManager();
+    _chunkManager.addListener(_onChunkManagerChanged);
+    _initInitialChunks();
+  }
+
+  void _initInitialChunks() {
+    final initialBounds = LatLngBounds(
+      southwest: const LatLng(MapConstants.mumbaiLatitude - 0.05, MapConstants.mumbaiLongitude - 0.05),
+      northeast: const LatLng(MapConstants.mumbaiLatitude + 0.05, MapConstants.mumbaiLongitude + 0.05),
+    );
+    _lastBounds = initialBounds;
+    _chunkManager.onCameraIdle(
+      bounds: initialBounds,
+      repository: _hazardRepository,
+      categoryId: _selectedCategoryId,
+      status: _selectedStatus,
+      debounce: Duration.zero,
+    );
+  }
+
+  void _onChunkManagerChanged() {
+    if (!mounted) return;
+    setState(() {
+      _allHazards = _chunkManager.allCachedHazards;
+      _isLoading = _chunkManager.isLoading && _allHazards.isEmpty;
+      _errorMessage = _chunkManager.errorMessage;
+    });
+    _applyCurrentFilters();
   }
 
   @override
   void dispose() {
+    _chunkManager.removeListener(_onChunkManagerChanged);
+    _chunkManager.dispose();
+    _selectedComplaintSubscription?.cancel();
+    _selectedHazardSubscription?.cancel();
     _searchController.dispose();
-    _transformController.dispose();
     super.dispose();
   }
 
+  void _onVisibleBoundsChanged(LatLngBounds bounds) {
+    _lastBounds = bounds;
+    _chunkManager.onCameraIdle(
+      bounds: bounds,
+      repository: _hazardRepository,
+      categoryId: _selectedCategoryId,
+      status: _selectedStatus,
+    );
+  }
+
   Future<void> _loadHazards() async {
+    final bounds = _lastBounds ??
+        LatLngBounds(
+          southwest: const LatLng(MapConstants.mumbaiLatitude - 0.05, MapConstants.mumbaiLongitude - 0.05),
+          northeast: const LatLng(MapConstants.mumbaiLatitude + 0.05, MapConstants.mumbaiLongitude + 0.05),
+        );
+    await _chunkManager.onCameraIdle(
+      bounds: bounds,
+      repository: _hazardRepository,
+      categoryId: _selectedCategoryId,
+      status: _selectedStatus,
+      debounce: Duration.zero,
+    );
+  }
+
+  void _onHazardSelected(HazardModel hazard) {
     setState(() {
-      _isLoading = true;
-      _errorMessage = null;
+      _selectedHazard = hazard;
     });
+    _subscribeSelectedHazard(hazard);
+    if (kDebugMode) debugPrint('[HazardMapScreen] selected=${hazard.id} complaintId=${hazard.complaintId}');
+  }
+
+  void _subscribeSelectedHazard(HazardModel hazard) {
+    final generation = ++_selectionGeneration;
+    _selectedComplaintSubscription?.cancel();
+    _selectedHazardSubscription?.cancel();
+
+    final complaintId = hazard.complaintId ?? hazard.id;
+    try {
+      _selectedComplaintSubscription = _complaintRepository.watchComplaint(complaintId).listen(
+        (updatedComplaint) {
+          if (!mounted || _selectedHazard == null || generation != _selectionGeneration) return;
+          if (updatedComplaint != null) {
+            final updatedHazard = HazardModel.fromComplaint(updatedComplaint);
+            setState(() {
+              _selectedHazard = updatedHazard;
+              _chunkManager.updateHazard(updatedHazard);
+            });
+          }
+        },
+        onError: (e) {
+          debugPrint('[HazardMapScreen] Selected complaint subscription notice: $e');
+        },
+      );
+    } catch (_) {}
 
     try {
-      final list = await _hazardRepository.getHazards();
-      if (!mounted) return;
+      _selectedHazardSubscription = _hazardRepository.watchHazardById(hazard.id).listen(
+        (updatedHazard) {
+          if (!mounted || _selectedHazard == null || generation != _selectionGeneration) return;
+          if (updatedHazard != null) {
+            setState(() {
+              _selectedHazard = updatedHazard;
+              _chunkManager.updateHazard(updatedHazard);
+            });
+          }
+        },
+        onError: (e) {
+          debugPrint('[HazardMapScreen] Selected hazard subscription notice: $e');
+        },
+      );
+    } catch (_) {}
+  }
+
+  void _onMapTap() {
+    _selectionGeneration++;
+    if (_selectedHazard != null) {
+      _selectedComplaintSubscription?.cancel();
+      _selectedHazardSubscription?.cancel();
+      _selectedComplaintSubscription = null;
+      _selectedHazardSubscription = null;
       setState(() {
-        _allHazards = list;
-        _isLoading = false;
-      });
-      _applyCurrentFilters();
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _errorMessage = "Couldn't load civic issues.";
-        _isLoading = false;
+        _selectedHazard = null;
       });
     }
   }
@@ -151,8 +259,18 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
 
     setState(() {
       _filteredHazards = list;
-      if (_selectedHazard != null && !list.any((h) => h.id == _selectedHazard!.id)) {
-        _selectedHazard = null;
+      if (_selectedHazard != null) {
+        try {
+          final updatedSelected = list.firstWhere(
+            (h) => h.id == _selectedHazard!.id || (h.complaintId != null && h.complaintId == _selectedHazard!.complaintId),
+          );
+          _selectedHazard = updatedSelected;
+        } catch (_) {
+          _selectedHazard = null;
+          _selectionGeneration++;
+          _selectedComplaintSubscription?.cancel();
+          _selectedHazardSubscription?.cancel();
+        }
       }
     });
   }
@@ -181,6 +299,15 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
           }
         });
         _applyCurrentFilters();
+        if (_lastBounds != null) {
+          _chunkManager.onCameraIdle(
+            bounds: _lastBounds!,
+            repository: _hazardRepository,
+            categoryId: _selectedCategoryId,
+            status: _selectedStatus,
+            debounce: Duration.zero,
+          );
+        }
       },
     );
   }
@@ -193,6 +320,13 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
       _searchController.clear();
     });
     _applyCurrentFilters();
+    if (_lastBounds != null) {
+      _chunkManager.onCameraIdle(
+        bounds: _lastBounds!,
+        repository: _hazardRepository,
+        debounce: Duration.zero,
+      );
+    }
   }
 
   Future<void> _centerOnMyLocation() async {
@@ -206,7 +340,7 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
       if (!isServiceEnabled) {
         if (!mounted) return;
         setState(() {
-          _locationWarningMessage = 'Location services are disabled.';
+          _locationWarningMessage = 'Location services are disabled on your device.';
           _isLocatingGps = false;
         });
         return;
@@ -218,7 +352,7 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
         if (requested == CivicPermissionStatus.denied || requested == CivicPermissionStatus.permanentlyDenied) {
           if (!mounted) return;
           setState(() {
-            _locationWarningMessage = 'Location access is turned off. Enable location access to see issues near you.';
+            _locationWarningMessage = 'Location permission is required to center the map.';
             _isLocatingGps = false;
           });
           return;
@@ -231,35 +365,41 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
       if (pos != null) {
         setState(() {
           _userLocation = pos;
+          _isLocatingGps = false;
+          _locationWarningMessage = null;
         });
         await _mapCanvasKey.currentState?.animateTo(
           latitude: pos.latitude,
           longitude: pos.longitude,
           zoom: MapConstants.focusedZoom,
         );
+
+        if (mounted) {
+          final wardText = (pos.ward != null && pos.ward!.isNotEmpty) ? ' in ${pos.ward}' : '';
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Centered on your location$wardText'),
+              duration: const Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      } else {
+        setState(() {
+          _locationWarningMessage = 'Unable to determine your location. Please try again.';
+          _isLocatingGps = false;
+        });
       }
-
-      // Reset map transform to center
-      _transformController.value = Matrix4.identity();
-
+    } on TimeoutException {
+      if (!mounted) return;
       setState(() {
+        _locationWarningMessage = 'GPS acquisition timed out. Please retry.';
         _isLocatingGps = false;
-        _locationWarningMessage = null;
       });
-
-      if (pos != null && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Centered on your location in ${pos.ward ?? "Ward 14"}'),
-            duration: const Duration(seconds: 2),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _locationWarningMessage = 'Location access is turned off.';
+        _locationWarningMessage = 'Unable to determine your location.';
         _isLocatingGps = false;
       });
     }
@@ -267,18 +407,29 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
 
   void _zoomIn() {
     _mapCanvasKey.currentState?.zoomIn();
-    final currentScale = _transformController.value.getMaxScaleOnAxis();
-    if (currentScale < 3.0) {
-      _transformController.value = _transformController.value.clone()..scaleByDouble(1.25, 1.25, 1.0, 1.0);
-    }
   }
 
   void _zoomOut() {
     _mapCanvasKey.currentState?.zoomOut();
-    final currentScale = _transformController.value.getMaxScaleOnAxis();
-    if (currentScale > 0.8) {
-      _transformController.value = _transformController.value.clone()..scaleByDouble(0.8, 0.8, 1.0, 1.0);
-    }
+  }
+
+  void _openBasemapSelector() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      shape: const RoundedRectangleBorder(
+        borderRadius: CivicFixRadius.sheetRadius,
+      ),
+      builder: (context) => BasemapSelectorSheet(
+        currentMode: _basemapMode,
+        onModeSelected: (mode) {
+          setState(() {
+            _basemapMode = mode;
+          });
+        },
+      ),
+    );
   }
 
   int get _activeFiltersCount {
@@ -291,10 +442,12 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10nOrNull;
+
     return Scaffold(
       backgroundColor: CivicFixColors.background,
       appBar: CivicFixAppBar(
-        title: 'Hazard Map',
+        title: l10n?.hazardMapTitle ?? 'Hazard Map',
         automaticallyImplyLeading: false,
         actions: [
           IconButton(
@@ -302,7 +455,7 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
               _showHeatmap ? Icons.local_fire_department_rounded : Icons.local_fire_department_outlined,
               color: _showHeatmap ? const Color(0xFFEF4444) : CivicFixColors.secondaryText,
             ),
-            tooltip: _showHeatmap ? 'Hide Heatmap Layer' : 'Show Heatmap Layer',
+            tooltip: _showHeatmap ? (l10n?.hideHeatmapLayer ?? 'Hide Heatmap Layer') : (l10n?.showHeatmapLayer ?? 'Show Heatmap Layer'),
             onPressed: () {
               setState(() {
                 _showHeatmap = !_showHeatmap;
@@ -314,7 +467,7 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
               _showLegend ? Icons.layers_rounded : Icons.layers_outlined,
               color: _showLegend ? CivicFixColors.primary : CivicFixColors.secondaryText,
             ),
-            tooltip: 'Toggle Map Legend',
+            tooltip: l10n?.toggleMapLegend ?? 'Toggle Map Legend',
             onPressed: () {
               setState(() {
                 _showLegend = !_showLegend;
@@ -325,14 +478,14 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
       ),
       body: SafeArea(
         child: _isLoading
-            ? const Center(
-                child: LoadingState(message: 'Loading civic hazard map...'),
+            ? Center(
+                child: LoadingState(message: l10n?.loadingHazardMap ?? 'Loading civic hazard map...'),
               )
             : _errorMessage != null
                 ? Center(
                     child: ErrorState(
-                       title: "Couldn't load civic issues.",
-                      message: 'Please check your connection and try again.',
+                      title: l10n?.couldNotLoadCivicIssues ?? "Couldn't load civic issues.",
+                      message: l10n?.checkConnectionAndRetry ?? 'Please check your connection and try again.',
                       onRetry: _loadHazards,
                     ),
                   )
@@ -351,22 +504,13 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
               key: _mapCanvasKey,
               hazards: _filteredHazards,
               selectedHazard: _selectedHazard,
+              basemapMode: _basemapMode,
               showHeatmap: _showHeatmap,
               timeFilter: _selectedTimeFilter,
-              onHazardSelected: (hazard) {
-                setState(() {
-                  _selectedHazard = hazard;
-                });
-              },
+              onVisibleBoundsChanged: _onVisibleBoundsChanged,
+              onHazardSelected: _onHazardSelected,
               userLocation: _userLocation,
-              onMapTap: () {
-                if (_selectedHazard != null) {
-                  setState(() {
-                    _selectedHazard = null;
-                  });
-                }
-              },
-              transformationController: _transformController,
+              onMapTap: _onMapTap,
               markerBuilder: (hazard, isSelected, onTap) {
                 return HazardMarker(
                   hazard: hazard,
@@ -376,14 +520,57 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
               },
             ),
 
+            // Subtle progressive loading indicator
+            if (_chunkManager.isLoading && _allHazards.isNotEmpty)
+              Positioned(
+                top: 76,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.75),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: const [
+                        BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2)),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox(
+                          width: 12,
+                          height: 12,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 1.5,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Updating visible area...',
+                          style: CivicFixTypography.caption.copyWith(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
             // 2. Offline Mode Banner (if offline)
             if (!_connectivityService.isOnline)
-              const Positioned(
+              Positioned(
                 top: CivicFixSpacing.sm,
                 left: CivicFixSpacing.md,
                 right: CivicFixSpacing.md,
                 child: OfflineCacheBanner(
-                  customMessage: 'Offline — Showing cached hazards. Basemap tiles require network.',
+                  customMessage: context.l10nOrNull?.offlineCachedHazardsBanner ??
+                      'Offline — Showing cached hazards. Basemap tiles require network.',
                   isCompact: true,
                 ),
               ),
@@ -418,8 +605,9 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
                                   controller: _searchController,
                                   style: CivicFixTypography.bodySmall,
                                   onChanged: _onSearchChanged,
-                                  decoration: const InputDecoration(
-                                    hintText: 'Search issue, ID or locality...',
+                                  decoration: InputDecoration(
+                                    hintText: context.l10nOrNull?.searchHazardsHint ??
+                                        'Search hazards or complaints...',
                                     border: InputBorder.none,
                                     enabledBorder: InputBorder.none,
                                     focusedBorder: InputBorder.none,
@@ -548,7 +736,7 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              'Status Legend',
+                              context.l10nOrNull?.statusLegend ?? 'Status Legend',
                               style: CivicFixTypography.captionMedium.copyWith(
                                 fontWeight: FontWeight.w700,
                                 color: CivicFixColors.primaryText,
@@ -571,7 +759,7 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
                                     ),
                                     CivicFixSpacing.hSpaceSm,
                                     Text(
-                                      status.label,
+                                      localizedComplaintStatus(status, context: context),
                                       style: CivicFixTypography.caption,
                                     ),
                                   ],
@@ -655,6 +843,21 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
               ),
             ),
 
+            // 7. Floating Basemap Style Switcher Button (Streets, Satellite, Hybrid)
+            Positioned(
+              right: CivicFixSpacing.md,
+              bottom: _selectedHazard != null ? 365 : 275,
+              child: FloatingActionButton.small(
+                heroTag: 'basemap_selector_btn',
+                tooltip: '${context.l10nOrNull?.basemapStyle ?? "Basemap Style"} (${localizedBasemapMode(_basemapMode, context: context)})',
+                backgroundColor: Colors.white,
+                foregroundColor: CivicFixColors.primaryDark,
+                elevation: 3,
+                onPressed: _openBasemapSelector,
+                child: Icon(_basemapMode.icon, size: 20),
+              ),
+            ),
+
             // 7. Results Count Pill
             if (_filteredHazards.isNotEmpty && _selectedHazard == null)
               Positioned(
@@ -682,7 +885,7 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
                       ),
                       CivicFixSpacing.hSpaceSm,
                       Text(
-                        '${_filteredHazards.length} ${_filteredHazards.length == 1 ? "civic issue" : "civic issues"} near you',
+                        '${_filteredHazards.length} ${context.l10nOrNull?.civicIssuesNearYou ?? "civic issues near you"}',
                         style: CivicFixTypography.caption.copyWith(
                           color: Colors.white,
                           fontWeight: FontWeight.w600,
@@ -712,19 +915,20 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
                           ),
                           CivicFixSpacing.vSpaceMd,
                           Text(
-                            'No civic issues found.',
+                            context.l10nOrNull?.noCivicIssuesFound ?? 'No civic issues found.',
                             style: CivicFixTypography.h3,
                           ),
                           CivicFixSpacing.vSpaceSm,
                           Text(
-                            'Try changing your filters or search.',
+                            context.l10nOrNull?.tryChangingFiltersOrSearch ??
+                                'Try changing your filters or search.',
                             style: CivicFixTypography.caption.copyWith(
                               color: CivicFixColors.secondaryText,
                             ),
                           ),
                           CivicFixSpacing.vSpaceLg,
                           CivicFixOutlinedButton(
-                            text: 'Clear Filters',
+                            text: context.l10nOrNull?.clearFilters ?? 'Clear Filters',
                             onPressed: _clearAllFilters,
                           ),
                         ],
@@ -745,11 +949,7 @@ class _HazardMapScreenState extends State<HazardMapScreen> {
                   child: HazardInfoCard(
                     hazard: _selectedHazard!,
                     complaintRepository: _complaintRepository,
-                    onClose: () {
-                      setState(() {
-                        _selectedHazard = null;
-                      });
-                    },
+                    onClose: _onMapTap,
                   ),
                 ),
               ),
