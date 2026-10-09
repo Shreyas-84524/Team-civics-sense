@@ -1,13 +1,20 @@
 import 'package:flutter/material.dart';
-import '../constants/app_colors.dart';
-import '../constants/app_radius.dart';
-import '../constants/app_spacing.dart';
-import '../constants/app_typography.dart';
+import '../theme/civicfix_design_tokens.dart';
 
-/// Standardized text input field.
+/// Standardized text input field adhering to "Civic Precision".
+///
+/// Features:
+/// - Exact 42px standard input height
+/// - Pure white surface (`#FFFFFF`) with 1px hairline border (`#E2E8F0`)
+/// - 4px architectural radius
+/// - Focus outline with deep slate (#0F172A)
+/// - Error outline in #BA1A1A
+/// - Inter typography for readable data entry
+/// - Zero hardcoded colors.
 class CivicFixTextField extends StatelessWidget {
   final String? label;
   final String? hintText;
+  final String? helperText;
   final TextEditingController? controller;
   final String? initialValue;
   final ValueChanged<String>? onChanged;
@@ -19,13 +26,16 @@ class CivicFixTextField extends StatelessWidget {
   final int maxLines;
   final int? maxLength;
   final bool readOnly;
+  final bool enabled;
   final VoidCallback? onTap;
   final bool autofocus;
+  final FocusNode? focusNode;
 
   const CivicFixTextField({
     super.key,
     this.label,
     this.hintText,
+    this.helperText,
     this.controller,
     this.initialValue,
     this.onChanged,
@@ -37,8 +47,10 @@ class CivicFixTextField extends StatelessWidget {
     this.maxLines = 1,
     this.maxLength,
     this.readOnly = false,
+    this.enabled = true,
     this.onTap,
     this.autofocus = false,
+    this.focusNode,
   });
 
   @override
@@ -50,8 +62,9 @@ class CivicFixTextField extends StatelessWidget {
         if (label != null) ...[
           Text(
             label!,
-            style: CivicFixTypography.bodySmallMedium.copyWith(
-              color: CivicFixColors.primaryText,
+            style: CivicFixTypographyTokens.labelMd.copyWith(
+              color: CivicFixColors.textPrimary,
+              fontWeight: FontWeight.w600,
             ),
           ),
           CivicFixSpacing.vSpaceSm,
@@ -59,6 +72,7 @@ class CivicFixTextField extends StatelessWidget {
         TextFormField(
           controller: controller,
           initialValue: initialValue,
+          focusNode: focusNode,
           onChanged: onChanged,
           validator: validator,
           keyboardType: keyboardType,
@@ -66,34 +80,59 @@ class CivicFixTextField extends StatelessWidget {
           maxLines: maxLines,
           maxLength: maxLength,
           readOnly: readOnly,
+          enabled: enabled,
           onTap: onTap,
           autofocus: autofocus,
-          style: CivicFixTypography.body,
+          style: CivicFixTypographyTokens.bodyMd.copyWith(
+            color: enabled ? CivicFixColors.textPrimary : CivicFixColors.textDisabled,
+          ),
           decoration: InputDecoration(
             hintText: hintText,
+            helperText: helperText,
             prefixIcon: prefixIcon,
             suffixIcon: suffixIcon,
             filled: true,
-            fillColor: readOnly ? CivicFixColors.background : CivicFixColors.surface,
+            fillColor: readOnly || !enabled
+                ? CivicFixColors.surfaceContainerLow
+                : CivicFixColors.surfaceContainerLowest,
             contentPadding: EdgeInsets.symmetric(
-              horizontal: CivicFixSpacing.lg,
-              vertical: maxLines > 1 ? CivicFixSpacing.md : CivicFixSpacing.md,
+              horizontal: CivicFixSpacing.spaceMd,
+              vertical: maxLines > 1 ? CivicFixSpacing.spaceMd : 10.0,
             ),
-            border: OutlineInputBorder(
-              borderRadius: CivicFixRadius.buttonRadius,
-              borderSide: const BorderSide(color: CivicFixColors.border),
+            hintStyle: CivicFixTypographyTokens.bodyMd.copyWith(
+              color: CivicFixColors.textMuted,
             ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: CivicFixRadius.buttonRadius,
-              borderSide: const BorderSide(color: CivicFixColors.border),
+            helperStyle: CivicFixTypographyTokens.labelSm.copyWith(
+              color: CivicFixColors.textSecondary,
             ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: CivicFixRadius.buttonRadius,
-              borderSide: const BorderSide(color: CivicFixColors.primary, width: 1.8),
+            border: const OutlineInputBorder(
+              borderRadius: CivicFixRadius.inputRadius,
+              borderSide: CivicFixElevation.hairlineBorder,
             ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: CivicFixRadius.buttonRadius,
-              borderSide: const BorderSide(color: CivicFixColors.error),
+            enabledBorder: const OutlineInputBorder(
+              borderRadius: CivicFixRadius.inputRadius,
+              borderSide: CivicFixElevation.hairlineBorder,
+            ),
+            focusedBorder: const OutlineInputBorder(
+              borderRadius: CivicFixRadius.inputRadius,
+              borderSide: BorderSide(
+                color: CivicFixColors.secondaryAuthority,
+                width: 1.5,
+              ),
+            ),
+            errorBorder: const OutlineInputBorder(
+              borderRadius: CivicFixRadius.inputRadius,
+              borderSide: BorderSide(
+                color: CivicFixColors.error,
+                width: 1.0,
+              ),
+            ),
+            focusedErrorBorder: const OutlineInputBorder(
+              borderRadius: CivicFixRadius.inputRadius,
+              borderSide: BorderSide(
+                color: CivicFixColors.error,
+                width: 1.5,
+              ),
             ),
           ),
         ),

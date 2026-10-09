@@ -1,5 +1,6 @@
 import 'dart:async';
 import '../local/mock_data_source.dart';
+import '../map/spatial_chunk.dart';
 import '../models/complaint_model.dart';
 import '../models/hazard_model.dart';
 
@@ -20,6 +21,53 @@ abstract class HazardRepository {
     double radiusKm = 5.0,
   });
 
+  /// Fetches hazards inside specific spatial chunk IDs (e.g. Geohash 5 cells).
+  Future<List<HazardModel>> getHazardsInChunks({
+    required List<String> chunkIds,
+    String? categoryId,
+    ComplaintStatus? status,
+    HazardSeverity? severity,
+    String? searchQuery,
+  }) async {
+    final all = await getHazards(
+      categoryId: categoryId,
+      status: status,
+      severity: severity,
+      searchQuery: searchQuery,
+    );
+    if (chunkIds.isEmpty) return [];
+    final set = chunkIds.toSet();
+    return all.where((h) => set.contains(h.computedSpatialChunkId)).toList();
+  }
+
+  /// Fetches hazards inside visible geographic bounding box with progressive chunk calculation.
+  Future<List<HazardModel>> getHazardsInBounds({
+    required double minLatitude,
+    required double minLongitude,
+    required double maxLatitude,
+    required double maxLongitude,
+    double bufferRatio = 0.25,
+    String? categoryId,
+    ComplaintStatus? status,
+    HazardSeverity? severity,
+    String? searchQuery,
+  }) async {
+    final chunks = GeohashUtils.getChunksForBounds(
+      minLat: minLatitude,
+      minLng: minLongitude,
+      maxLat: maxLatitude,
+      maxLng: maxLongitude,
+      bufferRatio: bufferRatio,
+    );
+    return getHazardsInChunks(
+      chunkIds: chunks,
+      categoryId: categoryId,
+      status: status,
+      severity: severity,
+      searchQuery: searchQuery,
+    );
+  }
+
   // Real-time Streams
   Stream<List<HazardModel>> watchHazards({
     String? categoryId,
@@ -32,7 +80,7 @@ abstract class HazardRepository {
 }
 
 /// In-memory mock implementation of [HazardRepository] for User UI development.
-class MockHazardRepository implements HazardRepository {
+class MockHazardRepository extends HazardRepository {
   static final MockHazardRepository _instance = MockHazardRepository._internal();
   factory MockHazardRepository() => _instance;
   MockHazardRepository._internal();

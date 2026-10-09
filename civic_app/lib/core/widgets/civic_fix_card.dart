@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
-import '../constants/app_colors.dart';
-import '../constants/app_radius.dart';
-import '../constants/app_spacing.dart';
+import '../theme/civicfix_design_tokens.dart';
 
-/// Clean, elevated card container with standard 12px border radius.
+/// Clean, elevated card container adhering to the "Civic Precision" design specification.
+///
+/// Features:
+/// - Pure white surface (`#FFFFFF`) on porcelain canvas
+/// - Architectural 1px hairline border (`#E2E8F0`)
+/// - 8px radius (`CivicFixRadius.card`)
+/// - Optional top accent rule (2px) in burnished gold or custom semantic color for alerts
+/// - Zero hardcoded colors.
 class CivicFixCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
@@ -12,6 +17,9 @@ class CivicFixCard extends StatelessWidget {
   final Color? borderColor;
   final double elevation;
   final double borderRadius;
+  final Color? topAccentColor;
+  final double topAccentHeight;
+  final List<BoxShadow>? customShadow;
 
   const CivicFixCard({
     super.key,
@@ -22,10 +30,31 @@ class CivicFixCard extends StatelessWidget {
     this.borderColor,
     this.elevation = 0,
     this.borderRadius = CivicFixRadius.card,
+    this.topAccentColor,
+    this.topAccentHeight = 2.0,
+    this.customShadow,
   });
+
+  /// Factory constructor for a high-priority / alert card with a burnished gold top accent.
+  factory CivicFixCard.accent({
+    Key? key,
+    required Widget child,
+    EdgeInsetsGeometry padding = CivicFixSpacing.cardPadding,
+    VoidCallback? onTap,
+    Color topAccentColor = CivicFixColors.primaryAccent,
+  }) {
+    return CivicFixCard(
+      key: key,
+      padding: padding,
+      onTap: onTap,
+      topAccentColor: topAccentColor,
+      child: child,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final bg = backgroundColor ?? CivicFixColors.surfaceRaised;
     final border = BorderSide(
       color: borderColor ?? CivicFixColors.border,
       width: 1,
@@ -36,32 +65,61 @@ class CivicFixCard extends StatelessWidget {
       side: border,
     );
 
-    if (onTap != null) {
-      return Card(
-        elevation: elevation,
-        shape: cardShape,
-        color: backgroundColor ?? CivicFixColors.surface,
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(borderRadius),
-          child: Padding(
-            padding: padding,
-            child: child,
-          ),
+    Widget content = child;
+
+    // Optional top accent line for prioritized or pinned national alerts
+    if (topAccentColor != null) {
+      content = ClipRRect(
+        borderRadius: BorderRadius.circular(borderRadius),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              height: topAccentHeight,
+              color: topAccentColor,
+            ),
+            Padding(
+              padding: padding,
+              child: child,
+            ),
+          ],
         ),
+      );
+    } else {
+      content = Padding(
+        padding: padding,
+        child: child,
       );
     }
 
-    return Card(
+    final cardWidget = Material(
+      color: bg,
       elevation: elevation,
+      shadowColor: CivicFixColors.secondaryAuthority,
       shape: cardShape,
-      color: backgroundColor ?? CivicFixColors.surface,
       clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: padding,
-        child: child,
-      ),
+      child: onTap != null
+          ? InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(borderRadius),
+              splashColor: CivicFixColors.surfaceContainerLow,
+              highlightColor: CivicFixColors.surfaceContainer,
+              child: topAccentColor != null ? content : content,
+            )
+          : content,
     );
+
+    if (customShadow != null && customShadow!.isNotEmpty) {
+      return Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(borderRadius),
+          boxShadow: customShadow,
+        ),
+        child: cardWidget,
+      );
+    }
+
+    return cardWidget;
   }
 }

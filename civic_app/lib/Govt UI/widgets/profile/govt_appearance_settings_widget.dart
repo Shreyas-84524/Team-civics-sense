@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_spacing.dart';
 import '../../../../core/constants/app_typography.dart';
+import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/repositories/repository_locator.dart';
 import '../../models/govt_settings_model.dart';
 import '../../services/govt_user_repository.dart';
@@ -39,11 +40,13 @@ class _GovtAppearanceSettingsWidgetState extends State<GovtAppearanceSettingsWid
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
     return ValueListenableBuilder<GovtSettingsModel>(
       valueListenable: _userRepo.settingsListenable,
       builder: (context, settings, _) {
         return DashboardCard(
-          title: 'Display & Workspace Density',
+          title: l10n?.govAppearanceSettings ?? 'Display & Workspace Density',
           subtitle: 'Customize interface contrast and visual density for operational efficiency',
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,

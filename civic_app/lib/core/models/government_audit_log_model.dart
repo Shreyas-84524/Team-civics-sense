@@ -3,13 +3,24 @@ class GovernmentAuditActions {
   GovernmentAuditActions._();
 
   static const String complaintCreated = 'complaint_created';
+  static const String autoRoutedToJuniorEngineer = 'auto_routed_to_junior_engineer';
+  static const String departmentTransferred = 'department_transferred';
+  static const String routingFailed = 'routing_failed';
   static const String reassignmentRequested = 'reassignment_requested';
   static const String reassignmentApproved = 'reassignment_approved';
   static const String reassignmentRejected = 'reassignment_rejected';
   static const String crewAssigned = 'crew_assigned';
+  static const String fieldOfficerAssigned = 'field_officer_assigned';
+  static const String fieldOfficerReassigned = 'field_officer_reassigned';
+  static const String fieldWorkStarted = 'field_work_started';
+  static const String fieldWorkBlocked = 'field_work_blocked';
+  static const String fieldWorkResumed = 'field_work_resumed';
   static const String statusUpdated = 'status_updated';
   static const String resolutionSubmitted = 'resolution_submitted';
   static const String resolutionVerified = 'resolution_verified';
+  static const String complaintResolved = 'complaint_resolved';
+  static const String complaintClosed = 'complaint_closed';
+  static const String complaintReopened = 'complaint_reopened';
   static const String complaintRejected = 'complaint_rejected';
   static const String adminOverride = 'admin_override';
 }

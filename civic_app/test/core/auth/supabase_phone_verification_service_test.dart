@@ -116,7 +116,7 @@ void main() {
       expect(result.errorCode, equals('PHONE_ALREADY_REGISTERED'));
       expect(
         result.message,
-        equals('This phone number is already associated with another CivicFix account.'),
+        equals('This phone number is already linked to another CivicFix account.'),
       );
     });
 
@@ -213,7 +213,7 @@ void main() {
 
       final r1 = await service.sendOtp(testPhone);
       expect(r1.errorCode, equals('SMS_GATEWAY_NOT_CONFIGURED'));
-      expect(r1.message, contains('SMS gateway service is temporarily unavailable'));
+      expect(r1.message, contains('Verification service is temporarily unavailable'));
 
       final r2 = await service.sendOtp(testPhone);
       expect(r2.errorCode, equals('GATEWAY_DELIVERY_FAILED'));
@@ -247,7 +247,21 @@ void main() {
       final networkResult = await service2.sendOtp(testPhone);
       expect(networkResult.isSuccess, isFalse);
       expect(networkResult.errorCode, equals('NETWORK_ERROR'));
-      expect(networkResult.message, contains('Network connection issue'));
+      expect(networkResult.message, contains('No internet connection'));
+
+      final bootErrorClient = MockClient((request) async {
+        throw http.ClientException('503 Service Unavailable: BOOT_ERROR');
+      });
+
+      final service3 = SupabasePhoneVerificationService(
+        client: bootErrorClient,
+        tokenProvider: () async => testToken,
+      );
+
+      final bootResult = await service3.sendOtp(testPhone);
+      expect(bootResult.isSuccess, isFalse);
+      expect(bootResult.errorCode, equals('NETWORK_ERROR'));
+      expect(bootResult.message, contains('Verification service is temporarily unavailable'));
     });
   });
 

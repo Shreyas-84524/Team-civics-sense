@@ -1,0 +1,678 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =========================================================================
+    // ASSUMED DATA MODEL & ARCHITECTURE: PHASE 2 & PHASE 3 BMC GOVERNMENT MATRIX
+    // =========================================================================
+    //
+    // Collections:
+    // 1. users/{userId}
+    //    - role: 'citizen' (immutable by client)
+    //    - fullName: string (1-100)
+    //    - email: string
+    //    - civicPoints: int (0 or 20 upon registration, server-authoritative)
+    //    - reportsSubmitted: int (0 initially)
+    //    - reportsResolved: int (0 initially)
+    //    - phoneVerified: bool (server-authoritative)
+    //    - phoneVerifiedAt: timestamp (server-authoritative)
+    //    - Subcollection: devices/{deviceId} (FCM tokens, owner read/write)
+    //
+    // 2. government_users/{userId}
+    //    - role: 'government_super_admin' | 'zonal_dmc' | 'central_department_hod' |
+    //            'ward_officer' | 'ward_department_lead' | 'department_crew'
+    //    - employeeId: string
+    //    - fullName: string
+    //    - email: string
+    //    - phone: string
+    //    - wardId: string (optional)
+    //    - zoneId: string (optional)
+    //    - departmentId: string (optional)
+    //    - active: bool
+    //    - permissions: list of string
+    //
+    // 3. complaints/{complaintId}
+    //    - citizenId: string (immutable owner UID)
+    //    - ticketNumber: string (immutable)
+    //    - title: string (1-200)
+    //    - description: string (1-2000)
+    //    - status: 'underVerification' | 'reported' | 'verified' | 'assigned' | 'inProgress' | 'resolved' | 'closed' | 'rejected'
+    //    - priority: 'low' | 'medium' | 'high' | 'emergency'
+    //    - location: map (latitude, longitude, address)
+    //    - createdAt: timestamp (immutable)
+    //    - updatedAt: timestamp
+    //    - originalCreatedAt: timestamp (strictly immutable)
+    //    - slaStartedAt: timestamp (strictly immutable)
+    //    - assignedDepartmentId: string (optional)
+    //    - assignedDepartmentLeadId: string (optional)
+    //    - assignedCrewMemberId: string (optional)
+    //    - routingStatus: string (optional)
+    //    - evidenceVerificationStatus: 'pending' | 'authentic' | 'suspicious' | 'inconclusive' (server-authoritative)
+    //    - departmentVerificationStatus: 'pending' | 'confirmed' | 'mismatch' (server-authoritative)
+    //    - verificationStage: 'evidence' | 'department' | 'completed' | 'failed' (server-authoritative)
+    //    - verifiedDepartmentId: string (optional, server-authoritative)
+    //    - verifiedDepartmentName: string (optional, server-authoritative)
+    //    - evidenceVerificationStartedAt: timestamp (optional, server-authoritative)
+    //    - evidenceVerificationCompletedAt: timestamp (optional, server-authoritative)
+    //    - departmentVerificationStartedAt: timestamp (optional, server-authoritative)
+    //    - departmentVerificationCompletedAt: timestamp (optional, server-authoritative)
+    //    - verificationCompletedAt: timestamp (optional, server-authoritative)
+    //    - verificationFailureReason: string (optional, server-authoritative)
+    //    - citizenSafeVerificationMessage: string (optional, server-authoritative)
+    //    - aiAuthenticity: map (optional, server-authoritative)
+    //    - aiAnalysisStatus: string (optional, server-authoritative)
+    //    - closedAt: timestamp (optional, server-authoritative)
+    //    - closedBy: string (optional, server-authoritative)
+    //    - closureRemarks: string (optional, server-authoritative)
+    //    - reopenedAt: timestamp (optional, server-authoritative)
+    //    - reopenedBy: string (optional, server-authoritative)
+    //    - reopenReason: string (optional, server-authoritative)
+    //    - previousResolvedAt: timestamp (optional, server-authoritative)
+    //    - previousResolutionEvidence: list of string (optional, server-authoritative)
+    //    - reopenCount: int (optional, server-authoritative)
+    //    - Subcollections:
+    //      - complaint_updates/{updateId} (immutable audit timeline)
+    //      - updates/{updateId} (legacy timeline alias)
+    //      - upvotes/{userId} (citizen upvote tracking)
+    //
+    // 4. zones/{zoneId}
+    //    - zoneId: string (Zone 1 through Zone 7)
+    //    - name: string
+    //    - administrativeOffice: string
+    //
+    // 5. wards/{wardId}
+    //    - wardId: string (Ward A through Ward T)
+    //    - zoneId: string
+    //    - name: string
+    //    - officeAddress: string
+    //
+    // 6. departments/{departmentId}
+    //    - departmentId: string (18 BMC civic departments)
+    //    - name: string
+    //    - displayName: string
+    //
+    // 7. ward_departments/{wardDeptId}
+    //    - wardId: string
+    //    - departmentId: string
+    //    - departmentLeadId: string
+    //    - crewIds: list of string
+    //
+    // 8. complaint_routing_tickets/{ticketId}
+    //    - complaintId: string (immutable)
+    //    - ticketNumber: string (immutable)
+    //    - wardId: string (immutable)
+    //    - sourceDepartmentId: string (immutable)
+    //    - sourceLeadId: string (immutable)
+    //    - suggestedDepartmentId: string (immutable)
+    //    - reason: string (immutable)
+    //    - status: 'pending' -> 'approved' | 'rejected' | 'cancelled'
+    //    - reviewedBy: string (optional)
+    //    - reviewNotes: string (optional)
+    //    - createdAt: timestamp (immutable)
+    //    - reviewedAt: timestamp (optional)
+    //
+    // 9. government_audit_logs/{logId}
+    //    - complaintId: string
+    //    - action: string
+    //    - actorId: string
+    //    - actorRole: string
+    //    - actorName: string
+    //    - wardId: string (optional)
+    //    - departmentId: string (optional)
+    //    - details: map
+    //    - timestamp: timestamp
+    //
+    // 10. notifications/{notificationId}
+    //     - userId: string (owner UID)
+    //     - isRead: bool
+    //
+    // 11. rewards/{userId}
+    //     - Server-authoritative gamification points and rewards catalog
+    //
+    // 12. hazards/{hazardId}
+    //     - complaintId: string
+    //     - title: string
+    //     - latitude: number
+    //     - longitude: number
+    //     - severity: 'low' | 'medium' | 'high' | 'critical'
+    //     - upvotes: int
+    //
+    // 13. phoneIndex/{phone}
+    //     - Server-authoritative uniqueness index (read/write: false)
+    // =========================================================================
+
+    // =========================================================================
+    // AUTHENTICATION & ROLE HELPER FUNCTIONS
+    // =========================================================================
+
+    /// Checks if the request is from an authenticated user.
+    function isSignedIn() {
+      return request.auth != null && request.auth.uid != null;
+    }
+
+    /// Checks if the authenticated user matches the specified user ID.
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /// Checks if a given role string is a recognized Phase 2 BMC government role or legacy role.
+    function isGovernmentRole(role) {
+      return role in [
+        'government',
+        'government_super_admin',
+        'zonal_dmc',
+        'central_department_hod',
+        'ward_officer',
+        'ward_department_lead',
+        'department_crew'
+      ];
+    }
+
+    /// Resolves the user's role from auth token custom claims first, falling back to user documents.
+    function userRole() {
+      return request.auth.token.role != null
+        ? request.auth.token.role
+        : (exists(/databases/$(database)/documents/users/$(request.auth.uid))
+            ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
+            : (exists(/databases/$(database)/documents/government_users/$(request.auth.uid))
+                ? get(/databases/$(database)/documents/government_users/$(request.auth.uid)).data.role
+                : 'citizen'));
+    }
+
+    /// Checks if the user has the citizen role.
+    function isCitizen() {
+      return isSignedIn() && userRole() == 'citizen';
+    }
+
+    /// Checks if the user is an authorized government officer across any hierarchical tier.
+    function isGovernment() {
+      return isSignedIn() && (
+        (request.auth.token.role != null && isGovernmentRole(request.auth.token.role)) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         isGovernmentRole(get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role)) ||
+        (exists(/databases/$(database)/documents/government_users/$(request.auth.uid)) &&
+         isGovernmentRole(get(/databases/$(database)/documents/government_users/$(request.auth.uid)).data.role))
+      );
+    }
+
+    /// Checks if the authenticated user has the apex super admin role.
+    function isSuperAdmin() {
+      return isSignedIn() && request.auth.token.role == 'government_super_admin';
+    }
+
+    // =========================================================================
+    // VALIDATION HELPER FUNCTIONS
+    // =========================================================================
+
+    /// Validates allowed complaint status values across all lifecycle phases.
+    function isValidStatus(status) {
+      return status in [
+        'underVerification',
+        'reported',
+        'verified',
+        'assigned',
+        'inProgress',
+        'resolved',
+        'closed',
+        'rejected'
+      ];
+    }
+
+    /// Validates allowed complaint priority values.
+    function isValidPriority(priority) {
+      return priority in ['low', 'medium', 'high', 'emergency'];
+    }
+
+    /// Validates allowed hazard severity values.
+    function isValidSeverity(severity) {
+      return severity in ['low', 'medium', 'high', 'critical'];
+    }
+
+    /// Validates structured geographic location map.
+    function isValidLocation(loc) {
+      return loc is map &&
+        loc.latitude is number &&
+        loc.longitude is number &&
+        loc.address is string &&
+        loc.latitude >= -90.0 && loc.latitude <= 90.0 &&
+        loc.longitude >= -180.0 && loc.longitude <= 180.0;
+    }
+
+    // =========================================================================
+    // 1. USERS COLLECTION (users/{userId})
+    // =========================================================================
+    match /users/{userId} {
+      // A user can read their own profile; government personnel can read for routing/audit
+      allow read: if isSignedIn() && (isOwner(userId) || isGovernment());
+
+      // Citizen registration: cannot self-assign government role or verified phone, points initialized safely
+      allow create: if isOwner(userId) &&
+        request.resource.data.role == 'citizen' &&
+        (!('phoneVerified' in request.resource.data) || request.resource.data.phoneVerified == false) &&
+        request.resource.data.fullName is string &&
+        request.resource.data.fullName.size() > 0 &&
+        request.resource.data.fullName.size() <= 100 &&
+        request.resource.data.email is string &&
+        request.resource.data.civicPoints in [0, 20] &&
+        request.resource.data.reportsSubmitted == 0 &&
+        request.resource.data.reportsResolved == 0;
+
+      // Profile updates: strictly prevents privilege escalation, modifying authoritative counters, or self-verifying phone
+      allow update: if isOwner(userId) &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'role',
+          'civicPoints',
+          'reportsSubmitted',
+          'reportsResolved',
+          'badges',
+          'employeeId',
+          'departmentId',
+          'permissions',
+          'organization',
+          'createdAt',
+          'phoneVerified',
+          'phoneVerifiedAt'
+        ]);
+
+      // Users cannot be hard-deleted from client apps
+      allow delete: if false;
+
+      // =======================================================================
+      // 1.1 USER DEVICES SUBCOLLECTION (users/{userId}/devices/{deviceId})
+      // =======================================================================
+      match /devices/{deviceId} {
+        // Authenticated user can read, create, update, and delete their own FCM device tokens
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // =========================================================================
+    // 2. GOVERNMENT USERS COLLECTION (government_users/{userId})
+    // =========================================================================
+    match /government_users/{userId} {
+      // Government personnel can read officer profiles; officers can read their own profile
+      allow read: if isSignedIn() && (isGovernment() || isOwner(userId));
+
+      // Government user profiles and permissions can only be provisioned/updated by Super Admin
+      allow write: if isSignedIn() && request.auth.token.role == 'government_super_admin';
+    }
+
+    // =========================================================================
+    // 3. COMPLAINTS COLLECTION (complaints/{complaintId})
+    // =========================================================================
+    match /complaints/{complaintId} {
+      // Citizen can read their own; government can read all; public can read active hazard complaints
+      allow read: if isSignedIn() && (
+        resource.data.citizenId == request.auth.uid ||
+        isGovernment() ||
+        resource.data.isHazard == true
+      );
+
+      // Citizen complaint filing: initial status can be 'underVerification' or 'reported' (backwards compatible)
+      allow create: if isSignedIn() &&
+        request.resource.data.citizenId == request.auth.uid &&
+        request.resource.data.title is string &&
+        request.resource.data.title.size() > 0 &&
+        request.resource.data.title.size() <= 200 &&
+        request.resource.data.description is string &&
+        request.resource.data.description.size() <= 2000 &&
+        isValidStatus(request.resource.data.status) &&
+        request.resource.data.status in ['underVerification', 'reported'] &&
+        isValidPriority(request.resource.data.priority) &&
+        isValidLocation(request.resource.data.location) &&
+        request.resource.data.upvotes == 0 &&
+        request.resource.data.assignedTo == null &&
+        request.resource.data.departmentId == null &&
+        request.resource.data.assignedCrewMemberId == null &&
+        request.resource.data.resolvedAt == null;
+
+      // Complaint modifications
+      allow update: if isSignedIn() && (
+        // Case A: Citizen upvoting
+        (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['upvotes', 'updatedAt']) &&
+          request.resource.data.upvotes == resource.data.upvotes + 1 &&
+          !exists(/databases/$(database)/documents/complaints/$(complaintId)/upvotes/$(request.auth.uid)) &&
+          existsAfter(/databases/$(database)/documents/complaints/$(complaintId)/upvotes/$(request.auth.uid)) &&
+          getAfter(/databases/$(database)/documents/complaints/$(complaintId)/upvotes/$(request.auth.uid)).data.userId == request.auth.uid
+        ) ||
+        // Case B: Citizen author editing details before work begins (restricted from touching server-authoritative/AI/workflow keys)
+        (
+          isOwner(resource.data.citizenId) &&
+          resource.data.status in ['reported', 'underVerification', 'verified'] &&
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+            'citizenId',
+            'ticketNumber',
+            'status',
+            'assignedTo',
+            'departmentId',
+            'departmentName',
+            'resolvedAt',
+            'officerNotes',
+            'createdAt',
+            'originalCreatedAt',
+            'slaStartedAt',
+            'evidenceVerificationStatus',
+            'departmentVerificationStatus',
+            'verificationStage',
+            'verifiedDepartmentId',
+            'verifiedDepartmentName',
+            'evidenceVerificationStartedAt',
+            'evidenceVerificationCompletedAt',
+            'departmentVerificationStartedAt',
+            'departmentVerificationCompletedAt',
+            'verificationCompletedAt',
+            'verificationFailureReason',
+            'citizenSafeVerificationMessage',
+            'aiAuthenticity',
+            'aiAnalysisStatus',
+            'closedAt',
+            'closedBy',
+            'closureRemarks',
+            'wardId',
+            'assignedDepartmentId',
+            'assignedDepartmentLeadId',
+            'assignedCrewMemberId',
+            'routingStatus',
+            'assignmentStatus',
+            'currentDepartmentAssignedAt',
+            'lastReassignedAt',
+            'reassignmentCount',
+            'assignedJuniorEngineerNameSnapshot',
+            'assignedJuniorEngineerDesignationSnapshot',
+            'assignedFieldOfficerId',
+            'assignedFieldOfficerAt',
+            'assignedFieldOfficerNameSnapshot',
+            'assignedFieldOfficerDesignationSnapshot',
+            'workStartedAt',
+            'workStartedBy',
+            'beforeWorkPhoto',
+            'beforeWorkNotes',
+            'afterWorkPhoto',
+            'resolutionRemarks',
+            'resolvedBy',
+            'blockedAt',
+            'blockedBy',
+            'blockedReason',
+            'reopenedAt',
+            'reopenedBy',
+            'reopenReason',
+            'previousResolvedAt',
+            'previousResolutionEvidence',
+            'reopenCount'
+          ])
+        ) ||
+        // Case C: Government officer updating workflow, status (including closed & reopened), assignment, routing, resolution, and notes
+        // Strict Invariant: citizenId, ticketNumber, createdAt, originalCreatedAt, slaStartedAt are strictly immutable
+        (
+          isGovernment() &&
+          isValidStatus(request.resource.data.status) &&
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+            'citizenId',
+            'ticketNumber',
+            'createdAt',
+            'originalCreatedAt',
+            'slaStartedAt'
+          ])
+        )
+      );
+
+      // Complaints cannot be deleted by standard citizens
+      allow delete: if isGovernment();
+
+      // =======================================================================
+      // 3.1 COMPLAINT UPDATES (complaints/{complaintId}/complaint_updates/{updateId})
+      // Canonical subcollection for all timeline audit events and status changes
+      // =======================================================================
+      match /complaint_updates/{updateId} {
+        // Read timeline: complaint owner or government personnel
+        allow read: if isSignedIn() && (
+          (exists(/databases/$(database)/documents/complaints/$(complaintId)) &&
+           get(/databases/$(database)/documents/complaints/$(complaintId)).data.citizenId == request.auth.uid) ||
+          isGovernment()
+        );
+
+        // Timeline entry creation:
+        // - Initial report update created by citizen upon submission (atomic with parent complaint, allows 'underVerification' or 'reported')
+        // - Subsequent status updates created strictly by authorized government officers
+        allow create: if isSignedIn() && (
+          (
+            request.resource.data.status in ['underVerification', 'reported'] &&
+            request.resource.data.updatedBy == request.auth.uid &&
+            (
+              (
+                exists(/databases/$(database)/documents/complaints/$(complaintId)) &&
+                get(/databases/$(database)/documents/complaints/$(complaintId)).data.citizenId == request.auth.uid
+              ) ||
+              (
+                existsAfter(/databases/$(database)/documents/complaints/$(complaintId)) &&
+                getAfter(/databases/$(database)/documents/complaints/$(complaintId)).data.citizenId == request.auth.uid
+              )
+            )
+          ) ||
+          (
+            isGovernment() &&
+            request.resource.data.updatedBy is string &&
+            isValidStatus(request.resource.data.status)
+          )
+        );
+
+        // Timeline events are immutable audit entries
+        allow update: if false;
+        allow delete: if false;
+      }
+
+      // Legacy subcollection compatibility (/updates/{updateId})
+      match /updates/{updateId} {
+        allow read: if isSignedIn() && (
+          (exists(/databases/$(database)/documents/complaints/$(complaintId)) &&
+           get(/databases/$(database)/documents/complaints/$(complaintId)).data.citizenId == request.auth.uid) ||
+          isGovernment()
+        );
+        allow create: if isSignedIn() && (
+          (
+            request.resource.data.status in ['underVerification', 'reported'] &&
+            request.resource.data.updatedBy == request.auth.uid &&
+            (
+              (
+                exists(/databases/$(database)/documents/complaints/$(complaintId)) &&
+                get(/databases/$(database)/documents/complaints/$(complaintId)).data.citizenId == request.auth.uid
+              ) ||
+              (
+                existsAfter(/databases/$(database)/documents/complaints/$(complaintId)) &&
+                getAfter(/databases/$(database)/documents/complaints/$(complaintId)).data.citizenId == request.auth.uid
+              )
+            )
+          ) ||
+          (
+            isGovernment() &&
+            request.resource.data.updatedBy is string &&
+            isValidStatus(request.resource.data.status)
+          )
+        );
+        allow update: if false;
+        allow delete: if false;
+      }
+
+      // =======================================================================
+      // 3.2 COMPLAINT UPVOTES (complaints/{complaintId}/upvotes/{userId})
+      // =======================================================================
+      match /upvotes/{userId} {
+        // Authenticated users can read upvotes
+        allow read: if isSignedIn();
+        // A citizen can create exactly one immutable upvote record. Deleting
+        // and recreating it would otherwise allow the count to be inflated.
+        allow create: if isOwner(userId) &&
+          request.resource.data.keys().hasOnly(['userId', 'timestamp']) &&
+          request.resource.data.userId == request.auth.uid;
+        allow delete: if false;
+        allow update: if false;
+      }
+    }
+
+    // =========================================================================
+    // 4. BMC ZONES COLLECTION (zones/{zoneId})
+    // =========================================================================
+    match /zones/{zoneId} {
+      // Authenticated users can read BMC zone topology
+      allow read: if isSignedIn();
+
+      // Administrative reference metadata: Super Admin managed
+      allow write: if isSignedIn() && request.auth.token.role == 'government_super_admin';
+    }
+
+    // =========================================================================
+    // 5. BMC WARDS COLLECTION (wards/{wardId})
+    // =========================================================================
+    match /wards/{wardId} {
+      // Authenticated users can read BMC ward definitions
+      allow read: if isSignedIn();
+
+      // Administrative reference metadata: Super Admin managed
+      allow write: if isSignedIn() && request.auth.token.role == 'government_super_admin';
+    }
+
+    // =========================================================================
+    // 6. DEPARTMENTS COLLECTION (departments/{departmentId})
+    // =========================================================================
+    match /departments/{departmentId} {
+      // Authenticated users (citizens & govt) can read department metadata
+      allow read: if isSignedIn();
+
+      // Department configuration is server/admin managed (super admin only)
+      allow write: if isSignedIn() && request.auth.token.role == 'government_super_admin';
+    }
+
+    // =========================================================================
+    // 7. BMC WARD DEPARTMENTS (ward_departments/{wardDeptId})
+    // =========================================================================
+    match /ward_departments/{wardDeptId} {
+      // Authenticated users can read ward-department operational units
+      allow read: if isSignedIn();
+
+      // Administrative reference metadata: Super Admin managed
+      allow write: if isSignedIn() && request.auth.token.role == 'government_super_admin';
+    }
+
+    // =========================================================================
+    // 8. COMPLAINT ROUTING TICKETS (complaint_routing_tickets/{ticketId})
+    // =========================================================================
+    match /complaint_routing_tickets/{ticketId} {
+      // Read: authorized government personnel only
+      allow read: if isSignedIn() && isGovernment();
+
+      // Create: Ward Department Leads / Government officers raising reassignment tickets with pending status
+      allow create: if isSignedIn() &&
+        isGovernment() &&
+        request.resource.data.status == 'pending';
+
+      // Update: Ward Officer of the ward, Super Admin, or legacy government role reviewing pending tickets
+      allow update: if isSignedIn() &&
+        isGovernment() &&
+        (
+          request.auth.token.role == 'government_super_admin' ||
+          (request.auth.token.role == 'ward_officer' && (
+            !('wardId' in request.auth.token) ||
+            request.auth.token.wardId == null ||
+            request.auth.token.wardId == resource.data.wardId
+          )) ||
+          request.auth.token.role == 'government'
+        ) &&
+        resource.data.status == 'pending' &&
+        request.resource.data.status in ['approved', 'rejected', 'cancelled'];
+
+      // Deletion is strictly prohibited (immutable audit history)
+      allow delete: if false;
+    }
+
+    // =========================================================================
+    // 9. GOVERNMENT AUDIT LOGS (government_audit_logs/{logId})
+    // =========================================================================
+    match /government_audit_logs/{logId} {
+      // Read: authorized government personnel only
+      allow read: if isSignedIn() && isGovernment();
+
+      // Create: authorized government personnel logging administrative actions
+      allow create: if isSignedIn() && isGovernment();
+
+      // Update / Delete: strictly prohibited to guarantee tamper-proof audit trail
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // =========================================================================
+    // 10. NOTIFICATIONS COLLECTION (notifications/{notificationId})
+    // =========================================================================
+    match /notifications/{notificationId} {
+      // Users can only access their own notifications
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+
+      // Notifications are created server-side via trusted Cloud Functions
+      allow create: if false;
+
+      // Users can only update the read status (isRead) of their own notifications
+      allow update: if isSignedIn() &&
+        resource.data.userId == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']) &&
+        request.resource.data.isRead is bool;
+
+      // Users can dismiss/delete their own notifications
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // =========================================================================
+    // 11. REWARDS COLLECTION (rewards/{userId})
+    // =========================================================================
+    match /rewards/{userId} {
+      // Citizens can only view their own rewards and achievements
+      allow read: if isOwner(userId);
+
+      // Rewards and gamification points are strictly server-authoritative
+      allow write: if false;
+    }
+
+    // =========================================================================
+    // 12. HAZARDS COLLECTION (hazards/{hazardId})
+    // =========================================================================
+    match /hazards/{hazardId} {
+      // Live Hazard Map: all authenticated users can read sanitized hazard points (no citizen PII)
+      allow read: if isSignedIn();
+
+      // Creation: linked to an existing valid complaint created by the user or government
+      allow create: if isSignedIn() &&
+        request.resource.data.complaintId is string &&
+        request.resource.data.title is string &&
+        request.resource.data.latitude is number &&
+        request.resource.data.longitude is number &&
+        isValidSeverity(request.resource.data.severity) &&
+        request.resource.data.upvotes == 0 &&
+        (
+          (exists(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)) &&
+           get(/databases/$(database)/documents/complaints/$(request.resource.data.complaintId)).data.citizenId == request.auth.uid) ||
+          isGovernment()
+        );
+
+      // Upvoting hazard on map or government status update
+      allow update: if isSignedIn() && (
+        (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['upvotes', 'updatedAt']) &&
+          request.resource.data.upvotes == resource.data.upvotes + 1
+        ) ||
+        isGovernment()
+      );
+
+      // Deletion: government personnel only
+      allow delete: if isGovernment();
+    }
+
+    // =========================================================================
+    // 13. PHONE INDEX COLLECTION (phoneIndex/{phone})
+    // =========================================================================
+    match /phoneIndex/{phone} {
+      // Strictly server-authoritative via Cloud Functions Admin SDK.
+      // Direct client read or write is prohibited to protect citizen privacy and enforce uniqueness.
+      allow read, write: if false;
+    }
+  }
+}

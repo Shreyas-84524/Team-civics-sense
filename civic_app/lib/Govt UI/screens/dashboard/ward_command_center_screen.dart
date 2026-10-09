@@ -12,8 +12,6 @@ import '../../widgets/common/government_app_shell.dart';
 import '../../widgets/common/government_filter_bar.dart';
 import '../../widgets/common/government_page_header.dart';
 import '../../widgets/common/govt_breadcrumbs.dart';
-import '../../widgets/common/govt_jurisdiction_badge.dart';
-import '../../widgets/common/govt_role_badge.dart';
 import '../auth/government_access_denied_screen.dart';
 import '../../widgets/dashboard/sections/ward/ward_attention_section.dart';
 import '../../widgets/dashboard/sections/ward/ward_complaint_queue_section.dart';
@@ -210,8 +208,6 @@ class _WardCommandCenterScreenState extends State<WardCommandCenterScreen> {
 
     final wardCode = _dashboardData?.ward.wardCode ?? _resolveWardId();
     final wardName = _dashboardData?.ward.wardName ?? '$wardCode Ward';
-    final deptCount = _dashboardData?.allDepartments.length ?? 18;
-    final crewCount = _dashboardData?.personnelSummary.crewCount ?? 90;
 
     const breadcrumbs = [
       GovtBreadcrumbItem(label: 'Home', route: AppRoutes.governmentWard),
@@ -257,22 +253,12 @@ class _WardCommandCenterScreenState extends State<WardCommandCenterScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Page Header with Badges and Refresh Action
+              // Page Header with Refresh Action
               GovernmentPageHeader(
                 title: '$wardName Command Center',
                 subtitle:
                     'Administrative oversight of CivicFix operations across all municipal departments in this ward.',
                 breadcrumbs: breadcrumbs,
-                jurisdictionBadge: Wrap(
-                  spacing: 6,
-                  runSpacing: 4,
-                  children: [
-                    GovtJurisdictionBadge.ward(wardCode, isCompact: true),
-                    GovtJurisdictionBadge.department('$deptCount DEPARTMENTS', isCompact: true),
-                    GovtJurisdictionBadge.role('$crewCount CREW', isCompact: true),
-                  ],
-                ),
-                statusWidget: GovtRoleBadge(role: activeUser.govtRole),
                 primaryAction: ElevatedButton.icon(
                   onPressed: _isLoading ? null : _loadDashboard,
                   icon: _isLoading

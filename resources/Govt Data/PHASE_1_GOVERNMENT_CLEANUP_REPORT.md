@@ -10,11 +10,11 @@
 ## 1. Old Roles Found
 
 The legacy government architecture utilized a 5-tier municipal officer model:
-1. **`Admin` (`admin`)**: Municipal Commissioner & Administrator (1 account: `Dr. Bhushan Gagrani, IAS`, UID: `MUMHQ00001`, password: `mum_admin`).
-2. **`Ward Officer` (`ward_officer`)**: Assistant Municipal Commissioners (24 accounts: 1 per ward for Wards A–T, password: `mum_wardoff`).
-3. **`Ward Nagarsevak` (`nagarsevak`)**: Municipal Corporators (24 accounts: 1 per ward, password: `mum_nagarsevak`).
-4. **`Departmental Officer` (`dept_officer`)**: Departmental Nodal Officers (168 accounts: 24 wards $\times$ 7 departments, password: `mum_dept`).
-5. **`Field Engineer` (`engineer`)**: On-field inspection & maintenance engineers (840 accounts: 24 wards $\times$ 7 departments $\times$ 5 engineers, password: `mum_engg`).
+1. **`Admin` (`admin`)**: Municipal Commissioner & Administrator (1 account: `Dr. Bhushan Gagrani, IAS`, UID: `MUMHQ00001`, password: `[REDACTED_PURGED]`).
+2. **`Ward Officer` (`ward_officer`)**: Assistant Municipal Commissioners (24 accounts: 1 per ward for Wards A–T, password: `[REDACTED_PURGED]`).
+3. **`Ward Nagarsevak` (`nagarsevak`)**: Municipal Corporators (24 accounts: 1 per ward, password: `[REDACTED_PURGED]`).
+4. **`Departmental Officer` (`dept_officer`)**: Departmental Nodal Officers (168 accounts: 24 wards $\times$ 7 departments, password: `[REDACTED_PURGED]`).
+5. **`Field Engineer` (`engineer`)**: On-field inspection & maintenance engineers (840 accounts: 24 wards $\times$ 7 departments $\times$ 5 engineers, password: `[REDACTED_PURGED]`).
 
 **Total Legacy Government Roster:** 1,057 personnel across 24 wards and 7 technical departments.
 

@@ -9,6 +9,7 @@ import 'govt_loading_states.dart';
 class GovtDataColumn {
   final String label;
   final double? width;
+  final double flex;
   final bool isNumeric;
   final Alignment alignment;
   final bool isSortable;
@@ -17,6 +18,7 @@ class GovtDataColumn {
   const GovtDataColumn({
     required this.label,
     this.width,
+    this.flex = 1.0,
     this.isNumeric = false,
     this.alignment = Alignment.centerLeft,
     this.isSortable = false,
@@ -156,19 +158,30 @@ class GovernmentDataTable extends StatelessWidget {
     final cellPaddingVertical = isDense ? 6.0 : 10.0;
     final cellPaddingHorizontal = isDense ? CivicFixSpacing.xs + 2 : CivicFixSpacing.sm;
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(minWidth: minWidth),
-        child: Table(
-          defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-          columnWidths: {
-            if (selectable) 0: const FixedColumnWidth(48.0),
-            for (int i = 0; i < columns.length; i++)
-              (selectable ? i + 1 : i): columns[i].width != null
-                  ? FixedColumnWidth(columns[i].width!)
-                  : const IntrinsicColumnWidth(),
-          },
+    double totalExplicitWidth = selectable ? 48.0 : 0.0;
+    for (final col in columns) {
+      totalExplicitWidth += (col.width ?? 120.0);
+    }
+    final effectiveMinWidth = minWidth > totalExplicitWidth ? minWidth : totalExplicitWidth;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableWidth = constraints.maxWidth.isFinite && constraints.maxWidth > 0
+            ? constraints.maxWidth
+            : effectiveMinWidth;
+        final targetWidth = availableWidth > effectiveMinWidth ? availableWidth : effectiveMinWidth;
+
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: SizedBox(
+            width: targetWidth,
+            child: Table(
+              defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+              columnWidths: {
+                if (selectable) 0: const FixedColumnWidth(48.0),
+                for (int i = 0; i < columns.length; i++)
+                  (selectable ? i + 1 : i): FlexColumnWidth(columns[i].width ?? columns[i].flex),
+              },
           children: [
             // Header Row
             TableRow(
@@ -297,7 +310,9 @@ class GovernmentDataTable extends StatelessWidget {
         ),
       ),
     );
-  }
+  },
+);
+}
 
   Widget _buildPaginationFooter() {
     final startItem = totalCount == 0 ? 0 : ((currentPage - 1) * pageSize) + 1;

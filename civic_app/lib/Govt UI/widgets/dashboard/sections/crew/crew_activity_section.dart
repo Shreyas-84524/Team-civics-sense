@@ -8,10 +8,7 @@ import '../../../../theme/govt_theme_tokens.dart';
 class CrewActivitySection extends StatelessWidget {
   final List<GovernmentAuditLog> auditLogs;
 
-  const CrewActivitySection({
-    super.key,
-    required this.auditLogs,
-  });
+  const CrewActivitySection({super.key, required this.auditLogs});
 
   @override
   Widget build(BuildContext context) {
@@ -100,83 +97,84 @@ class CrewActivitySection extends StatelessWidget {
               border: Border.all(color: GovtThemeTokens.border),
               boxShadow: GovtThemeTokens.cardShadow,
             ),
-            child: ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: auditLogs.length,
-              separatorBuilder: (context, index) =>
-                  const Divider(color: GovtThemeTokens.divider, height: 1),
-              itemBuilder: (context, index) {
-                final log = auditLogs[index];
-                return Padding(
-                  padding: const EdgeInsets.all(CivicFixSpacing.md),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: _getActionColor(log.action).withValues(alpha: 0.1),
-                          shape: BoxShape.circle,
+            child: Column(
+              children: [
+                for (int i = 0; i < auditLogs.length; i++) ...[
+                  if (i > 0)
+                    const Divider(color: GovtThemeTokens.divider, height: 1),
+                  Padding(
+                    padding: const EdgeInsets.all(CivicFixSpacing.md),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: _getActionColor(
+                              auditLogs[i].action,
+                            ).withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            _getActionIcon(auditLogs[i].action),
+                            size: 16,
+                            color: _getActionColor(auditLogs[i].action),
+                          ),
                         ),
-                        child: Icon(
-                          _getActionIcon(log.action),
-                          size: 16,
-                          color: _getActionColor(log.action),
-                        ),
-                      ),
-                      CivicFixSpacing.hSpaceMd,
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Text(
-                                  _formatActionLabel(log.action),
-                                  style: CivicFixTypography.captionMedium.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                    color: GovtThemeTokens.textPrimary,
+                        CivicFixSpacing.hSpaceMd,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(
+                                    _formatActionLabel(auditLogs[i].action),
+                                    style: CivicFixTypography.captionMedium
+                                        .copyWith(
+                                          fontWeight: FontWeight.w700,
+                                          color: GovtThemeTokens.textPrimary,
+                                        ),
                                   ),
+                                  const Spacer(),
+                                  Text(
+                                    '${auditLogs[i].timestamp.day}/${auditLogs[i].timestamp.month} ${auditLogs[i].timestamp.hour}:${auditLogs[i].timestamp.minute.toString().padLeft(2, '0')}',
+                                    style: CivicFixTypography.caption.copyWith(
+                                      color: GovtThemeTokens.textMuted,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              CivicFixSpacing.vSpaceXs,
+                              Text(
+                                'Grievance ID: ${auditLogs[i].complaintId} · Actor: ${auditLogs[i].actorName} (${auditLogs[i].actorRole})',
+                                style: CivicFixTypography.caption.copyWith(
+                                  color: GovtThemeTokens.textSecondary,
                                 ),
-                                const Spacer(),
+                              ),
+                              if (auditLogs[i].details.isNotEmpty) ...[
+                                CivicFixSpacing.vSpaceXs,
                                 Text(
-                                  '${log.timestamp.day}/${log.timestamp.month} ${log.timestamp.hour}:${log.timestamp.minute.toString().padLeft(2, '0')}',
+                                  auditLogs[i].details.entries
+                                      .map((e) => '${e.key}: ${e.value}')
+                                      .join(' · '),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
                                   style: CivicFixTypography.caption.copyWith(
                                     color: GovtThemeTokens.textMuted,
                                     fontSize: 10,
                                   ),
                                 ),
                               ],
-                            ),
-                            CivicFixSpacing.vSpaceXs,
-                            Text(
-                              'Grievance ID: ${log.complaintId} · Actor: ${log.actorName} (${log.actorRole})',
-                              style: CivicFixTypography.caption.copyWith(
-                                color: GovtThemeTokens.textSecondary,
-                              ),
-                            ),
-                            if (log.details.isNotEmpty) ...[
-                              CivicFixSpacing.vSpaceXs,
-                              Text(
-                                log.details.entries
-                                    .map((e) => '${e.key}: ${e.value}')
-                                    .join(' · '),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: CivicFixTypography.caption.copyWith(
-                                  color: GovtThemeTokens.textMuted,
-                                  fontSize: 10,
-                                ),
-                              ),
                             ],
-                          ],
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                );
-              },
+                ],
+              ],
             ),
           ),
         ],

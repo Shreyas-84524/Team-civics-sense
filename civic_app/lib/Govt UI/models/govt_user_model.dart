@@ -43,6 +43,18 @@ class GovtUserModel {
   bool get isWardOfficer => govtRole.isWardOfficer;
   bool get isWardLead => govtRole.isWardLead;
   bool get isCrew => govtRole.isCrew;
+  bool get isJuniorEngineer => govtRole.isCrew;
+  bool get isFieldOfficer => govtRole.isCrew;
+  bool get isActive => active;
+
+  /// Returns a human-readable title depending on ticket responsibility:
+  /// - Junior Engineer (Technical Owner & Dispatcher)
+  /// - Field Officer (Ground Execution Owner)
+  String getTicketDesignation({bool isTechnicalOwner = false, bool isGroundExecutor = false}) {
+    if (isTechnicalOwner) return 'Junior Engineer';
+    if (isGroundExecutor) return 'Field Officer';
+    return displayDesignation;
+  }
 
   const GovtUserModel({
     required this.id,

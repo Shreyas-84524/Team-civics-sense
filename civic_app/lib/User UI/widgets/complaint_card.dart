@@ -4,6 +4,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_radius.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/constants/app_typography.dart';
+import '../../core/localization/app_localizations.dart';
 import '../../core/models/complaint_model.dart';
 import '../../core/utils/date_formatter.dart';
 import '../../core/widgets/civic_fix_card.dart';
@@ -22,115 +23,79 @@ class ComplaintCard extends StatelessWidget {
     this.onUpvote,
   });
 
-  void _copyTicketId(BuildContext context) {
-    Clipboard.setData(ClipboardData(text: complaint.ticketNumber));
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Complaint ID ${complaint.ticketNumber} copied.'),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    final locationSelectedText =
+        context.l10nOrNull?.locationSelected ?? 'Location selected';
     final locationText = complaint.location.shortDisplayAddress.isNotEmpty
         ? complaint.location.shortDisplayAddress
         : (complaint.location.address.isNotEmpty
             ? complaint.location.address
-            : 'Location selected');
+            : locationSelectedText);
 
     final updatedTimeText = DateFormatter.formatRelativeTime(complaint.updatedAt);
-    final hasImages = complaint.imageUrls.isNotEmpty;
+    final statusLabel = complaint.status.localizedLabel(context);
 
     final semanticDescription =
-        'Complaint ${complaint.ticketNumber}, ${complaint.title}, status ${complaint.status.label}, category ${complaint.category.name}, located near $locationText, updated $updatedTimeText.';
+        'Complaint ${complaint.ticketNumber}, ${complaint.title}, status $statusLabel, category ${complaint.category.name}, located near $locationText, updated $updatedTimeText.';
 
     return Semantics(
       label: semanticDescription,
       button: true,
       child: CivicFixCard(
         onTap: onTap,
-        padding: const EdgeInsets.all(CivicFixSpacing.lg),
+        padding: const EdgeInsets.all(CivicFixSpacing.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Top Row: Status Badge + Category Pill + Copy ID Action
+            // Top Row: Ticket Number & Category on left, Status and Sync badges on right
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Expanded(
+                InkWell(
+                  onTap: () {
+                    Clipboard.setData(ClipboardData(text: complaint.ticketNumber));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          context.l10nOrNull?.complaintIdCopied(complaint.ticketNumber) ??
+                              'Complaint ID ${complaint.ticketNumber} copied.',
+                        ),
+                        duration: const Duration(seconds: 1),
+                      ),
+                    );
+                  },
+                  borderRadius: CivicFixRadius.chipRadius,
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Category Pill
-                      Flexible(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: CivicFixSpacing.sm,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: CivicFixColors.surfaceMuted,
-                            borderRadius: CivicFixRadius.chipRadius,
-                            border: Border.all(color: CivicFixColors.border),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                complaint.category.icon,
-                                size: 13,
-                                color: CivicFixColors.primary,
-                              ),
-                              const SizedBox(width: 4),
-                              Flexible(
-                                child: Text(
-                                  complaint.category.name,
-                                  style: CivicFixTypography.captionMedium.copyWith(
-                                    fontSize: 11,
-                                    color: CivicFixColors.primaryText,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
+                      Text(
+                        complaint.ticketNumber,
+                        style: CivicFixTypography.captionMedium.copyWith(
+                          color: CivicFixColors.secondaryText,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 11,
                         ),
                       ),
-                      CivicFixSpacing.hSpaceSm,
-                      // Ticket Number with Copy trigger
-                      InkWell(
-                        onTap: () => _copyTicketId(context),
-                        borderRadius: CivicFixRadius.chipRadius,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                complaint.ticketNumber,
-                                style: CivicFixTypography.captionMedium.copyWith(
-                                  color: CivicFixColors.secondaryText,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(width: 3),
-                              const Icon(
-                                Icons.copy_rounded,
-                                size: 11,
-                                color: CivicFixColors.secondaryText,
-                              ),
-                            ],
-                          ),
+                      const SizedBox(width: 6),
+                      Text(
+                        '•',
+                        style: CivicFixTypography.caption.copyWith(
+                          color: CivicFixColors.border,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        complaint.category.name,
+                        style: CivicFixTypography.captionMedium.copyWith(
+                          color: CivicFixColors.secondaryText,
+                          fontSize: 11,
                         ),
                       ),
                     ],
                   ),
                 ),
-                CivicFixSpacing.hSpaceSm,
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -154,7 +119,7 @@ class ComplaintCard extends StatelessWidget {
                             ),
                             const SizedBox(width: 3),
                             Text(
-                              'Pending Sync',
+                              context.l10nOrNull?.pendingSync ?? 'Pending Sync',
                               style: CivicFixTypography.captionMedium.copyWith(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
@@ -185,7 +150,7 @@ class ComplaintCard extends StatelessWidget {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              'Syncing...',
+                              context.l10nOrNull?.syncing ?? 'Syncing...',
                               style: CivicFixTypography.captionMedium.copyWith(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
@@ -216,7 +181,7 @@ class ComplaintCard extends StatelessWidget {
                             ),
                             const SizedBox(width: 3),
                             Text(
-                              'Sync Failed',
+                              context.l10nOrNull?.syncFailed ?? 'Sync Failed',
                               style: CivicFixTypography.captionMedium.copyWith(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
@@ -233,96 +198,116 @@ class ComplaintCard extends StatelessWidget {
                 ),
               ],
             ),
-            CivicFixSpacing.vSpaceMd,
+            const SizedBox(height: 6),
 
-            // Middle: Title & Optional Thumbnail
+            // Title
+            Text(
+              complaint.title,
+              style: CivicFixTypography.bodyMedium.copyWith(
+                fontWeight: FontWeight.w700,
+                color: CivicFixColors.primaryText,
+                height: 1.3,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            CivicFixSpacing.vSpaceXs,
+
+            // Location row
             Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const Icon(
+                  Icons.location_on_outlined,
+                  size: 14,
+                  color: CivicFixColors.secondaryText,
+                ),
+                const SizedBox(width: 4),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        complaint.title,
-                        style: CivicFixTypography.bodyMedium.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: CivicFixColors.primaryText,
-                          height: 1.3,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      CivicFixSpacing.vSpaceSm,
-
-                      // Location row
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.location_on_outlined,
-                            size: 14,
-                            color: CivicFixColors.secondaryText,
-                          ),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              locationText,
-                              style: CivicFixTypography.caption.copyWith(
-                                color: CivicFixColors.secondaryText,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                  child: Text(
+                    locationText,
+                    style: CivicFixTypography.caption.copyWith(
+                      color: CivicFixColors.secondaryText,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                if (hasImages) ...[
-                  CivicFixSpacing.hSpaceMd,
-                  Container(
-                    width: 54,
-                    height: 54,
-                    decoration: BoxDecoration(
-                      color: CivicFixColors.surfaceMuted,
-                      borderRadius: CivicFixRadius.cardRadius,
-                      border: Border.all(color: CivicFixColors.border),
-                    ),
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        const Icon(
-                          Icons.image_outlined,
-                          color: CivicFixColors.secondaryDark,
-                          size: 24,
-                        ),
-                        if (complaint.imageUrls.length > 1)
-                          Positioned(
-                            bottom: 2,
-                            right: 2,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                              decoration: BoxDecoration(
-                                color: CivicFixColors.primary,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                '+${complaint.imageUrls.length - 1}',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
+              ],
+            ),
+
+            // Handling Officer or Phase Indicator
+            if (complaint.isReopened) ...[
+              CivicFixSpacing.vSpaceXs,
+              Row(
+                children: [
+                  const Icon(
+                    Icons.replay_circle_filled_rounded,
+                    size: 13,
+                    color: CivicFixColors.alertDark,
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      context.l10nOrNull?.reopenedForQualityRework ??
+                          'Reopened for quality rework',
+                      style: CivicFixTypography.caption.copyWith(
+                        color: CivicFixColors.alertDark,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 11,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
-              ],
-            ),
+              ),
+            ] else if (complaint.isFieldOfficerAssigned) ...[
+              CivicFixSpacing.vSpaceXs,
+              Row(
+                children: [
+                  const Icon(
+                    Icons.build_circle_outlined,
+                    size: 13,
+                    color: CivicFixColors.info,
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      '${context.l10nOrNull?.fieldOfficer ?? "Field Officer"}: ${complaint.assignedFieldOfficerName ?? (context.l10nOrNull?.statusAssigned ?? "Assigned")}',
+                      style: CivicFixTypography.caption.copyWith(
+                        color: CivicFixColors.secondaryText,
+                        fontSize: 11,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ] else if (complaint.isJuniorEngineerAssigned) ...[
+              CivicFixSpacing.vSpaceXs,
+              Row(
+                children: [
+                  const Icon(
+                    Icons.shield_outlined,
+                    size: 13,
+                    color: CivicFixColors.primary,
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      '${context.l10nOrNull?.supervisingJuniorEngineer ?? "Supervising JE"}: ${complaint.assignedJuniorEngineerName ?? (context.l10nOrNull?.statusAssigned ?? "Assigned")}',
+                      style: CivicFixTypography.caption.copyWith(
+                        color: CivicFixColors.secondaryText,
+                        fontSize: 11,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ],
             CivicFixSpacing.vSpaceMd,
 
             const Divider(height: 1, color: CivicFixColors.border),
@@ -332,22 +317,31 @@ class ComplaintCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.access_time_rounded,
-                      size: 13,
-                      color: CivicFixColors.disabledText,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Updated $updatedTimeText',
-                      style: CivicFixTypography.caption.copyWith(
-                        color: CivicFixColors.secondaryText,
+                Flexible(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.access_time_rounded,
+                        size: 13,
+                        color: CivicFixColors.disabledText,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          context.l10nOrNull != null
+                              ? context.l10n.updatedTime(updatedTimeText)
+                              : 'Updated $updatedTimeText',
+                          style: CivicFixTypography.caption.copyWith(
+                            color: CivicFixColors.secondaryText,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
+                const SizedBox(width: CivicFixSpacing.sm),
                 if (complaint.isHazard)
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -362,6 +356,7 @@ class ComplaintCard extends StatelessWidget {
                       ),
                     ),
                     child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         const Icon(
                           Icons.warning_amber_rounded,
@@ -370,7 +365,7 @@ class ComplaintCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          'Safety Hazard',
+                          context.l10nOrNull?.safetyHazard ?? 'Safety Hazard',
                           style: CivicFixTypography.caption.copyWith(
                             color: CivicFixColors.alertDark,
                             fontWeight: FontWeight.w600,
@@ -403,8 +398,10 @@ class ComplaintCard extends StatelessWidget {
                             const SizedBox(width: 4),
                             Text(
                               complaint.upvotes > 0
-                                  ? '${complaint.upvotes} supports'
-                                  : 'Support',
+                                  ? (context.l10nOrNull != null
+                                      ? context.l10n.supportsCount(complaint.upvotes)
+                                      : '${complaint.upvotes} supports')
+                                  : (context.l10nOrNull?.support ?? 'Support'),
                               style: CivicFixTypography.caption.copyWith(
                                 color: complaint.upvotes > 0
                                     ? CivicFixColors.primary

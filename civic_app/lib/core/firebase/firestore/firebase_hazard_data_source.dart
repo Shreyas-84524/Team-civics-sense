@@ -68,6 +68,41 @@ class FirebaseHazardDataSource {
     }
   }
 
+  /// Fetches hazards located in specific spatial chunks.
+  Future<List<HazardModel>> getHazardsBySpatialChunks({
+    required List<String> chunkIds,
+    int limit = 100,
+  }) async {
+    try {
+      if (chunkIds.isEmpty) return [];
+
+      final List<List<String>> batches = [];
+      for (var i = 0; i < chunkIds.length; i += 30) {
+        batches.add(chunkIds.sublist(i, i + 30 > chunkIds.length ? chunkIds.length : i + 30));
+      }
+
+      final Map<String, HazardModel> dedup = {};
+
+      for (final batch in batches) {
+        final snap = await _hazardsRef
+            .where('spatialChunkId', whereIn: batch)
+            .limit(limit)
+            .get();
+
+        for (final doc in snap.docs) {
+          dedup[doc.id] = HazardFirestoreMapper.fromFirestore(
+            documentId: doc.id,
+            data: doc.data(),
+          );
+        }
+      }
+
+      return dedup.values.toList();
+    } catch (e, st) {
+      throw FirestoreErrorHandler.handle(e, st);
+    }
+  }
+
   /// Fetches a single hazard document by ID.
   Future<HazardModel?> getHazardById(String id) async {
     try {

@@ -3,8 +3,10 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_radius.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
-import '../../../core/repositories/repository_locator.dart';
+import '../../../core/localization/app_localizations.dart';
+import '../../../core/localization/locale_controller.dart';
 
+/// Legacy alias for [AppLocale] for backwards compatibility with existing UI tests.
 class LanguageOption {
   final String code;
   final String englishName;
@@ -15,37 +17,51 @@ class LanguageOption {
     required this.englishName,
     required this.nativeName,
   });
+
+  factory LanguageOption.fromAppLocale(AppLocale locale) => LanguageOption(
+        code: locale.languageCode,
+        englishName: locale.englishName,
+        nativeName: locale.nativeName,
+      );
 }
 
 /// Modal bottom sheet for choosing application display language.
 class LanguageSelectorSheet extends StatelessWidget {
+  final LocaleController? localeController;
   final String currentLanguageCode;
   final ValueChanged<String>? onLanguageSelected;
 
   const LanguageSelectorSheet({
     super.key,
+    this.localeController,
     required this.currentLanguageCode,
     this.onLanguageSelected,
   });
 
-  static const List<LanguageOption> supportedLanguages = [
-    LanguageOption(code: 'en', englishName: 'English', nativeName: 'English'),
-    LanguageOption(code: 'hi', englishName: 'Hindi', nativeName: 'हिन्दी'),
-    LanguageOption(code: 'mr', englishName: 'Marathi', nativeName: 'मराठी'),
-  ];
+  static List<LanguageOption> get supportedLanguages =>
+      AppLocale.values.map(LanguageOption.fromAppLocale).toList();
 
-  static Future<String?> show(BuildContext context, {required String currentCode}) {
+  static Future<String?> show(
+    BuildContext context, {
+    required String currentCode,
+    LocaleController? localeController,
+  }) {
     return showModalBottomSheet<String>(
       context: context,
       shape: const RoundedRectangleBorder(
         borderRadius: CivicFixRadius.sheetRadius,
       ),
-      builder: (_) => LanguageSelectorSheet(currentLanguageCode: currentCode),
+      builder: (_) => LanguageSelectorSheet(
+        localeController: localeController,
+        currentLanguageCode: currentCode,
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10nOrNull;
+
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(
@@ -72,7 +88,7 @@ class LanguageSelectorSheet extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Select Language',
+                  l10n?.selectLanguage ?? 'Select Language',
                   style: CivicFixTypography.h3.copyWith(
                     color: CivicFixColors.primaryText,
                     fontWeight: FontWeight.w800,
@@ -92,86 +108,17 @@ class LanguageSelectorSheet extends StatelessWidget {
             ),
             CivicFixSpacing.vSpaceMd,
 
-            // Language Options List
-            ...supportedLanguages.map((option) {
-              final isSelected = option.code == currentLanguageCode;
-
-              return Padding(
-                padding: const EdgeInsets.only(bottom: CivicFixSpacing.sm),
-                child: Semantics(
-                  label: '${option.englishName} (${option.nativeName}), ${isSelected ? "selected" : "not selected"}',
-                  selected: isSelected,
-                  button: true,
-                  child: InkWell(
-                    onTap: () {
-                      RepositoryLocator.userRepository.updateUserProfile(languageCode: option.code);
-                      onLanguageSelected?.call(option.code);
-                      Navigator.pop(context, option.code);
-                    },
-                    borderRadius: CivicFixRadius.cardRadius,
-                    child: Container(
-                      padding: const EdgeInsets.all(CivicFixSpacing.md),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? CivicFixColors.accentLight.withValues(alpha: 0.5)
-                            : CivicFixColors.surfaceMuted,
-                        borderRadius: CivicFixRadius.cardRadius,
-                        border: Border.all(
-                          color: isSelected
-                              ? CivicFixColors.secondary
-                              : CivicFixColors.border,
-                          width: isSelected ? 1.5 : 1,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            isSelected
-                                ? Icons.radio_button_checked_rounded
-                                : Icons.radio_button_unchecked_rounded,
-                            color: isSelected
-                                ? CivicFixColors.secondary
-                                : CivicFixColors.disabledText,
-                            size: 20,
-                          ),
-                          CivicFixSpacing.hSpaceMd,
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  option.nativeName,
-                                  style: CivicFixTypography.bodySmallMedium.copyWith(
-                                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                                    color: isSelected
-                                        ? CivicFixColors.primaryText
-                                        : CivicFixColors.primaryText,
-                                    fontSize: 15,
-                                  ),
-                                ),
-                                Text(
-                                  option.englishName,
-                                  style: CivicFixTypography.caption.copyWith(
-                                    color: CivicFixColors.secondaryText,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          if (isSelected)
-                            const Icon(
-                              Icons.check_rounded,
-                              color: CivicFixColors.secondary,
-                              size: 20,
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            }),
-            CivicFixSpacing.vSpaceMd,
+            // Reusable Language Options List
+            LanguageSelectorWidget(
+              localeController: localeController,
+              currentLanguageCode: currentLanguageCode,
+              showHeader: false,
+              onLanguageSelected: (selectedLocale) {
+                onLanguageSelected?.call(selectedLocale.languageCode);
+                Navigator.pop(context, selectedLocale.languageCode);
+              },
+            ),
+            CivicFixSpacing.vSpaceSm,
           ],
         ),
       ),

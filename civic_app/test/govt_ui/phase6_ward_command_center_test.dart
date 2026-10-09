@@ -155,7 +155,7 @@ void main() {
       expect(find.byType(WardRecentActivitySection), findsOneWidget);
     });
 
-    testWidgets('Renders dynamic ward header with badges', (tester) async {
+    testWidgets('Renders dynamic ward header cleanly', (tester) async {
       tester.view.physicalSize = const Size(1440, 900);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -164,9 +164,7 @@ void main() {
       await tester.pumpWidget(_buildScreenTestHarness(user));
       await tester.pumpAndSettle();
 
-      // Badges: Ward, 18 Departments, 90 Crew
-      expect(find.textContaining('18 DEPARTMENTS'), findsWidgets);
-      expect(find.textContaining('90 CREW'), findsWidgets);
+      expect(find.textContaining('Command Center'), findsWidgets);
     });
   });
 

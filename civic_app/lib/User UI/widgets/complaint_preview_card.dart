@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/constants/app_typography.dart';
+import '../../core/localization/mappers/canonical_display_mappers.dart';
 import '../../core/models/complaint_model.dart';
 import '../../core/routing/app_routes.dart';
 import '../../core/utils/date_formatter.dart';
 import '../../core/widgets/civic_fix_card.dart';
 import '../../core/widgets/status_badge.dart';
+import '../../l10n/generated/app_localizations.dart';
 
 /// Compact complaint preview card designed for the Citizen Home Dashboard.
 class ComplaintPreviewCard extends StatelessWidget {
@@ -29,6 +31,9 @@ class ComplaintPreviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final displayCategory = localizedCategory(complaint.category, context: context);
+
     return CivicFixCard(
       onTap: onTap ??
           () {
@@ -78,7 +83,7 @@ class ComplaintPreviewCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 3),
                           Text(
-                            'Pending',
+                            l10n?.pendingSync ?? 'Pending',
                             style: CivicFixTypography.captionMedium.copyWith(
                               fontSize: 9,
                               fontWeight: FontWeight.w700,
@@ -100,7 +105,7 @@ class ComplaintPreviewCard extends StatelessWidget {
           ),
           CivicFixSpacing.vSpaceSm,
 
-          // Title
+          // Title (Authoritative citizen input)
           Text(
             complaint.title,
             style: CivicFixTypography.bodyLargeMedium.copyWith(
@@ -127,7 +132,7 @@ class ComplaintPreviewCard extends StatelessWidget {
                   ),
                   CivicFixSpacing.hSpaceXs,
                   Text(
-                    complaint.category.name,
+                    displayCategory,
                     style: CivicFixTypography.caption.copyWith(
                       color: CivicFixColors.secondaryText,
                       fontWeight: FontWeight.w500,

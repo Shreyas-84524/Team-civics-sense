@@ -12,9 +12,12 @@ import '../../User UI/services/location_service.dart';
 import '../../User UI/services/mock_complaint_service.dart';
 import '../../User UI/services/mock_home_service.dart';
 import '../../User UI/services/offline_first_complaint_service.dart';
+import 'certificate_repository.dart';
 import 'complaint_repository.dart';
 import 'hazard_repository.dart';
+import 'hive_certificate_repository.dart';
 import 'notification_repository.dart';
+import 'offline_first_certificate_repository.dart';
 import 'offline_first_complaint_repository.dart';
 import 'offline_first_govt_complaint_repository.dart';
 import 'offline_first_hazard_repository.dart';
@@ -52,6 +55,7 @@ class RepositoryLocator {
   static NotificationRepository? _notificationRepository;
   static RewardsRepository? _rewardsRepository;
   static UserRepository? _userRepository;
+  static CertificateRepository? _certificateRepository;
   static GovernmentUserRepository? _govtUserRepository;
   static AnalyticsRepository? _analyticsRepository;
   static HomeService? _homeService;
@@ -62,6 +66,21 @@ class RepositoryLocator {
   // ===========================================================================
   // CITIZEN REPOSITORIES & SERVICES
   // ===========================================================================
+
+  /// Active Citizen [CertificateRepository] instance.
+  static CertificateRepository get certificateRepository {
+    if (_certificateRepository != null) return _certificateRepository!;
+    if (isProductionActive) {
+      _certificateRepository = OfflineFirstCertificateRepository();
+    } else {
+      _certificateRepository = HiveCertificateRepository();
+    }
+    return _certificateRepository!;
+  }
+
+  static set certificateRepository(CertificateRepository repo) {
+    _certificateRepository = repo;
+  }
 
   /// Active Citizen [ComplaintRepository] instance.
   static ComplaintRepository get complaintRepository {

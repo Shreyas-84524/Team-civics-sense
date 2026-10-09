@@ -13,7 +13,6 @@ import '../../widgets/analytics/govt_analytics_filter_bar.dart';
 import '../../widgets/analytics/govt_department_analytics_table.dart';
 import '../../widgets/analytics/govt_resolution_performance_widget.dart';
 import '../../widgets/analytics/govt_time_trend_chart.dart';
-import '../../widgets/dashboard/stat_card.dart';
 
 /// Operational & SLA Compliance Analytics Screen for Government Administrators.
 class GovtAnalyticsScreen extends StatefulWidget {
@@ -231,11 +230,7 @@ class _GovtAnalyticsScreenState extends State<GovtAnalyticsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // 1. 7 KPI Stat Cards Grid
-        _buildKpiMetricsGrid(summary),
-        CivicFixSpacing.vSpaceXl,
-
-        // 2. Operational Performance & Time Trend Row
+        // 1. Operational Performance & Time Trend Row
         LayoutBuilder(
           builder: (context, constraints) {
             final isDesktop = constraints.maxWidth >= 960;
@@ -350,82 +345,6 @@ class _GovtAnalyticsScreenState extends State<GovtAnalyticsScreen> {
         // 4. Department Performance & Workload Table
         GovtDepartmentAnalyticsTable(departments: data.departmentBreakdowns),
       ],
-    );
-  }
-
-  Widget _buildKpiMetricsGrid(AnalyticsSummary summary) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth;
-        int cols = 4;
-        if (width < 600) {
-          cols = 1;
-        } else if (width < 960) {
-          cols = 2;
-        } else if (width < 1280) {
-          cols = 3;
-        }
-
-        return GridView.count(
-          crossAxisCount: cols,
-          crossAxisSpacing: CivicFixSpacing.md,
-          mainAxisSpacing: CivicFixSpacing.md,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          childAspectRatio: width < 600 ? 2.8 : 2.2,
-          children: [
-            StatCard(
-              title: 'Total Complaints',
-              value: '${summary.totalComplaints}',
-              icon: Icons.assessment_outlined,
-              accentColor: GovtThemeTokens.primary,
-              subtitle: 'Filtered grievance volume',
-            ),
-            StatCard(
-              title: 'Resolved Complaints',
-              value: '${summary.resolvedComplaints}',
-              icon: Icons.check_circle_outline_rounded,
-              accentColor: GovtThemeTokens.secondary,
-              subtitle: '${summary.formattedResolutionPercentage} resolution index',
-            ),
-            StatCard(
-              title: 'Pending Triage',
-              value: '${summary.pendingComplaints}',
-              icon: Icons.pending_actions_rounded,
-              accentColor: GovtThemeTokens.alert,
-              subtitle: 'Reported & verified stage',
-            ),
-            StatCard(
-              title: 'In Progress',
-              value: '${summary.inProgressComplaints}',
-              icon: Icons.build_circle_outlined,
-              accentColor: GovtThemeTokens.info,
-              subtitle: 'Active field operations',
-            ),
-            StatCard(
-              title: 'Avg Resolution Time',
-              value: summary.formattedAvgResolutionTime,
-              icon: Icons.timer_outlined,
-              accentColor: GovtThemeTokens.primary,
-              subtitle: 'Municipal target: 48.0 hrs',
-            ),
-            StatCard(
-              title: 'High-Priority Tickets',
-              value: '${summary.highPriorityComplaints}',
-              icon: Icons.priority_high_rounded,
-              accentColor: GovtThemeTokens.error,
-              subtitle: 'Critical & high severity',
-            ),
-            StatCard(
-              title: 'Unassigned Queue',
-              value: '${summary.unassignedComplaints}',
-              icon: Icons.assignment_late_outlined,
-              accentColor: GovtThemeTokens.accent,
-              subtitle: 'Awaiting squad dispatch',
-            ),
-          ],
-        );
-      },
     );
   }
 }

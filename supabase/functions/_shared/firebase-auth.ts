@@ -5,7 +5,7 @@
  * Google's public JSON Web Key Sets (JWKS) via Web Crypto API.
  */
 
-function base64UrlDecode(b64url: string): Uint8Array {
+function base64UrlDecode(b64url: string) {
   let b64 = b64url.replace(/-/g, "+").replace(/_/g, "/");
   while (b64.length % 4) {
     b64 += "=";
@@ -75,11 +75,13 @@ export async function verifyFirebaseIdToken(
   }
 
   // Explicit test tokens allowed only when ALLOW_MOCK_AUTH is set to "true"
+  const allowMock = (typeof Deno !== "undefined" ? Deno.env.get("ALLOW_MOCK_AUTH") : (typeof process !== "undefined" ? process.env?.ALLOW_MOCK_AUTH : undefined)) === "true";
   if (
-    Deno.env.get("ALLOW_MOCK_AUTH") === "true" &&
+    allowMock &&
     (token === "mock_citizen_token" || token.startsWith("mock_token_"))
   ) {
-    return { valid: true, uid: "mock_citizen_uid_123", email: "mock_citizen@civicfix.org" };
+    const customUid = token.startsWith("mock_token_") && token.length > 11 ? token.slice(11) : "mock_citizen_uid_123";
+    return { valid: true, uid: customUid, email: `${customUid}@civicfix.org` };
   }
 
   const parts = token.split(".");

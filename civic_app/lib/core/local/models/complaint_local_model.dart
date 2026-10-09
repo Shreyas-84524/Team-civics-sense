@@ -34,6 +34,74 @@ class ComplaintLocalModel {
   final String? aiAuthenticityJson;
   final String aiAnalysisStatus;
 
+  // Phase 3 Canonical AI Verification Fields
+  final String evidenceVerificationStatus;
+  final String departmentVerificationStatus;
+  final String verificationStage;
+  final String? verifiedDepartmentId;
+  final String? verifiedDepartmentName;
+  final int? evidenceVerificationStartedAtEpochMs;
+  final int? evidenceVerificationCompletedAtEpochMs;
+  final int? departmentVerificationStartedAtEpochMs;
+  final int? departmentVerificationCompletedAtEpochMs;
+  final int? verificationCompletedAtEpochMs;
+  final String? verificationFailureReason;
+  final String? citizenSafeVerificationMessage;
+
+  // AI Verification Resilience & Human Review Fields
+  final int aiVerificationAttempts;
+  final int? lastAiVerificationAttemptAtEpochMs;
+  final String? lastAiFailureCode;
+  final int? aiFallbackTriggeredAtEpochMs;
+  final String? initialReviewDepartmentId;
+  final String? initialReviewDepartmentName;
+  final String? humanReviewStatus;
+  final String? humanReviewerId;
+  final String? humanReviewerName;
+  final String? humanReviewRemarks;
+  final int? humanReviewedAtEpochMs;
+  final String? previousDepartmentId;
+
+  // Phase 3 Closure Lifecycle Fields
+  final int? closedAtEpochMs;
+  final String? closedBy;
+  final String? closureRemarks;
+
+  // Phase 2/3 BMC Matrix & Ground Execution Fields
+  final String? wardId;
+  final String? assignedDepartmentId;
+  final String? assignedDepartmentLeadId;
+  final String? assignedCrewMemberId;
+  final String? routingStatus;
+  final String? assignmentStatus;
+  final int? slaStartedAtEpochMs;
+  final int? originalCreatedAtEpochMs;
+  final int? currentDepartmentAssignedAtEpochMs;
+  final int? lastReassignedAtEpochMs;
+  final int reassignmentCount;
+  final String? assignedJuniorEngineerNameSnapshot;
+  final String? assignedJuniorEngineerDesignationSnapshot;
+  final String? assignedFieldOfficerId;
+  final int? assignedFieldOfficerAtEpochMs;
+  final String? assignedFieldOfficerNameSnapshot;
+  final String? assignedFieldOfficerDesignationSnapshot;
+  final int? workStartedAtEpochMs;
+  final String? workStartedBy;
+  final String? beforeWorkPhoto;
+  final String? beforeWorkNotes;
+  final String? afterWorkPhoto;
+  final String? resolutionRemarks;
+  final String? resolvedBy;
+  final int? blockedAtEpochMs;
+  final String? blockedBy;
+  final String? blockedReason;
+  final int? reopenedAtEpochMs;
+  final String? reopenedBy;
+  final String? reopenReason;
+  final int? previousResolvedAtEpochMs;
+  final List<String> previousResolutionEvidence;
+  final int reopenCount;
+
   const ComplaintLocalModel({
     required this.id,
     required this.citizenId,
@@ -61,6 +129,66 @@ class ComplaintLocalModel {
     this.serverId,
     this.aiAuthenticityJson,
     this.aiAnalysisStatus = 'pending',
+    this.evidenceVerificationStatus = 'pending',
+    this.departmentVerificationStatus = 'pending',
+    this.verificationStage = 'evidence',
+    this.verifiedDepartmentId,
+    this.verifiedDepartmentName,
+    this.evidenceVerificationStartedAtEpochMs,
+    this.evidenceVerificationCompletedAtEpochMs,
+    this.departmentVerificationStartedAtEpochMs,
+    this.departmentVerificationCompletedAtEpochMs,
+    this.verificationCompletedAtEpochMs,
+    this.verificationFailureReason,
+    this.citizenSafeVerificationMessage,
+    this.closedAtEpochMs,
+    this.closedBy,
+    this.closureRemarks,
+    this.aiVerificationAttempts = 0,
+    this.lastAiVerificationAttemptAtEpochMs,
+    this.lastAiFailureCode,
+    this.aiFallbackTriggeredAtEpochMs,
+    this.initialReviewDepartmentId,
+    this.initialReviewDepartmentName,
+    this.humanReviewStatus,
+    this.humanReviewerId,
+    this.humanReviewerName,
+    this.humanReviewRemarks,
+    this.humanReviewedAtEpochMs,
+    this.previousDepartmentId,
+    this.wardId,
+    this.assignedDepartmentId,
+    this.assignedDepartmentLeadId,
+    this.assignedCrewMemberId,
+    this.routingStatus,
+    this.assignmentStatus,
+    this.slaStartedAtEpochMs,
+    this.originalCreatedAtEpochMs,
+    this.currentDepartmentAssignedAtEpochMs,
+    this.lastReassignedAtEpochMs,
+    this.reassignmentCount = 0,
+    this.assignedJuniorEngineerNameSnapshot,
+    this.assignedJuniorEngineerDesignationSnapshot,
+    this.assignedFieldOfficerId,
+    this.assignedFieldOfficerAtEpochMs,
+    this.assignedFieldOfficerNameSnapshot,
+    this.assignedFieldOfficerDesignationSnapshot,
+    this.workStartedAtEpochMs,
+    this.workStartedBy,
+    this.beforeWorkPhoto,
+    this.beforeWorkNotes,
+    this.afterWorkPhoto,
+    this.resolutionRemarks,
+    this.resolvedBy,
+    this.blockedAtEpochMs,
+    this.blockedBy,
+    this.blockedReason,
+    this.reopenedAtEpochMs,
+    this.reopenedBy,
+    this.reopenReason,
+    this.previousResolvedAtEpochMs,
+    this.previousResolutionEvidence = const [],
+    this.reopenCount = 0,
   });
 
   /// Map from Domain Model [ComplaintModel] -> [ComplaintLocalModel]
@@ -92,6 +220,66 @@ class ComplaintLocalModel {
       serverId: complaint.serverId,
       aiAuthenticityJson: complaint.aiAuthenticity?.toJson(),
       aiAnalysisStatus: complaint.aiAnalysisStatus.name,
+      evidenceVerificationStatus: complaint.evidenceVerificationStatus,
+      departmentVerificationStatus: complaint.departmentVerificationStatus,
+      verificationStage: complaint.verificationStage,
+      verifiedDepartmentId: complaint.verifiedDepartmentId,
+      verifiedDepartmentName: complaint.verifiedDepartmentName,
+      evidenceVerificationStartedAtEpochMs: complaint.evidenceVerificationStartedAt?.millisecondsSinceEpoch,
+      evidenceVerificationCompletedAtEpochMs: complaint.evidenceVerificationCompletedAt?.millisecondsSinceEpoch,
+      departmentVerificationStartedAtEpochMs: complaint.departmentVerificationStartedAt?.millisecondsSinceEpoch,
+      departmentVerificationCompletedAtEpochMs: complaint.departmentVerificationCompletedAt?.millisecondsSinceEpoch,
+      verificationCompletedAtEpochMs: complaint.verificationCompletedAt?.millisecondsSinceEpoch,
+      verificationFailureReason: complaint.verificationFailureReason,
+      citizenSafeVerificationMessage: complaint.citizenSafeVerificationMessage,
+      aiVerificationAttempts: complaint.aiVerificationAttempts,
+      lastAiVerificationAttemptAtEpochMs: complaint.lastAiVerificationAttemptAt?.millisecondsSinceEpoch,
+      lastAiFailureCode: complaint.lastAiFailureCode,
+      aiFallbackTriggeredAtEpochMs: complaint.aiFallbackTriggeredAt?.millisecondsSinceEpoch,
+      initialReviewDepartmentId: complaint.initialReviewDepartmentId,
+      initialReviewDepartmentName: complaint.initialReviewDepartmentName,
+      humanReviewStatus: complaint.humanReviewStatus,
+      humanReviewerId: complaint.humanReviewerId,
+      humanReviewerName: complaint.humanReviewerName,
+      humanReviewRemarks: complaint.humanReviewRemarks,
+      humanReviewedAtEpochMs: complaint.humanReviewedAt?.millisecondsSinceEpoch,
+      previousDepartmentId: complaint.previousDepartmentId,
+      closedAtEpochMs: complaint.closedAt?.millisecondsSinceEpoch,
+      closedBy: complaint.closedBy,
+      closureRemarks: complaint.closureRemarks,
+      wardId: complaint.wardId,
+      assignedDepartmentId: complaint.assignedDepartmentId,
+      assignedDepartmentLeadId: complaint.assignedDepartmentLeadId,
+      assignedCrewMemberId: complaint.assignedCrewMemberId,
+      routingStatus: complaint.routingStatus.id,
+      assignmentStatus: complaint.assignmentStatus.id,
+      slaStartedAtEpochMs: complaint.slaStartedAt.millisecondsSinceEpoch,
+      originalCreatedAtEpochMs: complaint.originalCreatedAt.millisecondsSinceEpoch,
+      currentDepartmentAssignedAtEpochMs: complaint.currentDepartmentAssignedAt?.millisecondsSinceEpoch,
+      lastReassignedAtEpochMs: complaint.lastReassignedAt?.millisecondsSinceEpoch,
+      reassignmentCount: complaint.reassignmentCount,
+      assignedJuniorEngineerNameSnapshot: complaint.assignedJuniorEngineerNameSnapshot,
+      assignedJuniorEngineerDesignationSnapshot: complaint.assignedJuniorEngineerDesignationSnapshot,
+      assignedFieldOfficerId: complaint.assignedFieldOfficerId,
+      assignedFieldOfficerAtEpochMs: complaint.assignedFieldOfficerAt?.millisecondsSinceEpoch,
+      assignedFieldOfficerNameSnapshot: complaint.assignedFieldOfficerNameSnapshot,
+      assignedFieldOfficerDesignationSnapshot: complaint.assignedFieldOfficerDesignationSnapshot,
+      workStartedAtEpochMs: complaint.workStartedAt?.millisecondsSinceEpoch,
+      workStartedBy: complaint.workStartedBy,
+      beforeWorkPhoto: complaint.beforeWorkPhoto,
+      beforeWorkNotes: complaint.beforeWorkNotes,
+      afterWorkPhoto: complaint.afterWorkPhoto,
+      resolutionRemarks: complaint.resolutionRemarks,
+      resolvedBy: complaint.resolvedBy,
+      blockedAtEpochMs: complaint.blockedAt?.millisecondsSinceEpoch,
+      blockedBy: complaint.blockedBy,
+      blockedReason: complaint.blockedReason,
+      reopenedAtEpochMs: complaint.reopenedAt?.millisecondsSinceEpoch,
+      reopenedBy: complaint.reopenedBy,
+      reopenReason: complaint.reopenReason,
+      previousResolvedAtEpochMs: complaint.previousResolvedAt?.millisecondsSinceEpoch,
+      previousResolutionEvidence: List.unmodifiable(complaint.previousResolutionEvidence),
+      reopenCount: complaint.reopenCount,
     );
   }
 
@@ -143,6 +331,8 @@ class ComplaintLocalModel {
       resolvedCategory = CivicCategory.defaultCategories.first;
     }
 
+    final createdAt = DateTime.fromMillisecondsSinceEpoch(createdAtEpochMs);
+
     return ComplaintModel(
       id: id,
       citizenId: citizenId,
@@ -154,7 +344,7 @@ class ComplaintLocalModel {
       priority: parsedPriority,
       location: location.toDomain(),
       imageUrls: imageUrls,
-      createdAt: DateTime.fromMillisecondsSinceEpoch(createdAtEpochMs),
+      createdAt: createdAt,
       updatedAt: DateTime.fromMillisecondsSinceEpoch(updatedAtEpochMs),
       timeline: timeline.map((e) => e.toDomain()).toList(),
       upvotes: upvotes,
@@ -172,6 +362,102 @@ class ComplaintLocalModel {
           ? AiAuthenticityResult.fromJsonString(aiAuthenticityJson!)
           : null,
       aiAnalysisStatus: AiAnalysisStatus.fromString(aiAnalysisStatus),
+      evidenceVerificationStatus: evidenceVerificationStatus,
+      departmentVerificationStatus: departmentVerificationStatus,
+      verificationStage: verificationStage,
+      verifiedDepartmentId: verifiedDepartmentId,
+      verifiedDepartmentName: verifiedDepartmentName,
+      evidenceVerificationStartedAt: evidenceVerificationStartedAtEpochMs != null
+          ? DateTime.fromMillisecondsSinceEpoch(evidenceVerificationStartedAtEpochMs!)
+          : null,
+      evidenceVerificationCompletedAt: evidenceVerificationCompletedAtEpochMs != null
+          ? DateTime.fromMillisecondsSinceEpoch(evidenceVerificationCompletedAtEpochMs!)
+          : null,
+      departmentVerificationStartedAt: departmentVerificationStartedAtEpochMs != null
+          ? DateTime.fromMillisecondsSinceEpoch(departmentVerificationStartedAtEpochMs!)
+          : null,
+      departmentVerificationCompletedAt: departmentVerificationCompletedAtEpochMs != null
+          ? DateTime.fromMillisecondsSinceEpoch(departmentVerificationCompletedAtEpochMs!)
+          : null,
+      verificationCompletedAt: verificationCompletedAtEpochMs != null
+          ? DateTime.fromMillisecondsSinceEpoch(verificationCompletedAtEpochMs!)
+          : null,
+      verificationFailureReason: verificationFailureReason,
+      citizenSafeVerificationMessage: citizenSafeVerificationMessage,
+      aiVerificationAttempts: aiVerificationAttempts,
+      lastAiVerificationAttemptAt: lastAiVerificationAttemptAtEpochMs != null
+          ? DateTime.fromMillisecondsSinceEpoch(lastAiVerificationAttemptAtEpochMs!)
+          : null,
+      lastAiFailureCode: lastAiFailureCode,
+      aiFallbackTriggeredAt: aiFallbackTriggeredAtEpochMs != null
+          ? DateTime.fromMillisecondsSinceEpoch(aiFallbackTriggeredAtEpochMs!)
+          : null,
+      initialReviewDepartmentId: initialReviewDepartmentId,
+      initialReviewDepartmentName: initialReviewDepartmentName,
+      humanReviewStatus: humanReviewStatus,
+      humanReviewerId: humanReviewerId,
+      humanReviewerName: humanReviewerName,
+      humanReviewRemarks: humanReviewRemarks,
+      humanReviewedAt: humanReviewedAtEpochMs != null
+          ? DateTime.fromMillisecondsSinceEpoch(humanReviewedAtEpochMs!)
+          : null,
+      previousDepartmentId: previousDepartmentId,
+      closedAt: closedAtEpochMs != null
+          ? DateTime.fromMillisecondsSinceEpoch(closedAtEpochMs!)
+          : null,
+      closedBy: closedBy,
+      closureRemarks: closureRemarks,
+      wardId: wardId,
+      assignedDepartmentId: assignedDepartmentId,
+      assignedDepartmentLeadId: assignedDepartmentLeadId,
+      assignedCrewMemberId: assignedCrewMemberId,
+      routingStatus: ComplaintRoutingStatus.fromString(routingStatus),
+      assignmentStatus: ComplaintAssignmentStatus.fromString(assignmentStatus),
+      slaStartedAt: slaStartedAtEpochMs != null
+          ? DateTime.fromMillisecondsSinceEpoch(slaStartedAtEpochMs!)
+          : createdAt,
+      originalCreatedAt: originalCreatedAtEpochMs != null
+          ? DateTime.fromMillisecondsSinceEpoch(originalCreatedAtEpochMs!)
+          : createdAt,
+      currentDepartmentAssignedAt: currentDepartmentAssignedAtEpochMs != null
+          ? DateTime.fromMillisecondsSinceEpoch(currentDepartmentAssignedAtEpochMs!)
+          : null,
+      lastReassignedAt: lastReassignedAtEpochMs != null
+          ? DateTime.fromMillisecondsSinceEpoch(lastReassignedAtEpochMs!)
+          : null,
+      reassignmentCount: reassignmentCount,
+      assignedJuniorEngineerNameSnapshot: assignedJuniorEngineerNameSnapshot,
+      assignedJuniorEngineerDesignationSnapshot: assignedJuniorEngineerDesignationSnapshot,
+      assignedFieldOfficerId: assignedFieldOfficerId,
+      assignedFieldOfficerAt: assignedFieldOfficerAtEpochMs != null
+          ? DateTime.fromMillisecondsSinceEpoch(assignedFieldOfficerAtEpochMs!)
+          : null,
+      assignedFieldOfficerNameSnapshot: assignedFieldOfficerNameSnapshot,
+      assignedFieldOfficerDesignationSnapshot: assignedFieldOfficerDesignationSnapshot,
+      workStartedAt: workStartedAtEpochMs != null
+          ? DateTime.fromMillisecondsSinceEpoch(workStartedAtEpochMs!)
+          : null,
+      workStartedBy: workStartedBy,
+      beforeWorkPhoto: beforeWorkPhoto,
+      beforeWorkNotes: beforeWorkNotes,
+      afterWorkPhoto: afterWorkPhoto,
+      resolutionRemarks: resolutionRemarks,
+      resolvedBy: resolvedBy,
+      blockedAt: blockedAtEpochMs != null
+          ? DateTime.fromMillisecondsSinceEpoch(blockedAtEpochMs!)
+          : null,
+      blockedBy: blockedBy,
+      blockedReason: blockedReason,
+      reopenedAt: reopenedAtEpochMs != null
+          ? DateTime.fromMillisecondsSinceEpoch(reopenedAtEpochMs!)
+          : null,
+      reopenedBy: reopenedBy,
+      reopenReason: reopenReason,
+      previousResolvedAt: previousResolvedAtEpochMs != null
+          ? DateTime.fromMillisecondsSinceEpoch(previousResolvedAtEpochMs!)
+          : null,
+      previousResolutionEvidence: previousResolutionEvidence,
+      reopenCount: reopenCount,
     );
   }
 
@@ -202,6 +488,66 @@ class ComplaintLocalModel {
     String? serverId,
     String? aiAuthenticityJson,
     String? aiAnalysisStatus,
+    String? evidenceVerificationStatus,
+    String? departmentVerificationStatus,
+    String? verificationStage,
+    String? verifiedDepartmentId,
+    String? verifiedDepartmentName,
+    int? evidenceVerificationStartedAtEpochMs,
+    int? evidenceVerificationCompletedAtEpochMs,
+    int? departmentVerificationStartedAtEpochMs,
+    int? departmentVerificationCompletedAtEpochMs,
+    int? verificationCompletedAtEpochMs,
+    String? verificationFailureReason,
+    String? citizenSafeVerificationMessage,
+    int? aiVerificationAttempts,
+    int? lastAiVerificationAttemptAtEpochMs,
+    String? lastAiFailureCode,
+    int? aiFallbackTriggeredAtEpochMs,
+    String? initialReviewDepartmentId,
+    String? initialReviewDepartmentName,
+    String? humanReviewStatus,
+    String? humanReviewerId,
+    String? humanReviewerName,
+    String? humanReviewRemarks,
+    int? humanReviewedAtEpochMs,
+    String? previousDepartmentId,
+    int? closedAtEpochMs,
+    String? closedBy,
+    String? closureRemarks,
+    String? wardId,
+    String? assignedDepartmentId,
+    String? assignedDepartmentLeadId,
+    String? assignedCrewMemberId,
+    String? routingStatus,
+    String? assignmentStatus,
+    int? slaStartedAtEpochMs,
+    int? originalCreatedAtEpochMs,
+    int? currentDepartmentAssignedAtEpochMs,
+    int? lastReassignedAtEpochMs,
+    int? reassignmentCount,
+    String? assignedJuniorEngineerNameSnapshot,
+    String? assignedJuniorEngineerDesignationSnapshot,
+    String? assignedFieldOfficerId,
+    int? assignedFieldOfficerAtEpochMs,
+    String? assignedFieldOfficerNameSnapshot,
+    String? assignedFieldOfficerDesignationSnapshot,
+    int? workStartedAtEpochMs,
+    String? workStartedBy,
+    String? beforeWorkPhoto,
+    String? beforeWorkNotes,
+    String? afterWorkPhoto,
+    String? resolutionRemarks,
+    String? resolvedBy,
+    int? blockedAtEpochMs,
+    String? blockedBy,
+    String? blockedReason,
+    int? reopenedAtEpochMs,
+    String? reopenedBy,
+    String? reopenReason,
+    int? previousResolvedAtEpochMs,
+    List<String>? previousResolutionEvidence,
+    int? reopenCount,
   }) {
     return ComplaintLocalModel(
       id: id ?? this.id,
@@ -230,6 +576,66 @@ class ComplaintLocalModel {
       serverId: serverId ?? this.serverId,
       aiAuthenticityJson: aiAuthenticityJson ?? this.aiAuthenticityJson,
       aiAnalysisStatus: aiAnalysisStatus ?? this.aiAnalysisStatus,
+      evidenceVerificationStatus: evidenceVerificationStatus ?? this.evidenceVerificationStatus,
+      departmentVerificationStatus: departmentVerificationStatus ?? this.departmentVerificationStatus,
+      verificationStage: verificationStage ?? this.verificationStage,
+      verifiedDepartmentId: verifiedDepartmentId ?? this.verifiedDepartmentId,
+      verifiedDepartmentName: verifiedDepartmentName ?? this.verifiedDepartmentName,
+      evidenceVerificationStartedAtEpochMs: evidenceVerificationStartedAtEpochMs ?? this.evidenceVerificationStartedAtEpochMs,
+      evidenceVerificationCompletedAtEpochMs: evidenceVerificationCompletedAtEpochMs ?? this.evidenceVerificationCompletedAtEpochMs,
+      departmentVerificationStartedAtEpochMs: departmentVerificationStartedAtEpochMs ?? this.departmentVerificationStartedAtEpochMs,
+      departmentVerificationCompletedAtEpochMs: departmentVerificationCompletedAtEpochMs ?? this.departmentVerificationCompletedAtEpochMs,
+      verificationCompletedAtEpochMs: verificationCompletedAtEpochMs ?? this.verificationCompletedAtEpochMs,
+      verificationFailureReason: verificationFailureReason ?? this.verificationFailureReason,
+      citizenSafeVerificationMessage: citizenSafeVerificationMessage ?? this.citizenSafeVerificationMessage,
+      aiVerificationAttempts: aiVerificationAttempts ?? this.aiVerificationAttempts,
+      lastAiVerificationAttemptAtEpochMs: lastAiVerificationAttemptAtEpochMs ?? this.lastAiVerificationAttemptAtEpochMs,
+      lastAiFailureCode: lastAiFailureCode ?? this.lastAiFailureCode,
+      aiFallbackTriggeredAtEpochMs: aiFallbackTriggeredAtEpochMs ?? this.aiFallbackTriggeredAtEpochMs,
+      initialReviewDepartmentId: initialReviewDepartmentId ?? this.initialReviewDepartmentId,
+      initialReviewDepartmentName: initialReviewDepartmentName ?? this.initialReviewDepartmentName,
+      humanReviewStatus: humanReviewStatus ?? this.humanReviewStatus,
+      humanReviewerId: humanReviewerId ?? this.humanReviewerId,
+      humanReviewerName: humanReviewerName ?? this.humanReviewerName,
+      humanReviewRemarks: humanReviewRemarks ?? this.humanReviewRemarks,
+      humanReviewedAtEpochMs: humanReviewedAtEpochMs ?? this.humanReviewedAtEpochMs,
+      previousDepartmentId: previousDepartmentId ?? this.previousDepartmentId,
+      closedAtEpochMs: closedAtEpochMs ?? this.closedAtEpochMs,
+      closedBy: closedBy ?? this.closedBy,
+      closureRemarks: closureRemarks ?? this.closureRemarks,
+      wardId: wardId ?? this.wardId,
+      assignedDepartmentId: assignedDepartmentId ?? this.assignedDepartmentId,
+      assignedDepartmentLeadId: assignedDepartmentLeadId ?? this.assignedDepartmentLeadId,
+      assignedCrewMemberId: assignedCrewMemberId ?? this.assignedCrewMemberId,
+      routingStatus: routingStatus ?? this.routingStatus,
+      assignmentStatus: assignmentStatus ?? this.assignmentStatus,
+      slaStartedAtEpochMs: slaStartedAtEpochMs ?? this.slaStartedAtEpochMs,
+      originalCreatedAtEpochMs: originalCreatedAtEpochMs ?? this.originalCreatedAtEpochMs,
+      currentDepartmentAssignedAtEpochMs: currentDepartmentAssignedAtEpochMs ?? this.currentDepartmentAssignedAtEpochMs,
+      lastReassignedAtEpochMs: lastReassignedAtEpochMs ?? this.lastReassignedAtEpochMs,
+      reassignmentCount: reassignmentCount ?? this.reassignmentCount,
+      assignedJuniorEngineerNameSnapshot: assignedJuniorEngineerNameSnapshot ?? this.assignedJuniorEngineerNameSnapshot,
+      assignedJuniorEngineerDesignationSnapshot: assignedJuniorEngineerDesignationSnapshot ?? this.assignedJuniorEngineerDesignationSnapshot,
+      assignedFieldOfficerId: assignedFieldOfficerId ?? this.assignedFieldOfficerId,
+      assignedFieldOfficerAtEpochMs: assignedFieldOfficerAtEpochMs ?? this.assignedFieldOfficerAtEpochMs,
+      assignedFieldOfficerNameSnapshot: assignedFieldOfficerNameSnapshot ?? this.assignedFieldOfficerNameSnapshot,
+      assignedFieldOfficerDesignationSnapshot: assignedFieldOfficerDesignationSnapshot ?? this.assignedFieldOfficerDesignationSnapshot,
+      workStartedAtEpochMs: workStartedAtEpochMs ?? this.workStartedAtEpochMs,
+      workStartedBy: workStartedBy ?? this.workStartedBy,
+      beforeWorkPhoto: beforeWorkPhoto ?? this.beforeWorkPhoto,
+      beforeWorkNotes: beforeWorkNotes ?? this.beforeWorkNotes,
+      afterWorkPhoto: afterWorkPhoto ?? this.afterWorkPhoto,
+      resolutionRemarks: resolutionRemarks ?? this.resolutionRemarks,
+      resolvedBy: resolvedBy ?? this.resolvedBy,
+      blockedAtEpochMs: blockedAtEpochMs ?? this.blockedAtEpochMs,
+      blockedBy: blockedBy ?? this.blockedBy,
+      blockedReason: blockedReason ?? this.blockedReason,
+      reopenedAtEpochMs: reopenedAtEpochMs ?? this.reopenedAtEpochMs,
+      reopenedBy: reopenedBy ?? this.reopenedBy,
+      reopenReason: reopenReason ?? this.reopenReason,
+      previousResolvedAtEpochMs: previousResolvedAtEpochMs ?? this.previousResolvedAtEpochMs,
+      previousResolutionEvidence: previousResolutionEvidence ?? this.previousResolutionEvidence,
+      reopenCount: reopenCount ?? this.reopenCount,
     );
   }
 }

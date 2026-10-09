@@ -4,6 +4,7 @@ import '../../core/auth/auth_service_locator.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/constants/app_typography.dart';
+import '../../core/localization/app_localizations.dart';
 import '../../core/routing/app_routes.dart';
 import '../../core/widgets/civic_fix_button.dart';
 import '../../core/widgets/responsive_container.dart';
@@ -48,18 +49,18 @@ class _LoginScreenState extends State<LoginScreen> {
 
   String? _validateEmail(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'Please enter your email.';
+      return context.l10nOrNull?.pleaseEnterEmail ?? 'Please enter your email.';
     }
     final emailRegex = RegExp(r'^[\w\.-]+@([\w-]+\.)+[\w-]{2,4}$');
     if (!emailRegex.hasMatch(value.trim())) {
-      return 'Please enter a valid email address.';
+      return context.l10nOrNull?.pleaseEnterValidEmail ?? 'Please enter a valid email address.';
     }
     return null;
   }
 
   String? _validatePassword(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Please enter your password.';
+      return context.l10nOrNull?.pleaseEnterPassword ?? 'Please enter your password.';
     }
     return null;
   }
@@ -97,7 +98,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } else {
       setState(() {
-        _errorMessage = result.errorMessage ?? 'Incorrect email or password.';
+        _errorMessage = result.errorMessage ?? context.l10nOrNull?.incorrectEmailOrPassword ?? 'Incorrect email or password.';
       });
     }
   }
@@ -130,7 +131,7 @@ class _LoginScreenState extends State<LoginScreen> {
       // User cancelled account selection - keep quiet without error banner
     } else {
       setState(() {
-        _errorMessage = result.errorMessage ?? 'Google Sign-In failed. Please try again.';
+        _errorMessage = result.errorMessage ?? context.l10nOrNull?.googleSignInFailed ?? 'Google Sign-In failed. Please try again.';
       });
     }
   }
@@ -153,9 +154,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     CivicFixSpacing.vSpaceLg,
 
-                    const AuthHeader(
-                      title: 'Welcome back',
-                      subtitle: 'Sign in to report civic issues, track community fixes, and participate in your ward.',
+                    AuthHeader(
+                      title: context.l10nOrNull?.welcomeBack ?? 'Welcome back',
+                      subtitle: context.l10nOrNull?.signInSubtitle ?? 'Sign in to report civic issues, track community fixes, and participate in your ward.',
                     ),
                     CivicFixSpacing.vSpaceXl,
 
@@ -168,8 +169,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
                     // Email Field
                     AuthTextField(
-                      label: 'Email',
-                      hintText: 'e.g. name@example.com',
+                      label: context.l10nOrNull?.email ?? 'Email',
+                      hintText: context.l10nOrNull?.emailHint ?? 'e.g. name@example.com',
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
                       textInputAction: TextInputAction.next,
@@ -185,8 +186,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
                     // Password Field
                     AuthTextField(
-                      label: 'Password',
-                      hintText: 'Enter your password',
+                      label: context.l10nOrNull?.password ?? 'Password',
+                      hintText: context.l10nOrNull?.passwordHint ?? 'Enter your password',
                       controller: _passwordController,
                       isPassword: true,
                       isPasswordVisible: _isPasswordVisible,
@@ -215,7 +216,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 Navigator.pushNamed(context, AppRoutes.forgotPassword);
                               },
                         child: Text(
-                          'Forgot Password?',
+                          context.l10nOrNull?.forgotPassword ?? 'Forgot Password?',
                           style: CivicFixTypography.bodySmallMedium.copyWith(
                             color: CivicFixColors.secondary,
                             fontWeight: FontWeight.w600,
@@ -227,7 +228,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                     // Primary Login CTA Button
                     CivicFixButton(
-                      text: 'Login',
+                      text: context.l10nOrNull?.login ?? 'Login',
                       isLoading: _isLoading,
                       onPressed: (_isLoading || _isGoogleLoading) ? null : _handleLogin,
                     ),
@@ -240,7 +241,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: CivicFixSpacing.md),
                           child: Text(
-                            'OR',
+                            context.l10nOrNull?.orDivider ?? 'OR',
                             style: CivicFixTypography.caption.copyWith(
                               color: CivicFixColors.secondaryText,
                               fontWeight: FontWeight.w600,
@@ -267,7 +268,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         spacing: CivicFixSpacing.xs,
                         children: [
                           Text(
-                            "Don't have an account?",
+                            context.l10nOrNull?.dontHaveAccount ?? "Don't have an account?",
                             style: CivicFixTypography.bodySmall,
                           ),
                           GestureDetector(
@@ -279,7 +280,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             child: Padding(
                               padding: const EdgeInsets.symmetric(vertical: CivicFixSpacing.xs),
                               child: Text(
-                                'Create an account',
+                                context.l10nOrNull?.createAccount ?? 'Create an account',
                                 style: CivicFixTypography.bodySmallMedium.copyWith(
                                   color: CivicFixColors.secondary,
                                   fontWeight: FontWeight.w700,
@@ -288,6 +289,44 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                         ],
+                      ),
+                    ),
+                    CivicFixSpacing.vSpaceLg,
+
+                    const Divider(color: CivicFixColors.border, thickness: 1),
+                    CivicFixSpacing.vSpaceMd,
+
+                    // Government Officer Portal Switch
+                    Center(
+                      child: OutlinedButton.icon(
+                        key: const Key('govt_officer_login_button'),
+                        onPressed: (_isLoading || _isGoogleLoading)
+                            ? null
+                            : () {
+                                Navigator.pushNamed(context, AppRoutes.govtLogin);
+                              },
+                        icon: const Icon(
+                          Icons.account_balance_rounded,
+                          size: 18,
+                          color: CivicFixColors.primary,
+                        ),
+                        label: Text(
+                          context.l10nOrNull?.govtOfficerLogin ?? 'Government Officer Login',
+                          style: CivicFixTypography.bodySmallMedium.copyWith(
+                            color: CivicFixColors.primary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: CivicFixSpacing.lg,
+                            vertical: CivicFixSpacing.sm + 2,
+                          ),
+                          side: const BorderSide(color: CivicFixColors.primary, width: 1.2),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
                       ),
                     ),
                     CivicFixSpacing.vSpaceLg,

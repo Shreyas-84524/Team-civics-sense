@@ -3,8 +3,11 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_radius.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
+import '../../../core/localization/mappers/canonical_display_mappers.dart';
 import '../../../core/models/evidence_model.dart';
 import '../../../core/widgets/civic_fix_card.dart';
+import '../../../core/widgets/supabase_evidence_image.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../models/complaint_draft.dart';
 
 /// Comprehensive Review Card for Step 4 of Report Issue with individual section edit hooks.
@@ -19,6 +22,9 @@ class ComplaintReviewCard extends StatelessWidget {
   });
 
   void _openPhotoPreview(BuildContext context, int index, String photoPath, EvidenceItem? item) {
+    final l10n = AppLocalizations.of(context);
+    final fileName = item?.fileName ?? photoPath.split(RegExp(r'[/\\]')).last;
+
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
@@ -32,13 +38,16 @@ class ComplaintReviewCard extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Photo Preview (${index + 1} of ${draft.photoCount})',
-                    style: CivicFixTypography.h3,
+                  Expanded(
+                    child: Text(
+                      l10n?.photoPreview(index + 1, draft.photoCount) ??
+                          'Photo Preview (${index + 1} of ${draft.photoCount})',
+                      style: CivicFixTypography.h3,
+                    ),
                   ),
                   IconButton(
                     icon: const Icon(Icons.close_rounded),
-                    tooltip: 'Close Preview',
+                    tooltip: l10n?.close ?? 'Close Preview',
                     onPressed: () => Navigator.pop(ctx),
                   ),
                 ],
@@ -46,46 +55,83 @@ class ComplaintReviewCard extends StatelessWidget {
               CivicFixSpacing.vSpaceMd,
               Container(
                 width: double.infinity,
-                height: 200,
+                constraints: const BoxConstraints(
+                  maxHeight: 320,
+                  minHeight: 180,
+                ),
                 decoration: BoxDecoration(
-                  color: CivicFixColors.surfaceMuted,
+                  color: Colors.black,
                   borderRadius: CivicFixRadius.cardRadius,
                   border: Border.all(color: CivicFixColors.border),
                 ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      item?.source == EvidenceSource.camera
-                          ? Icons.camera_alt_rounded
-                          : Icons.image_rounded,
-                      size: 48,
-                      color: CivicFixColors.primary.withValues(alpha: 0.6),
+                child: ClipRRect(
+                  borderRadius: CivicFixRadius.cardRadius,
+                  child: InteractiveViewer(
+                    minScale: 0.8,
+                    maxScale: 3.5,
+                    child: Center(
+                      child: SupabaseEvidenceImage(
+                        imagePath: photoPath,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_) => Container(
+                          color: CivicFixColors.surfaceMuted,
+                          alignment: Alignment.center,
+                          padding: const EdgeInsets.all(CivicFixSpacing.lg),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                item?.source == EvidenceSource.camera
+                                    ? Icons.camera_alt_rounded
+                                    : Icons.image_rounded,
+                                size: 48,
+                                color: CivicFixColors.primary.withValues(alpha: 0.6),
+                              ),
+                              CivicFixSpacing.vSpaceSm,
+                              Text(
+                                fileName,
+                                textAlign: TextAlign.center,
+                                style: CivicFixTypography.bodySmallMedium,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
-                    CivicFixSpacing.vSpaceSm,
-                    Text(
-                      item?.fileName ?? photoPath.split('/').last,
-                      textAlign: TextAlign.center,
-                      style: CivicFixTypography.bodySmallMedium,
-                    ),
-                    CivicFixSpacing.vSpaceXs,
-                    Text(
+                  ),
+                ),
+              ),
+              CivicFixSpacing.vSpaceSm,
+              Row(
+                children: [
+                  Icon(
+                    item?.source == EvidenceSource.camera
+                        ? Icons.camera_alt_outlined
+                        : Icons.photo_library_outlined,
+                    size: 14,
+                    color: CivicFixColors.secondaryText,
+                  ),
+                  CivicFixSpacing.hSpaceXs,
+                  Expanded(
+                    child: Text(
                       item != null
-                          ? 'Captured via ${item.source.label} • ${item.formattedTime}'
-                          : 'Attached Photo',
+                          ? '$fileName • Captured via ${item.source.label} at ${item.formattedTime}'
+                          : fileName,
                       style: CivicFixTypography.caption.copyWith(
                         color: CivicFixColors.secondaryText,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
               CivicFixSpacing.vSpaceMd,
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Close'),
+                  child: Text(l10n?.close ?? 'Close'),
                 ),
               ),
             ],
@@ -97,6 +143,7 @@ class ComplaintReviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final category = draft.category;
     final location = draft.location;
 
@@ -104,12 +151,12 @@ class ComplaintReviewCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Review your issue',
+          l10n?.reviewYourIssue ?? 'Review your issue',
           style: CivicFixTypography.h2,
         ),
         CivicFixSpacing.vSpaceXs,
         Text(
-          'Please verify all information before submitting to your ward.',
+          l10n?.reviewIssueSubtitle ?? 'Please verify all information before submitting to your ward.',
           style: CivicFixTypography.caption.copyWith(
             color: CivicFixColors.secondaryText,
           ),
@@ -126,7 +173,7 @@ class ComplaintReviewCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Issue Information',
+                    l10n?.issueInformation ?? 'Issue Information',
                     style: CivicFixTypography.bodySmallMedium.copyWith(
                       fontWeight: FontWeight.w700,
                       color: CivicFixColors.primaryText,
@@ -135,7 +182,7 @@ class ComplaintReviewCard extends StatelessWidget {
                   TextButton.icon(
                     onPressed: () => onEditStep(1),
                     icon: const Icon(Icons.edit_outlined, size: 15),
-                    label: const Text('Edit'),
+                    label: Text(l10n?.editProfile ?? 'Edit'),
                     style: TextButton.styleFrom(
                       foregroundColor: CivicFixColors.secondaryDark,
                       padding: EdgeInsets.zero,
@@ -146,10 +193,11 @@ class ComplaintReviewCard extends StatelessWidget {
               ),
               const Divider(height: 16),
               Text(
-                'Title',
+                l10n?.issueTitle ?? 'Title',
                 style: CivicFixTypography.caption.copyWith(color: CivicFixColors.secondaryText),
               ),
               CivicFixSpacing.vSpaceXs,
+              // Authoritative citizen-entered text: NEVER translate
               Text(
                 draft.title,
                 style: CivicFixTypography.bodySmallMedium.copyWith(
@@ -158,7 +206,7 @@ class ComplaintReviewCard extends StatelessWidget {
               ),
               CivicFixSpacing.vSpaceMd,
               Text(
-                'Category',
+                l10n?.categoryLabel ?? 'Category',
                 style: CivicFixTypography.caption.copyWith(color: CivicFixColors.secondaryText),
               ),
               CivicFixSpacing.vSpaceXs,
@@ -175,7 +223,7 @@ class ComplaintReviewCard extends StatelessWidget {
                     ),
                     CivicFixSpacing.hSpaceSm,
                     Text(
-                      category.name,
+                      localizedCategory(category, context: context),
                       style: CivicFixTypography.bodySmallMedium.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
@@ -184,10 +232,11 @@ class ComplaintReviewCard extends StatelessWidget {
                 ),
               CivicFixSpacing.vSpaceMd,
               Text(
-                'Description',
+                l10n?.describeTheIssue ?? 'Description',
                 style: CivicFixTypography.caption.copyWith(color: CivicFixColors.secondaryText),
               ),
               CivicFixSpacing.vSpaceXs,
+              // Authoritative citizen-entered text: NEVER translate
               Text(
                 draft.description,
                 style: CivicFixTypography.bodySmall,
@@ -207,7 +256,7 @@ class ComplaintReviewCard extends StatelessWidget {
                       const Icon(Icons.warning_amber_rounded, size: 14, color: CivicFixColors.alertDark),
                       const SizedBox(width: 4),
                       Text(
-                        'Marked as Immediate Safety Hazard',
+                        l10n?.safetyHazard ?? 'Marked as Immediate Safety Hazard',
                         style: CivicFixTypography.caption.copyWith(
                           color: CivicFixColors.alertDark,
                           fontWeight: FontWeight.w600,
@@ -232,7 +281,7 @@ class ComplaintReviewCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Photo Evidence (${draft.photoCount})',
+                    l10n?.evidencePhotos(draft.photoCount) ?? 'Photo Evidence (${draft.photoCount})',
                     style: CivicFixTypography.bodySmallMedium.copyWith(
                       fontWeight: FontWeight.w700,
                       color: CivicFixColors.primaryText,
@@ -241,7 +290,7 @@ class ComplaintReviewCard extends StatelessWidget {
                   TextButton.icon(
                     onPressed: () => onEditStep(2),
                     icon: const Icon(Icons.edit_outlined, size: 15),
-                    label: const Text('Edit'),
+                    label: Text(l10n?.edit ?? 'Edit'),
                     style: TextButton.styleFrom(
                       foregroundColor: CivicFixColors.secondaryDark,
                       padding: EdgeInsets.zero,
@@ -253,7 +302,7 @@ class ComplaintReviewCard extends StatelessWidget {
               const Divider(height: 16),
               if (draft.photoCount == 0)
                 Text(
-                  'No photos attached (Optional)',
+                  l10n?.noPhotosAttached ?? 'No photos attached (Optional)',
                   style: CivicFixTypography.bodySmall.copyWith(
                     color: CivicFixColors.secondaryText,
                     fontStyle: FontStyle.italic,
@@ -279,43 +328,53 @@ class ComplaintReviewCard extends StatelessWidget {
                             borderRadius: CivicFixRadius.chipRadius,
                             border: Border.all(color: CivicFixColors.border),
                           ),
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    item?.source == EvidenceSource.camera
-                                        ? Icons.camera_alt_outlined
-                                        : Icons.image_outlined,
-                                    color: CivicFixColors.secondaryDark,
-                                    size: 24,
-                                  ),
-                                  CivicFixSpacing.vSpaceXs,
-                                  Text(
-                                    'Photo ${index + 1}',
-                                    style: CivicFixTypography.caption.copyWith(fontSize: 10),
-                                  ),
-                                ],
-                              ),
-                              Positioned(
-                                top: 4,
-                                right: 4,
-                                child: Container(
-                                  padding: const EdgeInsets.all(2),
-                                  decoration: const BoxDecoration(
-                                    color: CivicFixColors.secondary,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.zoom_in_rounded,
-                                    color: Colors.white,
-                                    size: 10,
+                          child: ClipRRect(
+                            borderRadius: CivicFixRadius.chipRadius,
+                            child: Stack(
+                              fit: StackFit.expand,
+                              alignment: Alignment.center,
+                              children: [
+                                SupabaseEvidenceImage(
+                                  imagePath: path,
+                                  fit: BoxFit.cover,
+                                  width: 80,
+                                  height: 80,
+                                  errorBuilder: (_) => Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        item?.source == EvidenceSource.camera
+                                            ? Icons.camera_alt_outlined
+                                            : Icons.image_outlined,
+                                        color: CivicFixColors.secondaryDark,
+                                        size: 24,
+                                      ),
+                                      CivicFixSpacing.vSpaceXs,
+                                      Text(
+                                        '${l10n?.stepEvidence ?? 'Photo'} ${index + 1}',
+                                        style: CivicFixTypography.caption.copyWith(fontSize: 10),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                              ),
-                            ],
+                                Positioned(
+                                  top: 4,
+                                  right: 4,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(2),
+                                    decoration: BoxDecoration(
+                                      color: CivicFixColors.primary.withValues(alpha: 0.85),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.zoom_in_rounded,
+                                      color: Colors.white,
+                                      size: 10,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       );
@@ -340,7 +399,7 @@ class ComplaintReviewCard extends StatelessWidget {
                     child: Row(
                       children: [
                         Text(
-                          'Location',
+                          l10n?.stepLocation ?? 'Location',
                           style: CivicFixTypography.bodySmallMedium.copyWith(
                             fontWeight: FontWeight.w700,
                             color: CivicFixColors.primaryText,
@@ -377,7 +436,7 @@ class ComplaintReviewCard extends StatelessWidget {
                   TextButton.icon(
                     onPressed: () => onEditStep(3),
                     icon: const Icon(Icons.edit_outlined, size: 15),
-                    label: const Text('Edit'),
+                    label: Text(l10n?.edit ?? 'Edit'),
                     style: TextButton.styleFrom(
                       foregroundColor: CivicFixColors.secondaryDark,
                       padding: EdgeInsets.zero,
@@ -462,7 +521,8 @@ class ComplaintReviewCard extends StatelessWidget {
               CivicFixSpacing.hSpaceMd,
               Expanded(
                 child: Text(
-                  'This issue will be routed to ${draft.departmentName}.',
+                  l10n?.routedToDepartment(localizedDepartment(draft.departmentName, context: context)) ??
+                      'This issue will be routed to ${draft.departmentName}.',
                   style: CivicFixTypography.caption.copyWith(
                     color: CivicFixColors.primaryText,
                     fontWeight: FontWeight.w500,

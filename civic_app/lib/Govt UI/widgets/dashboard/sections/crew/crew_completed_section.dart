@@ -91,8 +91,10 @@ class _CrewCompletedSectionState extends State<CrewCompletedSection> {
               borderRadius: BorderRadius.circular(8),
               borderSide: const BorderSide(color: GovtThemeTokens.border),
             ),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 10,
+            ),
             filled: true,
             fillColor: GovtThemeTokens.surface,
           ),
@@ -135,115 +137,121 @@ class _CrewCompletedSectionState extends State<CrewCompletedSection> {
             ),
           ),
         ] else ...[
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: filtered.length,
-            itemBuilder: (context, index) {
-              final job = filtered[index];
-              final c = job.complaint;
-              final resDate = c.resolvedAt ?? c.updatedAt;
+          ...filtered.map((job) {
+            final c = job.complaint;
+            final resDate = c.resolvedAt ?? c.updatedAt;
 
-              return Container(
-                margin: const EdgeInsets.only(bottom: CivicFixSpacing.md),
-                decoration: BoxDecoration(
-                  color: GovtThemeTokens.surface,
-                  borderRadius: GovtThemeTokens.cardRadius,
-                  border: Border.all(
-                    color: const Color(0xFF10B981).withValues(alpha: 0.3),
-                  ),
-                  boxShadow: GovtThemeTokens.cardShadow,
+            return Container(
+              margin: const EdgeInsets.only(bottom: CivicFixSpacing.md),
+              decoration: BoxDecoration(
+                color: GovtThemeTokens.surface,
+                borderRadius: GovtThemeTokens.cardRadius,
+                border: Border.all(
+                  color: const Color(0xFF10B981).withValues(alpha: 0.3),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(CivicFixSpacing.md),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF10B981)
-                                  .withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(4),
-                              border: Border.all(
-                                color: const Color(0xFF10B981)
-                                    .withValues(alpha: 0.3),
+                boxShadow: GovtThemeTokens.cardShadow,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(CivicFixSpacing.md),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(
+                              0xFF10B981,
+                            ).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: const Color(
+                                0xFF10B981,
+                              ).withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.check_circle_rounded,
+                                size: 12,
+                                color: Color(0xFF10B981),
                               ),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.check_circle_rounded,
-                                    size: 12, color: Color(0xFF10B981)),
-                                CivicFixSpacing.hSpaceXs,
-                                Text(
-                                  'CERTIFIED RESOLVED',
-                                  style: CivicFixTypography.caption.copyWith(
-                                    color: const Color(0xFF10B981),
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 10,
-                                  ),
+                              CivicFixSpacing.hSpaceXs,
+                              Text(
+                                'CERTIFIED RESOLVED',
+                                style: CivicFixTypography.caption.copyWith(
+                                  color: const Color(0xFF10B981),
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 10,
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
-                          const Spacer(),
-                          GovtPriorityBadge.fromPriority(c.priority,
-                              isCompact: true),
-                        ],
-                      ),
-                      CivicFixSpacing.vSpaceSm,
-                      Text(
-                        'TICKET #${job.ticketNumber} · ${job.title}',
-                        style: CivicFixTypography.h3.copyWith(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: GovtThemeTokens.textPrimary,
                         ),
-                      ),
-                      CivicFixSpacing.vSpaceXs,
-                      Text(
-                        'Resolved: ${resDate.day}/${resDate.month}/${resDate.year} ${resDate.hour}:${resDate.minute.toString().padLeft(2, '0')} · ${job.address}',
-                        style: CivicFixTypography.caption.copyWith(
-                          color: GovtThemeTokens.textSecondary,
+                        const Spacer(),
+                        GovtPriorityBadge.fromPriority(
+                          c.priority,
+                          isCompact: true,
                         ),
+                      ],
+                    ),
+                    CivicFixSpacing.vSpaceSm,
+                    Text(
+                      'TICKET #${job.ticketNumber} · ${job.title}',
+                      style: CivicFixTypography.h3.copyWith(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: GovtThemeTokens.textPrimary,
                       ),
-                      CivicFixSpacing.vSpaceMd,
-                      const Divider(color: GovtThemeTokens.divider, height: 1),
-                      CivicFixSpacing.vSpaceSm,
-                      Row(
-                        children: [
-                          Text(
-                            'SLA Result: Compliant',
-                            style: CivicFixTypography.caption.copyWith(
-                              color: const Color(0xFF10B981),
-                              fontWeight: FontWeight.w600,
+                    ),
+                    CivicFixSpacing.vSpaceXs,
+                    Text(
+                      'Resolved: ${resDate.day}/${resDate.month}/${resDate.year} ${resDate.hour}:${resDate.minute.toString().padLeft(2, '0')} · ${job.address}',
+                      style: CivicFixTypography.caption.copyWith(
+                        color: GovtThemeTokens.textSecondary,
+                      ),
+                    ),
+                    CivicFixSpacing.vSpaceMd,
+                    const Divider(color: GovtThemeTokens.divider, height: 1),
+                    CivicFixSpacing.vSpaceSm,
+                    Row(
+                      children: [
+                        Text(
+                          'SLA Result: Compliant',
+                          style: CivicFixTypography.caption.copyWith(
+                            color: const Color(0xFF10B981),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const Spacer(),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: GovtThemeTokens.surfaceMuted,
+                            foregroundColor: GovtThemeTokens.textPrimary,
+                            elevation: 0,
+                            side: const BorderSide(
+                              color: GovtThemeTokens.border,
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 8,
                             ),
                           ),
-                          const Spacer(),
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: GovtThemeTokens.surfaceMuted,
-                              foregroundColor: GovtThemeTokens.textPrimary,
-                              elevation: 0,
-                              side: const BorderSide(
-                                  color: GovtThemeTokens.border),
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 14, vertical: 8),
-                            ),
-                            onPressed: () => widget.onViewDetails(job),
-                            child: const Text('View Record'),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                          onPressed: () => widget.onViewDetails(job),
+                          child: const Text('View Record'),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-              );
-            },
-          ),
+              ),
+            );
+          }),
         ],
       ],
     );

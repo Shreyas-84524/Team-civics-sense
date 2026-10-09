@@ -3,6 +3,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_radius.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 /// Confirmation dialog when citizen attempts to leave a report with unsaved entered data.
 class DiscardReportDialog extends StatelessWidget {
@@ -18,17 +19,19 @@ class DiscardReportDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
     return AlertDialog(
       shape: RoundedRectangleBorder(
         borderRadius: CivicFixRadius.largeContainerRadius,
       ),
       backgroundColor: CivicFixColors.surface,
       title: Text(
-        'Discard this report?',
+        l10n?.discardReportTitle ?? 'Discard this report?',
         style: CivicFixTypography.h3,
       ),
       content: Text(
-        'Your entered information will be lost.',
+        l10n?.discardReportMessage ?? 'Your entered information will be lost.',
         style: CivicFixTypography.bodySmall.copyWith(
           color: CivicFixColors.secondaryText,
         ),
@@ -45,7 +48,7 @@ class DiscardReportDialog extends StatelessWidget {
           style: TextButton.styleFrom(
             foregroundColor: CivicFixColors.primaryText,
           ),
-          child: const Text('Keep Editing'),
+          child: Text(l10n?.keepEditing ?? 'Keep Editing'),
         ),
         ElevatedButton(
           onPressed: () => Navigator.of(context).pop(true),
@@ -57,7 +60,7 @@ class DiscardReportDialog extends StatelessWidget {
               borderRadius: CivicFixRadius.buttonRadius,
             ),
           ),
-          child: const Text('Discard'),
+          child: Text(l10n?.discard ?? 'Discard'),
         ),
       ],
     );

@@ -11,8 +11,6 @@ import '../../widgets/common/government_app_shell.dart';
 import '../../widgets/common/government_filter_bar.dart';
 import '../../widgets/common/government_page_header.dart';
 import '../../widgets/common/govt_breadcrumbs.dart';
-import '../../widgets/common/govt_jurisdiction_badge.dart';
-import '../../widgets/common/govt_role_badge.dart';
 import '../auth/government_access_denied_screen.dart';
 import '../../widgets/dashboard/sections/zone/zone_attention_section.dart';
 import '../../widgets/dashboard/sections/zone/zone_critical_complaints_section.dart';
@@ -241,22 +239,11 @@ class _ZoneCommandCenterScreenState extends State<ZoneCommandCenterScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Page Header with Badges and Refresh Action
+              // Page Header with Refresh Action
               GovernmentPageHeader(
                 title: '$zoneDisplayName Command Center',
                 subtitle: 'Supervisory administrative control and department coordination across ${availableWards.length} municipal wards.',
                 breadcrumbs: breadcrumbs,
-                jurisdictionBadge: Wrap(
-                  spacing: 6,
-                  runSpacing: 4,
-                  children: [
-                    GovtJurisdictionBadge.role('ZONAL JURISDICTION', isCompact: true),
-                    GovtJurisdictionBadge.zone(zoneDisplayName.toUpperCase(), isCompact: true),
-                    GovtJurisdictionBadge.ward('${availableWards.length} WARDS', isCompact: true),
-                    GovtJurisdictionBadge.department('18 DEPARTMENTS', isCompact: true),
-                  ],
-                ),
-                statusWidget: GovtRoleBadge(role: activeUser.govtRole),
                 primaryAction: ElevatedButton.icon(
                   onPressed: _isLoading ? null : _loadDashboard,
                   icon: _isLoading

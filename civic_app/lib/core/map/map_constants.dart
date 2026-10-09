@@ -34,6 +34,15 @@ class MapConstants {
   /// Default MapTiler style preset for civic infrastructure inspection.
   static const String defaultStyle = 'streets-v2';
 
+  /// MapTiler Streets style identifier.
+  static const String styleStreets = 'streets-v2';
+
+  /// MapTiler Satellite style identifier.
+  static const String styleSatellite = 'satellite';
+
+  /// MapTiler Hybrid style identifier.
+  static const String styleHybrid = 'hybrid';
+
   /// Stable GeoJSON source identifier for CivicFix spatial datasets.
   static const String spatialSourceId = 'civicfix-spatial-points';
 
@@ -48,4 +57,13 @@ class MapConstants {
 
   /// Layer identifier reserved for future spatial heatmap layer.
   static const String heatmapLayerId = 'civicfix-heatmap-layer';
+
+  /// Stable GeoJSON source identifier for User GPS location.
+  static const String userLocationSourceId = 'civicfix-user-location-source';
+
+  /// Layer identifier for user location outer accuracy halo.
+  static const String userLocationHaloLayerId = 'civicfix-user-location-halo';
+
+  /// Layer identifier for user location core dot.
+  static const String userLocationDotLayerId = 'civicfix-user-location-dot';
 }

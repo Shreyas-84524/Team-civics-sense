@@ -39,11 +39,14 @@ class OfflineFirstUserRepository implements UserRepository {
 
   @override
   Future<UserModel> getCurrentUser() async {
-    // 1. Return cached user profile from Hive
     final local = await _localRepo.getCurrentUser();
-
-    // 2. If online, fetch remote Firestore profile & merge
     final uid = _activeUserId;
+
+    // Handle account switching: prevent leaking previous user's cached profile
+    if (local.id.isNotEmpty && uid.isNotEmpty && local.id != uid) {
+      await _localRepo.clearUserCache();
+    }
+
     if (_connectivity.isOnline && uid.isNotEmpty) {
       try {
         final remote = await _remoteDataSource.getUserById(uid);
@@ -57,7 +60,9 @@ class OfflineFirstUserRepository implements UserRepository {
       }
     }
 
-    return local;
+    return (local.id.isNotEmpty && uid.isNotEmpty && local.id != uid)
+        ? UserModel.empty
+        : local;
   }
 
   @override
@@ -139,17 +144,30 @@ class OfflineFirstUserRepository implements UserRepository {
     await _localRepo.clearUserCache();
   }
 
+  /// Updates local user cache directly.
+  Future<void> cacheUser(UserModel user) async {
+    await _localRepo.cacheUser(user);
+  }
+
   UserModel _mergeUser(UserModel local, UserModel remote) {
+    if (local.id.isNotEmpty && remote.id.isNotEmpty && local.id != remote.id) {
+      return remote;
+    }
+
     return local.copyWith(
+      id: remote.id.isNotEmpty ? remote.id : local.id,
       fullName: remote.fullName.isNotEmpty ? remote.fullName : local.fullName,
       email: remote.email.isNotEmpty ? remote.email : local.email,
       phone: remote.phone.isNotEmpty ? remote.phone : local.phone,
       wardNumber: remote.wardNumber.isNotEmpty ? remote.wardNumber : local.wardNumber,
       languageCode: remote.languageCode.isNotEmpty ? remote.languageCode : local.languageCode,
       avatarUrl: remote.avatarUrl ?? local.avatarUrl,
-      civicPoints: remote.civicPoints > local.civicPoints ? remote.civicPoints : local.civicPoints,
-      reportsSubmitted: remote.reportsSubmitted > local.reportsSubmitted ? remote.reportsSubmitted : local.reportsSubmitted,
-      reportsResolved: remote.reportsResolved > local.reportsResolved ? remote.reportsResolved : local.reportsResolved,
+      civicPoints: remote.civicPoints,
+      reportsSubmitted: remote.reportsSubmitted,
+      reportsResolved: remote.reportsResolved,
+      badges: remote.badges.isNotEmpty ? remote.badges : local.badges,
+      phoneVerified: remote.phoneVerified || local.phoneVerified,
+      phoneVerifiedAt: remote.phoneVerifiedAt ?? local.phoneVerifiedAt,
     );
   }
 }

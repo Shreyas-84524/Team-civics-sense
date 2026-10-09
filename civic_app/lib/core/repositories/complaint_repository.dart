@@ -5,7 +5,9 @@ import '../local/mock_data_source.dart';
 import '../location/location_model.dart';
 import '../models/category_model.dart';
 import '../models/complaint_model.dart';
+import '../models/complaint_upvote_result.dart';
 import '../models/hazard_model.dart';
+import '../services/complaint_routing_service.dart';
 
 abstract class ComplaintRepository {
   Future<List<ComplaintModel>> getCitizenComplaints(String citizenId);
@@ -31,8 +33,12 @@ abstract class ComplaintRepository {
     AiAuthenticityResult? aiAuthenticity,
     AiAnalysisStatus? aiAnalysisStatus,
   });
-  Future<void> upvoteComplaint(String id);
+  Future<ComplaintUpvoteResult> upvoteComplaint(String id);
   Future<List<ComplaintModel>> getNearbyHazards();
+  Future<List<ComplaintModel>> getCitizenVisibleComplaints({
+    String? citizenId,
+    int limit = 100,
+  });
 
   // Real-time Streams
   Stream<ComplaintModel?> watchComplaint(String id);
@@ -40,16 +46,35 @@ abstract class ComplaintRepository {
   Stream<List<ComplaintModel>> watchCitizenComplaints(String citizenId);
   Stream<List<ComplaintModel>> watchComplaints();
   Stream<List<ComplaintModel>> watchNearbyHazards();
+  Stream<List<ComplaintModel>> watchCitizenVisibleComplaints({
+    String? citizenId,
+    int limit = 100,
+  });
 }
 
 class MockComplaintRepository implements ComplaintRepository {
-  static final MockComplaintRepository _instance = MockComplaintRepository._internal();
-  factory MockComplaintRepository() => _instance;
+  static final MockComplaintRepository _instance =
+      MockComplaintRepository._internal();
+  factory MockComplaintRepository({
+    ComplaintRoutingService? routingService,
+    bool? enableAutoRouting,
+  }) {
+    if (routingService != null) {
+      _instance._routingService = routingService;
+    }
+    if (enableAutoRouting != null) {
+      _instance.enableAutoRouting = enableAutoRouting;
+    }
+    return _instance;
+  }
   MockComplaintRepository._internal();
 
+  bool enableAutoRouting = false;
   final MockDataSource _dataSource = MockDataSource();
+  ComplaintRoutingService _routingService = ComplaintRoutingService();
   final StreamController<List<ComplaintModel>> _complaintsStreamController =
       StreamController<List<ComplaintModel>>.broadcast();
+  final Set<String> _upvotedComplaintIds = {};
 
   int _ticketCounter = 24;
 
@@ -87,7 +112,8 @@ class MockComplaintRepository implements ComplaintRepository {
         (c) =>
             c.ticketNumber.toLowerCase() == ticketId.toLowerCase() ||
             c.id == ticketId ||
-            (c.localId != null && c.localId!.toLowerCase() == ticketId.toLowerCase()),
+            (c.localId != null &&
+                c.localId!.toLowerCase() == ticketId.toLowerCase()),
       );
     } catch (_) {
       return null;
@@ -109,8 +135,8 @@ class MockComplaintRepository implements ComplaintRepository {
     final formattedCounter = _ticketCounter.toString().padLeft(6, '0');
     final ticketNum = 'CF-2026-$formattedCounter';
     final newId = 'cmp_${DateTime.now().millisecondsSinceEpoch}';
-    
-    final newComplaint = ComplaintModel(
+
+    final initialComplaint = ComplaintModel(
       id: newId,
       citizenId: citizenId,
       ticketNumber: ticketNum,
@@ -128,15 +154,23 @@ class MockComplaintRepository implements ComplaintRepository {
       timeline: [
         TimelineEvent(
           title: 'Issue Reported',
-          description: 'Ticket created and assigned to Ward ${location.ward ?? "Central"}.',
+          description:
+              'Ticket created and assigned to Ward ${location.ward ?? "Central"}.',
           timestamp: DateTime.now(),
           status: ComplaintStatus.reported,
         ),
       ],
     );
 
+    final newComplaint = enableAutoRouting
+        ? await _routingService.autoRouteComplaint(
+            initialComplaint,
+            activeComplaintsPool: _dataSource.complaints,
+          )
+        : initialComplaint;
+
     _dataSource.complaints.insert(0, newComplaint);
-    
+
     // If flagged as hazard, sync into hazards collection
     if (isHazard) {
       _dataSource.hazards.insert(
@@ -156,15 +190,17 @@ class MockComplaintRepository implements ComplaintRepository {
           severity: newComplaint.priority == ComplaintPriority.emergency
               ? HazardSeverity.critical
               : newComplaint.priority == ComplaintPriority.high
-                  ? HazardSeverity.high
-                  : HazardSeverity.medium,
-          imageUrl: newComplaint.imageUrls.isNotEmpty ? newComplaint.imageUrls.first : null,
+              ? HazardSeverity.high
+              : HazardSeverity.medium,
+          imageUrl: newComplaint.imageUrls.isNotEmpty
+              ? newComplaint.imageUrls.first
+              : null,
           createdAt: newComplaint.createdAt,
           updatedAt: newComplaint.updatedAt,
         ),
       );
     }
-    
+
     // Update user stats
     final updatedUser = _dataSource.currentUser.copyWith(
       reportsSubmitted: _dataSource.currentUser.reportsSubmitted + 1,
@@ -186,10 +222,10 @@ class MockComplaintRepository implements ComplaintRepository {
       localId: complaint.localId ?? complaint.id,
     );
 
-
     // Replace if existing, or insert at top
     final existingIndex = _dataSource.complaints.indexWhere(
-      (c) => c.id == offlineComplaint.id || c.localId == offlineComplaint.localId,
+      (c) =>
+          c.id == offlineComplaint.id || c.localId == offlineComplaint.localId,
     );
 
     if (existingIndex != -1) {
@@ -217,9 +253,11 @@ class MockComplaintRepository implements ComplaintRepository {
         severity: offlineComplaint.priority == ComplaintPriority.emergency
             ? HazardSeverity.critical
             : offlineComplaint.priority == ComplaintPriority.high
-                ? HazardSeverity.high
-                : HazardSeverity.medium,
-        imageUrl: offlineComplaint.imageUrls.isNotEmpty ? offlineComplaint.imageUrls.first : null,
+            ? HazardSeverity.high
+            : HazardSeverity.medium,
+        imageUrl: offlineComplaint.imageUrls.isNotEmpty
+            ? offlineComplaint.imageUrls.first
+            : null,
         createdAt: offlineComplaint.createdAt,
         updatedAt: offlineComplaint.updatedAt,
       );
@@ -245,7 +283,9 @@ class MockComplaintRepository implements ComplaintRepository {
   @override
   Future<List<ComplaintModel>> getPendingComplaints() async {
     return List.unmodifiable(
-      _dataSource.complaints.where((c) => c.syncStatus == SyncStatus.pending).toList(),
+      _dataSource.complaints
+          .where((c) => c.syncStatus == SyncStatus.pending)
+          .toList(),
     );
   }
 
@@ -258,7 +298,10 @@ class MockComplaintRepository implements ComplaintRepository {
     AiAnalysisStatus? aiAnalysisStatus,
   }) async {
     final index = _dataSource.complaints.indexWhere(
-      (c) => c.id == complaintId || c.localId == complaintId || c.ticketNumber == complaintId,
+      (c) =>
+          c.id == complaintId ||
+          c.localId == complaintId ||
+          c.ticketNumber == complaintId,
     );
 
     if (index != -1) {
@@ -274,26 +317,62 @@ class MockComplaintRepository implements ComplaintRepository {
   }
 
   @override
-  Future<void> upvoteComplaint(String id) async {
-    final index = _dataSource.complaints.indexWhere((c) => c.id == id || c.ticketNumber == id);
-    if (index != -1) {
-      final current = _dataSource.complaints[index];
-      _dataSource.complaints[index] = current.copyWith(upvotes: current.upvotes + 1);
-      _notifyListeners();
+  Future<ComplaintUpvoteResult> upvoteComplaint(String id) async {
+    final index = _dataSource.complaints.indexWhere(
+      (c) => c.id == id || c.ticketNumber == id,
+    );
+    if (index == -1) {
+      throw StateError('Complaint not found.');
     }
-  }
 
+    final current = _dataSource.complaints[index];
+    if (!_upvotedComplaintIds.add(current.id)) {
+      return ComplaintUpvoteResult(added: false, upvotes: current.upvotes);
+    }
+
+    final updated = current.copyWith(upvotes: current.upvotes + 1);
+    _dataSource.complaints[index] = updated;
+    _notifyListeners();
+    return ComplaintUpvoteResult(added: true, upvotes: updated.upvotes);
+  }
 
   @override
   Future<List<ComplaintModel>> getNearbyHazards() async {
     return _dataSource.complaints
-        .where((c) => c.isHazard || c.priority == ComplaintPriority.emergency || c.priority == ComplaintPriority.high)
+        .where(
+          (c) =>
+              c.isHazard ||
+              c.priority == ComplaintPriority.emergency ||
+              c.priority == ComplaintPriority.high,
+        )
         .toList();
+  }
+
+  @override
+  Future<List<ComplaintModel>> getCitizenVisibleComplaints({
+    String? citizenId,
+    int limit = 100,
+  }) async {
+    final list = _dataSource.complaints
+        .where(
+          (c) =>
+              c.isHazard ||
+              c.priority == ComplaintPriority.emergency ||
+              c.priority == ComplaintPriority.high ||
+              (citizenId != null && citizenId.isNotEmpty && c.citizenId == citizenId),
+        )
+        .toList();
+    if (list.length > limit) {
+      return list.sublist(0, limit);
+    }
+    return list;
   }
 
   void _notifyListeners() {
     if (!_complaintsStreamController.isClosed) {
-      _complaintsStreamController.add(List.unmodifiable(_dataSource.complaints));
+      _complaintsStreamController.add(
+        List.unmodifiable(_dataSource.complaints),
+      );
     }
   }
 
@@ -312,13 +391,18 @@ class MockComplaintRepository implements ComplaintRepository {
   }
 
   @override
-  Stream<List<TimelineEvent>> watchComplaintTimeline(String complaintId) async* {
+  Stream<List<TimelineEvent>> watchComplaintTimeline(
+    String complaintId,
+  ) async* {
     final initial = await getComplaintById(complaintId);
     yield initial?.timeline ?? [];
     yield* _complaintsStreamController.stream.map((list) {
       try {
         final found = list.firstWhere(
-          (c) => c.id == complaintId || c.ticketNumber == complaintId || c.localId == complaintId,
+          (c) =>
+              c.id == complaintId ||
+              c.ticketNumber == complaintId ||
+              c.localId == complaintId,
         );
         return found.timeline;
       } catch (_) {
@@ -348,8 +432,37 @@ class MockComplaintRepository implements ComplaintRepository {
   Stream<List<ComplaintModel>> watchNearbyHazards() async* {
     yield await getNearbyHazards();
     yield* _complaintsStreamController.stream.map((list) {
-      return list.where((c) => c.isHazard || c.priority == ComplaintPriority.emergency || c.priority == ComplaintPriority.high).toList();
+      return list
+          .where(
+            (c) =>
+                c.isHazard ||
+                c.priority == ComplaintPriority.emergency ||
+                c.priority == ComplaintPriority.high,
+          )
+          .toList();
+    });
+  }
+
+  @override
+  Stream<List<ComplaintModel>> watchCitizenVisibleComplaints({
+    String? citizenId,
+    int limit = 100,
+  }) async* {
+    yield await getCitizenVisibleComplaints(citizenId: citizenId, limit: limit);
+    yield* _complaintsStreamController.stream.map((list) {
+      final filtered = list
+          .where(
+            (c) =>
+                c.isHazard ||
+                c.priority == ComplaintPriority.emergency ||
+                c.priority == ComplaintPriority.high ||
+                (citizenId != null && citizenId.isNotEmpty && c.citizenId == citizenId),
+          )
+          .toList();
+      if (filtered.length > limit) {
+        return filtered.sublist(0, limit);
+      }
+      return filtered;
     });
   }
 }
-

@@ -3,8 +3,9 @@ import '../../../User UI/services/location_service.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
 import '../../../core/location/location_model.dart';
+import '../../../core/map/civic_map_canvas.dart';
+import '../../../core/map/map_constants.dart';
 import '../../../core/map/spatial_data_service.dart';
-import '../../../core/models/complaint_model.dart';
 import '../../../core/models/hazard_model.dart';
 import '../../../core/network/connectivity_service.dart';
 import '../../../core/repositories/hazard_repository.dart';
@@ -12,7 +13,6 @@ import '../../../core/repositories/repository_locator.dart';
 import '../../../core/widgets/offline_cache_banner.dart';
 import '../../services/govt_complaint_repository.dart';
 import '../../theme/govt_theme_tokens.dart';
-import '../../widgets/common/govt_filter_chip.dart';
 import '../../widgets/common/govt_search_field.dart';
 import '../../widgets/map/govt_hazard_info_card.dart';
 import '../../widgets/map/govt_map_canvas.dart';
@@ -45,6 +45,7 @@ class _GovtHazardMapScreenState extends State<GovtHazardMapScreen> {
 
   final TextEditingController _searchController = TextEditingController();
   final TransformationController _transformationController = TransformationController();
+  final GlobalKey<CivicMapCanvasState> _mapCanvasKey = GlobalKey<CivicMapCanvasState>();
 
   List<HazardModel> _allHazards = [];
   List<HazardModel> _filteredHazards = [];
@@ -56,7 +57,6 @@ class _GovtHazardMapScreenState extends State<GovtHazardMapScreen> {
   String? _locationNotice;
 
   // Active filters
-  ComplaintStatus? _selectedStatus;
   String _selectedCategory = 'all';
   HazardSeverity? _selectedSeverity;
   SpatialTimeFilter? _selectedTimeFilter;
@@ -84,7 +84,6 @@ class _GovtHazardMapScreenState extends State<GovtHazardMapScreen> {
     _locationService = widget.locationService ?? RepositoryLocator.locationService;
     _connectivityService = widget.connectivityService ?? AppConnectivityService();
 
-    _resetMapTransform();
     _loadHazards();
   }
 
@@ -96,7 +95,7 @@ class _GovtHazardMapScreenState extends State<GovtHazardMapScreen> {
   }
 
   void _resetMapTransform() {
-    _transformationController.value = Matrix4.identity();
+    _mapCanvasKey.currentState?.recenterMumbai();
   }
 
   Future<void> _loadHazards() async {
@@ -125,12 +124,7 @@ class _GovtHazardMapScreenState extends State<GovtHazardMapScreen> {
   void _applyFilters() {
     var results = List<HazardModel>.from(_allHazards);
 
-    // 1. Status Filter
-    if (_selectedStatus != null) {
-      results = results.where((h) => h.status == _selectedStatus).toList();
-    }
-
-    // 2. Category Filter
+    // 1. Category Filter
     if (_selectedCategory != 'all') {
       final catQuery = _selectedCategory.toLowerCase();
       results = results.where((h) {
@@ -156,17 +150,17 @@ class _GovtHazardMapScreenState extends State<GovtHazardMapScreen> {
       }).toList();
     }
 
-    // 3. Severity Filter
+    // 2. Severity Filter
     if (_selectedSeverity != null) {
       results = results.where((h) => h.severity == _selectedSeverity).toList();
     }
 
-    // 4. Time Horizon Filter
+    // 3. Time Horizon Filter
     if (_selectedTimeFilter != null && _selectedTimeFilter != SpatialTimeFilter.allTime) {
       results = results.where((h) => _selectedTimeFilter!.isWithin(h.createdAt)).toList();
     }
 
-    // 5. Search Filter
+    // 4. Search Filter
     final query = _searchController.text.trim().toLowerCase();
     if (query.isNotEmpty) {
       results = results.where((h) {
@@ -190,7 +184,6 @@ class _GovtHazardMapScreenState extends State<GovtHazardMapScreen> {
   void _clearAllFilters() {
     _searchController.clear();
     setState(() {
-      _selectedStatus = null;
       _selectedCategory = 'all';
       _selectedSeverity = null;
       _selectedTimeFilter = null;
@@ -200,7 +193,6 @@ class _GovtHazardMapScreenState extends State<GovtHazardMapScreen> {
   }
 
   bool get _hasActiveFilters =>
-      _selectedStatus != null ||
       _selectedCategory != 'all' ||
       _selectedSeverity != null ||
       _selectedTimeFilter != null ||
@@ -228,13 +220,21 @@ class _GovtHazardMapScreenState extends State<GovtHazardMapScreen> {
           _isLocatingGps = false;
         });
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Centered map at your inspection location (${loc.ward ?? "Central Ward"}).'),
-            backgroundColor: GovtThemeTokens.secondary,
-            duration: const Duration(seconds: 3),
-          ),
+        await _mapCanvasKey.currentState?.animateTo(
+          latitude: loc.latitude,
+          longitude: loc.longitude,
+          zoom: MapConstants.focusedZoom,
         );
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Centered map at your inspection location (${loc.ward ?? "Central Ward"}).'),
+              backgroundColor: GovtThemeTokens.secondary,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
       } else {
         setState(() {
           _isLocatingGps = false;
@@ -251,15 +251,11 @@ class _GovtHazardMapScreenState extends State<GovtHazardMapScreen> {
   }
 
   void _zoomIn() {
-    final currentScale = _transformationController.value.getMaxScaleOnAxis();
-    final newScale = (currentScale * 1.25).clamp(0.5, 3.0);
-    _transformationController.value = Matrix4.diagonal3Values(newScale, newScale, 1.0);
+    _mapCanvasKey.currentState?.zoomIn();
   }
 
   void _zoomOut() {
-    final currentScale = _transformationController.value.getMaxScaleOnAxis();
-    final newScale = (currentScale / 1.25).clamp(0.5, 3.0);
-    _transformationController.value = Matrix4.diagonal3Values(newScale, newScale, 1.0);
+    _mapCanvasKey.currentState?.zoomOut();
   }
 
   @override
@@ -322,6 +318,7 @@ class _GovtHazardMapScreenState extends State<GovtHazardMapScreen> {
                 )
               else
                 GovtMapCanvas(
+                  mapCanvasKey: _mapCanvasKey,
                   hazards: _filteredHazards,
                   selectedHazard: _selectedHazard,
                   onHazardSelected: _onHazardSelected,
@@ -538,6 +535,8 @@ class _GovtHazardMapScreenState extends State<GovtHazardMapScreen> {
                     Expanded(child: _buildCategoryDropdown()),
                     CivicFixSpacing.hSpaceSm,
                     Expanded(child: _buildSeverityDropdown()),
+                    CivicFixSpacing.hSpaceSm,
+                    _buildActiveHazardsBadge(),
                     if (_hasActiveFilters) ...[
                       CivicFixSpacing.hSpaceSm,
                       _buildClearButton(),
@@ -565,6 +564,8 @@ class _GovtHazardMapScreenState extends State<GovtHazardMapScreen> {
                       flex: 2,
                       child: _buildSeverityDropdown(),
                     ),
+                    CivicFixSpacing.hSpaceMd,
+                    _buildActiveHazardsBadge(),
                     if (_hasActiveFilters) ...[
                       CivicFixSpacing.hSpaceMd,
                       _buildClearButton(),
@@ -572,78 +573,43 @@ class _GovtHazardMapScreenState extends State<GovtHazardMapScreen> {
                   ],
                 ),
               ],
-              CivicFixSpacing.vSpaceSm,
-
-              // Status Filter Chips Row & Results Count
-              Row(
-                children: [
-                  Expanded(
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          GovtFilterChip(
-                            label: 'All Hazards',
-                            isSelected: _selectedStatus == null,
-                            onSelected: (_) {
-                              setState(() => _selectedStatus = null);
-                              _applyFilters();
-                            },
-                          ),
-                          CivicFixSpacing.hSpaceSm,
-                          ...ComplaintStatus.values.where((s) => s != ComplaintStatus.rejected).map((status) {
-                            return Padding(
-                              padding: const EdgeInsets.only(right: CivicFixSpacing.sm),
-                              child: GovtFilterChip(
-                                label: status.label,
-                                isSelected: _selectedStatus == status,
-                                onSelected: (_) {
-                                  setState(() => _selectedStatus = status);
-                                  _applyFilters();
-                                },
-                              ),
-                            );
-                          }),
-                        ],
-                      ),
-                    ),
-                  ),
-                  CivicFixSpacing.hSpaceMd,
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEFF3F0),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 6,
-                          height: 6,
-                          decoration: const BoxDecoration(
-                            color: GovtThemeTokens.secondary,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        CivicFixSpacing.hSpaceXs,
-                        Text(
-                          '${_filteredHazards.length} Active Hazards',
-                          style: CivicFixTypography.captionMedium.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: GovtThemeTokens.primary,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
             ],
           ),
         );
       },
+    );
+  }
+
+  Widget _buildActiveHazardsBadge() {
+    return Container(
+      height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEFF3F0),
+        borderRadius: GovtThemeTokens.chipRadius,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: const BoxDecoration(
+              color: GovtThemeTokens.secondary,
+              shape: BoxShape.circle,
+            ),
+          ),
+          CivicFixSpacing.hSpaceXs,
+          Text(
+            '${_filteredHazards.length} Active Hazards',
+            style: CivicFixTypography.captionMedium.copyWith(
+              fontWeight: FontWeight.w700,
+              color: GovtThemeTokens.primary,
+              fontSize: 11,
+            ),
+          ),
+        ],
+      ),
     );
   }
 

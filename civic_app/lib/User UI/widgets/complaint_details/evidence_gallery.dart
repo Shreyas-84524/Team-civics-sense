@@ -1,10 +1,11 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_radius.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
 import '../../../core/widgets/civic_fix_card.dart';
+
+import '../../../core/widgets/supabase_evidence_image.dart';
 
 /// Evidence photos gallery with full-screen interactive viewer modal.
 class EvidenceGallery extends StatelessWidget {
@@ -86,12 +87,58 @@ class EvidenceGallery extends StatelessWidget {
                 ],
               ),
             )
+          else if (imageUrls.length == 1)
+            Semantics(
+              label: 'Evidence photo. Tap to view full size.',
+              button: true,
+              child: InkWell(
+                onTap: () => _openImageViewer(context, 0),
+                borderRadius: CivicFixRadius.cardRadius,
+                child: Container(
+                  width: double.infinity,
+                  constraints: const BoxConstraints(
+                    minHeight: 220,
+                    maxHeight: 380,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black,
+                    borderRadius: CivicFixRadius.cardRadius,
+                    border: Border.all(color: CivicFixColors.border),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  alignment: Alignment.center,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      SupabaseEvidenceImage(
+                        imagePath: imageUrls.first,
+                        fit: BoxFit.contain,
+                        width: double.infinity,
+                      ),
+                      Positioned(
+                        bottom: 8,
+                        right: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.65),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.fullscreen_rounded,
+                            size: 16,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            )
           else
             LayoutBuilder(
               builder: (context, constraints) {
-                final double itemWidth = (constraints.maxWidth - ((imageUrls.length - 1) * CivicFixSpacing.sm)) /
-                    (imageUrls.length > 3 ? 3 : imageUrls.length).clamp(1, 3);
-
                 return Row(
                   children: List.generate(imageUrls.length, (index) {
                     final path = imageUrls[index];
@@ -107,24 +154,30 @@ class EvidenceGallery extends StatelessWidget {
                             onTap: () => _openImageViewer(context, index),
                             borderRadius: CivicFixRadius.cardRadius,
                             child: Container(
-                              height: itemWidth > 120 ? 120 : itemWidth,
+                              height: 180,
                               decoration: BoxDecoration(
-                                color: CivicFixColors.surfaceMuted,
+                                color: Colors.black,
                                 borderRadius: CivicFixRadius.cardRadius,
                                 border: Border.all(color: CivicFixColors.border),
                               ),
                               clipBehavior: Clip.antiAlias,
+                              alignment: Alignment.center,
                               child: Stack(
-                                fit: StackFit.expand,
+                                alignment: Alignment.center,
                                 children: [
-                                  _buildThumbnailImage(path),
+                                  SupabaseEvidenceImage(
+                                    imagePath: path,
+                                    fit: BoxFit.contain,
+                                    width: double.infinity,
+                                    height: 180,
+                                  ),
                                   Positioned(
-                                    bottom: 4,
-                                    right: 4,
+                                    bottom: 6,
+                                    right: 6,
                                     child: Container(
                                       padding: const EdgeInsets.all(4),
                                       decoration: BoxDecoration(
-                                        color: Colors.black.withValues(alpha: 0.6),
+                                        color: Colors.black.withValues(alpha: 0.65),
                                         shape: BoxShape.circle,
                                       ),
                                       child: const Icon(
@@ -146,55 +199,6 @@ class EvidenceGallery extends StatelessWidget {
               },
             ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildThumbnailImage(String path) {
-    if (WidgetsBinding.instance.runtimeType.toString().contains('Test')) {
-      return _buildFallbackThumbnail();
-    }
-    if (path.startsWith('http://') || path.startsWith('https://')) {
-      return Image.network(
-        path,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => _buildFallbackThumbnail(),
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) return child;
-          return const Center(
-            child: SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-          );
-        },
-      );
-    } else if (path.isNotEmpty && !path.startsWith('mock://')) {
-      try {
-        final file = File(path);
-        if (file.existsSync()) {
-          return Image.file(
-            file,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) => _buildFallbackThumbnail(),
-          );
-        }
-      } catch (_) {}
-    }
-
-    return _buildFallbackThumbnail();
-  }
-
-  Widget _buildFallbackThumbnail() {
-    return Container(
-      color: CivicFixColors.surfaceMuted,
-      child: const Center(
-        child: Icon(
-          Icons.image_outlined,
-          size: 32,
-          color: CivicFixColors.secondaryDark,
-        ),
       ),
     );
   }
@@ -306,32 +310,14 @@ class _ImageViewerModalState extends State<ImageViewerModal> {
         ),
       );
     }
-    if (path.startsWith('http://') || path.startsWith('https://')) {
-      return Image.network(
-        path,
-        fit: BoxFit.contain,
-        errorBuilder: (context, error, stackTrace) => _buildViewerError(),
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) return child;
-          return const Center(
-            child: CircularProgressIndicator(color: Colors.white),
-          );
-        },
-      );
-    } else if (path.isNotEmpty && !path.startsWith('mock://')) {
-      try {
-        final file = File(path);
-        if (file.existsSync()) {
-          return Image.file(
-            file,
-            fit: BoxFit.contain,
-            errorBuilder: (context, error, stackTrace) => _buildViewerError(),
-          );
-        }
-      } catch (_) {}
-    }
-
-    return _buildViewerError();
+    return SupabaseEvidenceImage(
+      imagePath: path,
+      fit: BoxFit.contain,
+      errorBuilder: (context) => _buildViewerError(),
+      placeholderBuilder: (context) => const Center(
+        child: CircularProgressIndicator(color: Colors.white),
+      ),
+    );
   }
 
   Widget _buildViewerError() {

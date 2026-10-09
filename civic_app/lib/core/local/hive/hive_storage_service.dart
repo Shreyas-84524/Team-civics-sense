@@ -18,6 +18,11 @@ class HiveStorageService implements LocalStorageService {
   @override
   bool get isInitialized => _isInitialized || HiveInitializer.isInitialized;
 
+  /// Marks the service as initialized when external initializer finishes.
+  void markInitialized() {
+    _isInitialized = true;
+  }
+
   @override
   Future<void> init({String? subDir, bool isTest = false}) async {
     try {
@@ -38,7 +43,13 @@ class HiveStorageService implements LocalStorageService {
     if (Hive.isBoxOpen(boxName)) {
       return Hive.box(boxName);
     }
-    if (!_isInitialized) {
+    if (!isInitialized) {
+      try {
+        await HiveInitializer.initialize();
+        _isInitialized = true;
+      } catch (_) {}
+    }
+    if (!isInitialized) {
       throw BoxNotFoundException(
         boxName,
         'HiveStorageService is not initialized. Call init() before accessing box "$boxName".',

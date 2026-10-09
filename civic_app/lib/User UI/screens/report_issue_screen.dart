@@ -1,8 +1,12 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_radius.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/constants/app_typography.dart';
+import '../../core/localization/app_localizations.dart';
+import '../../core/firebase/errors/firestore_exception.dart';
+import '../../core/firebase/storage/storage_error_handler.dart';
 import '../../core/location/location_model.dart';
 import '../../core/repositories/repository_locator.dart';
 import '../../core/routing/app_routes.dart';
@@ -141,7 +145,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
     FocusScope.of(context).unfocus();
 
     setState(() {
-      _categoryError = _draft.category == null ? 'Please select an issue category.' : null;
+      _categoryError = _draft.category == null ? (context.l10nOrNull?.pleaseSelectCategory ?? 'Please select an issue category.') : null;
     });
 
     if (!_formKeyStep1.currentState!.validate() || _draft.category == null) {
@@ -166,7 +170,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
   void _handleStep3Next() {
     if (_draft.location == null) {
       setState(() {
-        _locationError = 'Please select or detect the issue location.';
+        _locationError = context.l10nOrNull?.selectLocationError ?? 'Please select or detect the issue location.';
       });
       return;
     }
@@ -224,9 +228,63 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
 
       setState(() {
         _isSubmitting = false;
-        _submissionError = 'Unable to submit your issue. Please check your details and try again.';
+        _submissionError = _mapSubmissionError(e);
       });
     }
+  }
+
+  String _mapSubmissionError(dynamic error) {
+    if (error is FirestorePermissionDeniedException ||
+        (error is FirestoreException && error.code == 'permission-denied')) {
+      return 'CivicFix could not submit this complaint because of an authorization problem. Please try again shortly.';
+    }
+    if (error is StorageException) {
+      if (error.code == 'unauthenticated') {
+        return 'Your session has expired. Please sign in again.';
+      }
+      if (error.code == 'unauthorized' || error.code == 'permission-denied') {
+        return 'Photo upload could not be completed.';
+      }
+      if (error.code == 'bucket-not-configured' ||
+          error.code == 'bucket-not-found' ||
+          error.code == 'no-default-bucket' ||
+          error.code == 'object-not-found' ||
+          error.code == 'not-found' ||
+          error.code == 'unknown') {
+        return 'Evidence storage service is temporarily unavailable. Please try again or submit without photos.';
+      }
+      return error.userMessage.isNotEmpty
+          ? error.userMessage
+          : 'Photo upload could not be completed.';
+    }
+    if (error is FirebaseException) {
+      if (error.plugin == 'firebase_storage' || error.code.startsWith('storage/')) {
+        return 'Evidence storage service is temporarily unavailable. Please try again or submit without photos.';
+      }
+      if (error.code == 'permission-denied') {
+        return 'CivicFix could not submit this complaint because of an authorization problem. Please try again shortly.';
+      }
+      if (error.code == 'unauthenticated') {
+        return 'Your session has expired. Please sign in again.';
+      }
+      if (error.code == 'not-found' || error.code == 'bucket-not-found' || error.code == 'unknown') {
+        return 'CivicFix cloud services are temporarily unavailable. Please try again shortly.';
+      }
+    }
+    final errStr = error.toString().toLowerCase();
+    if (errStr.contains('storage') || errStr.contains('bucket') || errStr.contains('firebasestorage')) {
+      return 'Evidence storage service is temporarily unavailable. Please try again or submit without photos.';
+    }
+    if (errStr.contains('unauthenticated') || errStr.contains('sign in') || errStr.contains('please sign in')) {
+      return 'Your session has expired. Please sign in again.';
+    }
+    if (errStr.contains('permission-denied') || errStr.contains('permission denied')) {
+      return 'CivicFix could not submit this complaint because of an authorization problem. Please try again shortly.';
+    }
+    if (errStr.contains('fill in all required') || errStr.contains('validation')) {
+      return 'Please fill in all required fields before submitting.';
+    }
+    return 'Unable to submit your complaint right now. Please try again.';
   }
 
   @override
@@ -240,10 +298,10 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
       child: Scaffold(
         backgroundColor: CivicFixColors.background,
         appBar: CivicFixAppBar(
-          title: 'Report an Issue',
+          title: context.l10nOrNull?.reportAnIssue ?? 'Report an Issue',
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_rounded),
-            tooltip: 'Back',
+            tooltip: context.l10nOrNull?.back ?? 'Back',
             onPressed: _handleBackNavigation,
           ),
         ),
@@ -298,12 +356,12 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Issue Information',
+            context.l10nOrNull?.issueInformationTitle ?? 'Issue Information',
             style: CivicFixTypography.h2,
           ),
           CivicFixSpacing.vSpaceXs,
           Text(
-            'Help us understand the problem so it can reach the right team.',
+            context.l10nOrNull?.issueInformationSubtitle ?? 'Help us understand the problem so it can reach the right team.',
             style: CivicFixTypography.caption.copyWith(
               color: CivicFixColors.secondaryText,
             ),
@@ -312,17 +370,17 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
 
           // Title Field
           AuthTextField(
-            label: 'Issue Title',
-            hintText: 'e.g. Broken street light near the park',
+            label: context.l10nOrNull?.issueTitleLabel ?? 'Issue Title',
+            hintText: context.l10nOrNull?.issueTitleHint ?? 'e.g. Broken street light near the park',
             controller: _titleController,
             textInputAction: TextInputAction.next,
             maxLength: 100,
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
-                return 'Please enter a title for the issue.';
+                return context.l10nOrNull?.pleaseEnterIssueTitle ?? 'Please enter a title for the issue.';
               }
               if (value.trim().length < 5) {
-                return 'Title must be at least 5 characters.';
+                return context.l10nOrNull?.issueTitleMinLength ?? 'Title must be at least 5 characters.';
               }
               return null;
             },
@@ -348,11 +406,14 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
             children: [
               Row(
                 children: [
-                  Text(
-                    'Describe the issue',
-                    style: CivicFixTypography.bodySmallMedium.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: CivicFixColors.primaryText,
+                  Flexible(
+                    child: Text(
+                      context.l10nOrNull?.describeTheIssue ?? 'Describe the issue',
+                      style: CivicFixTypography.bodySmallMedium.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: CivicFixColors.primaryText,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   Text(
@@ -371,7 +432,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
                 minLines: 3,
                 style: CivicFixTypography.bodySmall,
                 decoration: InputDecoration(
-                  hintText: 'Tell us what happened and where you noticed the problem.',
+                  hintText: context.l10nOrNull?.describeIssueHint ?? 'Tell us what happened and where you noticed the problem.',
                   hintStyle: CivicFixTypography.bodySmall.copyWith(
                     color: CivicFixColors.disabledText,
                   ),
@@ -400,17 +461,17 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'Please describe the issue.';
+                    return context.l10nOrNull?.pleaseDescribeIssue ?? 'Please describe the issue.';
                   }
                   if (value.trim().length < 10) {
-                    return 'Description must be at least 10 characters.';
+                    return context.l10nOrNull?.describeIssueMinLength ?? 'Description must be at least 10 characters.';
                   }
                   return null;
                 },
               ),
               CivicFixSpacing.vSpaceXs,
               Text(
-                'Include useful details such as what is damaged, how long it has been happening, or how it affects the area.',
+                context.l10nOrNull?.describeIssueHelper ?? 'Include useful details such as what is damaged, how long it has been happening, or how it affects the area.',
                 style: CivicFixTypography.caption.copyWith(
                   color: CivicFixColors.secondaryText,
                   fontSize: 11,
@@ -444,13 +505,13 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Immediate Safety Hazard',
+                        context.l10nOrNull?.immediateSafetyHazardTitle ?? 'Immediate Safety Hazard',
                         style: CivicFixTypography.bodySmallMedium.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                       Text(
-                        'Check if this issue poses an immediate risk to citizens or traffic',
+                        context.l10nOrNull?.safetyHazardSubtitle ?? 'Check if this issue poses an immediate risk to citizens or traffic',
                         style: CivicFixTypography.caption.copyWith(
                           color: CivicFixColors.secondaryText,
                           fontSize: 11,
@@ -484,12 +545,12 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Add Evidence',
+          context.l10nOrNull?.addEvidenceTitle ?? 'Add Evidence',
           style: CivicFixTypography.h2,
         ),
         CivicFixSpacing.vSpaceXs,
         Text(
-          'A photo can help the responsible team understand the issue.',
+          context.l10nOrNull?.addEvidenceSubtitle ?? 'A photo can help the responsible team understand the issue.',
           style: CivicFixTypography.caption.copyWith(
             color: CivicFixColors.secondaryText,
           ),
@@ -523,12 +584,12 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Where is the issue?',
+          context.l10nOrNull?.whereIsTheIssue ?? 'Where is the issue?',
           style: CivicFixTypography.h2,
         ),
         CivicFixSpacing.vSpaceXs,
         Text(
-          'Add the location so the responsible team can find it.',
+          context.l10nOrNull?.addLocationSubtitle ?? 'Add the location so the responsible team can find it.',
           style: CivicFixTypography.caption.copyWith(
             color: CivicFixColors.secondaryText,
           ),
@@ -622,7 +683,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
             Expanded(
               flex: 1,
               child: CivicFixOutlinedButton(
-                text: 'Back',
+                text: context.l10nOrNull?.back ?? 'Back',
                 onPressed: _isSubmitting ? null : _handleBackNavigation,
               ),
             ),
@@ -643,21 +704,23 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
     switch (_currentStep) {
       case 1:
         return CivicFixButton(
-          text: 'Next: Add Evidence',
+          text: context.l10nOrNull?.nextAddEvidence ?? 'Next: Add Evidence',
           icon: Icons.arrow_forward_rounded,
           onPressed: _handleStep1Next,
         );
 
       case 2:
         return CivicFixButton(
-          text: _draft.imageUrls.isEmpty ? 'Skip & Continue' : 'Next: Location',
+          text: _draft.imageUrls.isEmpty
+              ? (context.l10nOrNull?.skipAndContinue ?? 'Skip & Continue')
+              : (context.l10nOrNull?.nextLocation ?? 'Next: Location'),
           icon: Icons.arrow_forward_rounded,
           onPressed: _handleStep2Next,
         );
 
       case 3:
         return CivicFixButton(
-          text: 'Next: Review',
+          text: context.l10nOrNull?.nextReview ?? 'Next: Review',
           icon: Icons.arrow_forward_rounded,
           onPressed: _handleStep3Next,
         );
@@ -665,7 +728,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
       case 4:
       default:
         return CivicFixButton(
-          text: 'Submit Issue',
+          text: context.l10nOrNull?.submitIssue ?? 'Submit Issue',
           icon: Icons.send_rounded,
           isLoading: _isSubmitting,
           onPressed: _isSubmitting ? null : _handleSubmitIssue,

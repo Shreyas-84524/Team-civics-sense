@@ -12,7 +12,11 @@ void main() {
 
     setUpAll(() {
       rulesFile = File('firestore.rules');
-      expect(rulesFile.existsSync(), isTrue, reason: 'firestore.rules must exist at app root');
+      expect(
+        rulesFile.existsSync(),
+        isTrue,
+        reason: 'firestore.rules must exist at app root',
+      );
       rulesContent = rulesFile.readAsStringSync();
     });
 
@@ -23,11 +27,114 @@ void main() {
     test('All 7 primary Firestore collection rules are defined', () {
       expect(rulesContent.contains('match /users/{userId}'), isTrue);
       expect(rulesContent.contains('match /complaints/{complaintId}'), isTrue);
+      expect(
+        rulesContent.contains('match /complaint_updates/{updateId}'),
+        isTrue,
+      );
       expect(rulesContent.contains('match /updates/{updateId}'), isTrue);
-      expect(rulesContent.contains('match /departments/{departmentId}'), isTrue);
-      expect(rulesContent.contains('match /notifications/{notificationId}'), isTrue);
+      expect(
+        rulesContent.contains('match /departments/{departmentId}'),
+        isTrue,
+      );
+      expect(
+        rulesContent.contains('match /notifications/{notificationId}'),
+        isTrue,
+      );
       expect(rulesContent.contains('match /rewards/{userId}'), isTrue);
       expect(rulesContent.contains('match /hazards/{hazardId}'), isTrue);
+    });
+
+    test('Enforces complaint_updates authorization and batch atomic creation', () {
+      expect(
+        rulesContent.contains(
+          r'existsAfter(/databases/$(database)/documents/complaints/$(complaintId))',
+        ),
+        isTrue,
+      );
+      expect(
+        rulesContent.contains(
+          r'getAfter(/databases/$(database)/documents/complaints/$(complaintId)).data.citizenId == request.auth.uid',
+        ),
+        isTrue,
+      );
+      expect(
+        rulesContent.contains(
+          "request.resource.data.status in ['underVerification', 'reported']",
+        ),
+        isTrue,
+      );
+      expect(
+        rulesContent.contains(
+          "request.resource.data.updatedBy == request.auth.uid",
+        ),
+        isTrue,
+      );
+    });
+
+    test(
+      'Case A & B: Guarded parent existence checks for new atomic batch and existing complaint updates',
+      () {
+        // Never calls get() on non-existent parent without exists() guard
+        expect(
+          rulesContent.contains(
+            r'exists(/databases/$(database)/documents/complaints/$(complaintId)) &&',
+          ),
+          isTrue,
+          reason: 'Must guard get() with exists() check',
+        );
+        expect(
+          rulesContent.contains(
+            r'existsAfter(/databases/$(database)/documents/complaints/$(complaintId)) &&',
+          ),
+          isTrue,
+          reason:
+              'Must guard getAfter() with existsAfter() check for atomic batch',
+        );
+      },
+    );
+
+    test(
+      'Case C & D: Enforces strict UID and author match (Denies wrong citizen or mismatched updatedBy)',
+      () {
+        // Citizen complaint creation requires citizenId == request.auth.uid
+        expect(
+          rulesContent.contains(
+            r'request.resource.data.citizenId == request.auth.uid',
+          ),
+          isTrue,
+        );
+        // Timeline creation requires updatedBy == request.auth.uid
+        expect(
+          rulesContent.contains(
+            r'request.resource.data.updatedBy == request.auth.uid',
+          ),
+          isTrue,
+        );
+      },
+    );
+
+    test(
+      'Case E: Citizen restricted strictly to initial status (underVerification or reported) upon creation',
+      () {
+        expect(
+          rulesContent.contains(
+            "request.resource.data.status in ['underVerification', 'reported']",
+          ),
+          isTrue,
+        );
+        expect(
+          rulesContent.contains("isValidStatus(request.resource.data.status)"),
+          isTrue,
+        );
+      },
+    );
+
+    test('Case F: Valid government status update authorization preserved', () {
+      expect(rulesContent.contains("isGovernment() &&"), isTrue);
+      expect(
+        rulesContent.contains("request.resource.data.updatedBy is string &&"),
+        isTrue,
+      );
     });
 
     test('Contains mandatory helper security functions', () {
@@ -36,7 +143,10 @@ void main() {
       expect(rulesContent.contains('function isCitizen()'), isTrue);
       expect(rulesContent.contains('function isGovernment()'), isTrue);
       expect(rulesContent.contains('function isValidStatus(status)'), isTrue);
-      expect(rulesContent.contains('function isValidPriority(priority)'), isTrue);
+      expect(
+        rulesContent.contains('function isValidPriority(priority)'),
+        isTrue,
+      );
       expect(rulesContent.contains('function isValidLocation(loc)'), isTrue);
     });
 
@@ -49,29 +159,143 @@ void main() {
       expect(rulesContent.contains("'badges'"), isTrue);
     });
 
-    test('Enforces complaint workflow status protection against citizen tampering', () {
-      expect(rulesContent.contains("'status'"), isTrue);
-      expect(rulesContent.contains("'assignedTo'"), isTrue);
-      expect(rulesContent.contains("'departmentId'"), isTrue);
-      expect(rulesContent.contains("'resolvedAt'"), isTrue);
+    test(
+      'Enforces complaint workflow status protection against citizen tampering',
+      () {
+        expect(rulesContent.contains("'status'"), isTrue);
+        expect(rulesContent.contains("'assignedTo'"), isTrue);
+        expect(rulesContent.contains("'departmentId'"), isTrue);
+        expect(rulesContent.contains("'resolvedAt'"), isTrue);
+      },
+    );
+
+    test(
+      'Enforces AI verification resilience & human review fields in citizen modification blocklist',
+      () {
+        const citizenBlocklistFields = [
+          'aiVerificationAttempts',
+          'lastAiVerificationAttemptAt',
+          'lastAiFailureCode',
+          'aiFallbackTriggeredAt',
+          'initialReviewDepartmentId',
+          'initialReviewDepartmentName',
+          'humanReviewStatus',
+          'humanReviewerId',
+          'humanReviewerName',
+          'humanReviewRemarks',
+          'humanReviewedAt',
+          'previousDepartmentId',
+        ];
+
+        for (final field in citizenBlocklistFields) {
+          expect(
+            rulesContent.contains("'$field'"),
+            isTrue,
+            reason: 'Citizen blocklist must contain $field',
+          );
+        }
+      },
+    );
+
+    test(
+      'Case C: Government updates strictly preserve immutable keys',
+      () {
+        const immutableKeys = [
+          'citizenId',
+          'ticketNumber',
+          'createdAt',
+          'originalCreatedAt',
+          'slaStartedAt',
+        ];
+
+        for (final key in immutableKeys) {
+          expect(
+            rulesContent.contains("'$key'"),
+            isTrue,
+            reason: 'Government update blocklist must preserve $key',
+          );
+        }
+      },
+    );
+
+    test('Requires a new immutable per-user record for every upvote increment', () {
+      expect(
+        rulesContent.contains(
+          r'!exists(/databases/$(database)/documents/complaints/$(complaintId)/upvotes/$(request.auth.uid))',
+        ),
+        isTrue,
+      );
+      expect(
+        rulesContent.contains(
+          r'existsAfter(/databases/$(database)/documents/complaints/$(complaintId)/upvotes/$(request.auth.uid))',
+        ),
+        isTrue,
+      );
+      expect(rulesContent.contains('allow delete: if false;'), isTrue);
     });
 
-    test('Enforces server-authoritative write lock on rewards & departments', () {
-      // match /rewards/{userId} has allow write: if false
-      expect(rulesContent.contains('match /rewards/{userId}'), isTrue);
-      // match /departments/{departmentId} has allow write: if false
-      expect(rulesContent.contains('match /departments/{departmentId}'), isTrue);
+    test(
+      'Enforces server-authoritative write lock on rewards & departments',
+      () {
+        // match /rewards/{userId} has allow write: if false
+        expect(rulesContent.contains('match /rewards/{userId}'), isTrue);
+        // match /departments/{departmentId} has allow write: if false
+        expect(
+          rulesContent.contains('match /departments/{departmentId}'),
+          isTrue,
+        );
+      },
+    );
+
+    test('Enforces chatbot_feedback validation, ownership and immutable keys', () {
+      expect(rulesContent.contains('match /chatbot_feedback/{feedbackId}'), isTrue);
+      expect(rulesContent.contains('function isValidFeedbackType(type)'), isTrue);
+      expect(rulesContent.contains('function isValidChatbotFeedback(data)'), isTrue);
+      expect(
+        rulesContent.contains(
+          r'allow read: if isSignedIn() && (isOwner(resource.data.ownerUid) || isGovernment());',
+        ),
+        isTrue,
+      );
+      expect(
+        rulesContent.contains(
+          r'request.resource.data.ownerUid == request.auth.uid',
+        ),
+        isTrue,
+      );
+      expect(
+        rulesContent.contains('allow delete: if isOwner(resource.data.ownerUid);'),
+        isTrue,
+      );
+
+      const immutableFeedbackKeys = [
+        'ownerUid',
+        'sessionId',
+        'assistantMessageId',
+        'userMessageId',
+        'createdAt',
+      ];
+
+      for (final key in immutableFeedbackKeys) {
+        expect(
+          rulesContent.contains("'$key'"),
+          isTrue,
+          reason: 'Chatbot feedback update blocklist must preserve $key',
+        );
+      }
     });
   });
 
   group('Firestore Domain Mapping Consistency Tests', () {
     test('All ComplaintStatus values match valid Firestore status strings', () {
       const validStatuses = [
+        'underVerification',
         'reported',
         'verified',
         'assigned',
         'inProgress',
         'resolved',
+        'closed',
         'rejected',
       ];
 
@@ -79,22 +303,27 @@ void main() {
         expect(
           validStatuses.contains(status.name),
           isTrue,
-          reason: 'Status enum value "${status.name}" must be recognized by Firestore rules',
+          reason:
+              'Status enum value "${status.name}" must be recognized by Firestore rules',
         );
       }
     });
 
-    test('All ComplaintPriority values match valid Firestore priority strings', () {
-      const validPriorities = ['low', 'medium', 'high', 'emergency'];
+    test(
+      'All ComplaintPriority values match valid Firestore priority strings',
+      () {
+        const validPriorities = ['low', 'medium', 'high', 'emergency'];
 
-      for (final priority in ComplaintPriority.values) {
-        expect(
-          validPriorities.contains(priority.name),
-          isTrue,
-          reason: 'Priority enum value "${priority.name}" must be recognized by Firestore rules',
-        );
-      }
-    });
+        for (final priority in ComplaintPriority.values) {
+          expect(
+            validPriorities.contains(priority.name),
+            isTrue,
+            reason:
+                'Priority enum value "${priority.name}" must be recognized by Firestore rules',
+          );
+        }
+      },
+    );
 
     test('All HazardSeverity values match valid Firestore severity strings', () {
       const validSeverities = ['low', 'medium', 'high', 'critical'];
@@ -103,7 +332,8 @@ void main() {
         expect(
           validSeverities.contains(severity.name),
           isTrue,
-          reason: 'Severity enum value "${severity.name}" must be recognized by Firestore rules',
+          reason:
+              'Severity enum value "${severity.name}" must be recognized by Firestore rules',
         );
       }
     });
@@ -115,17 +345,30 @@ void main() {
 
     setUpAll(() {
       indexesFile = File('firestore.indexes.json');
-      expect(indexesFile.existsSync(), isTrue, reason: 'firestore.indexes.json must exist');
-      indexesJson = jsonDecode(indexesFile.readAsStringSync()) as Map<String, dynamic>;
+      expect(
+        indexesFile.existsSync(),
+        isTrue,
+        reason: 'firestore.indexes.json must exist',
+      );
+      indexesJson =
+          jsonDecode(indexesFile.readAsStringSync()) as Map<String, dynamic>;
     });
 
     test('indexes JSON is valid and contains required collections', () {
       final indexes = indexesJson['indexes'] as List<dynamic>;
       expect(indexes.isNotEmpty, isTrue);
 
-      final indexedCollections = indexes.map((i) => i['collectionGroup']).toSet();
-      expect(indexedCollections.contains(FirestoreCollections.complaints), isTrue);
-      expect(indexedCollections.contains(FirestoreCollections.notifications), isTrue);
+      final indexedCollections = indexes
+          .map((i) => i['collectionGroup'])
+          .toSet();
+      expect(
+        indexedCollections.contains(FirestoreCollections.complaints),
+        isTrue,
+      );
+      expect(
+        indexedCollections.contains(FirestoreCollections.notifications),
+        isTrue,
+      );
       expect(indexedCollections.contains(FirestoreCollections.hazards), isTrue);
     });
   });

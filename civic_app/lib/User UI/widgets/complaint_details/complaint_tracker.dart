@@ -28,52 +28,54 @@ class TrackerStageInfo {
   });
 }
 
-/// Reusable 5-stage progress tracker for CivicFix complaints.
+/// Reusable progress tracker for CivicFix complaints adhering to the canonical lifecycle.
 class ComplaintTracker extends StatefulWidget {
   final ComplaintStatus currentStatus;
   final String? customStatusMessage;
+  final ComplaintModel? complaint;
 
   const ComplaintTracker({
     super.key,
     required this.currentStatus,
     this.customStatusMessage,
+    this.complaint,
   });
 
   static const List<TrackerStageInfo> canonicalStages = [
     TrackerStageInfo(
-      status: ComplaintStatus.reported,
-      title: 'Reported',
-      description: 'Submitted & queued for review',
-      explanation: 'Your issue has been submitted and is awaiting review.',
-      icon: Icons.assignment_outlined,
-    ),
-    TrackerStageInfo(
-      status: ComplaintStatus.verified,
-      title: 'Verified',
-      description: 'Reviewed and confirmed by authority',
-      explanation: 'The issue has been reviewed and verified.',
-      icon: Icons.verified_outlined,
+      status: ComplaintStatus.underVerification,
+      title: 'Under Verification',
+      description: 'Verifying evidence & department routing',
+      explanation: 'CivicFix verifies report details, evidence authenticity, and routes the issue to the appropriate department.',
+      icon: Icons.search_rounded,
     ),
     TrackerStageInfo(
       status: ComplaintStatus.assigned,
       title: 'Assigned',
-      description: 'Allocated to maintenance squad',
-      explanation: 'The issue has been assigned to the responsible team.',
+      description: 'Allocated to Junior Engineer & Field Officer',
+      explanation: 'The grievance is auto-routed to the ward Junior Engineer and assigned for ground execution.',
       icon: Icons.person_pin_circle_outlined,
     ),
     TrackerStageInfo(
       status: ComplaintStatus.inProgress,
       title: 'In Progress',
-      description: 'Work is currently underway',
-      explanation: 'The responsible team is currently working on the issue.',
+      description: 'Ground execution actively underway',
+      explanation: 'The Execution Officer is on site performing remediation work.',
       icon: Icons.engineering_rounded,
     ),
     TrackerStageInfo(
       status: ComplaintStatus.resolved,
       title: 'Resolved',
-      description: 'Issue successfully fixed',
-      explanation: 'The reported issue has been marked as resolved.',
+      description: 'Field work completed with proof',
+      explanation: 'Ground work is complete and completion photo evidence has been submitted.',
       icon: Icons.check_circle_rounded,
+    ),
+    TrackerStageInfo(
+      status: ComplaintStatus.closed,
+      title: 'Closed',
+      description: 'Resolution finalized',
+      explanation: 'Field remediation completed and complaint closed.',
+      icon: Icons.task_alt_rounded,
     ),
   ];
 
@@ -86,22 +88,24 @@ class _ComplaintTrackerState extends State<ComplaintTracker> {
 
   int _getStageIndex(ComplaintStatus status) {
     switch (status) {
+      case ComplaintStatus.underVerification:
       case ComplaintStatus.reported:
-        return 0;
       case ComplaintStatus.verified:
-        return 1;
+        return 0;
       case ComplaintStatus.assigned:
-        return 2;
+        return 1;
       case ComplaintStatus.inProgress:
-        return 3;
+        return 2;
       case ComplaintStatus.resolved:
+        return 3;
+      case ComplaintStatus.closed:
       case ComplaintStatus.rejected:
         return 4;
     }
   }
 
   TrackerStageState _getStageState(int stageIndex, int currentStageIndex) {
-    if (widget.currentStatus == ComplaintStatus.resolved) {
+    if (widget.currentStatus == ComplaintStatus.closed) {
       return TrackerStageState.completed;
     }
     if (stageIndex < currentStageIndex) {
@@ -119,17 +123,39 @@ class _ComplaintTrackerState extends State<ComplaintTracker> {
     }
 
     switch (widget.currentStatus) {
+      case ComplaintStatus.underVerification:
+        final c = widget.complaint;
+        if (c != null) {
+          if (c.isAiGeneratedEvidenceRejected || c.evidenceVerificationStatus == 'failed') {
+            return 'Evidence verification failed: AI-generated or manipulated evidence detected. Please report again with an authentic photo.';
+          }
+          if (c.isHumanReviewPending || c.verificationStage == 'humanDepartmentReview') {
+            return c.citizenSafeVerificationMessage ??
+                'Automated verification is temporarily unavailable. Your grievance has been routed for departmental review. SLA is active and resolution is progressing normally.';
+          }
+          if (c.evidenceVerificationStatus == 'temporarily_unavailable' ||
+              c.departmentVerificationStatus == 'temporarily_unavailable') {
+            return c.citizenSafeVerificationMessage ??
+                'Automated verification is temporarily unavailable. Your report is safe and is undergoing departmental review.';
+          }
+        }
+        return 'Under Verification: Validating grievance details and department routing.';
       case ComplaintStatus.reported:
-        return 'Your report has been received and is queued for verification.';
       case ComplaintStatus.verified:
-        return 'Your report has been verified by the responsible authority.';
+        return 'Your report has been received and is queued for automated routing.';
       case ComplaintStatus.assigned:
-        return 'Your issue has been assigned to the appropriate department.';
+        return 'Your issue has been assigned to the ward Junior Engineer and Field Officer.';
       case ComplaintStatus.inProgress:
-        return 'The responsible team is currently working on this issue.';
+        return 'The responsible team is actively working on site.';
       case ComplaintStatus.resolved:
-        return 'This issue has been marked as resolved.';
+        return 'This issue has been resolved on site with photo proof.';
+      case ComplaintStatus.closed:
+        return 'Field work completed with resolution evidence. Grievance is closed.';
       case ComplaintStatus.rejected:
+        final c = widget.complaint;
+        if (c != null && c.isAiGeneratedEvidenceRejected) {
+          return 'Evidence verification failed: AI-generated or manipulated evidence detected. Please report again with an authentic photo.';
+        }
         return 'This complaint has been reviewed and closed.';
     }
   }
@@ -138,7 +164,8 @@ class _ComplaintTrackerState extends State<ComplaintTracker> {
   Widget build(BuildContext context) {
     final currentStageIndex = _getStageIndex(widget.currentStatus);
     final contextualMessage = _getContextualStatusMessage(currentStageIndex);
-    final isFullyResolved = widget.currentStatus == ComplaintStatus.resolved;
+    final isFullyResolved = widget.currentStatus == ComplaintStatus.resolved ||
+        widget.currentStatus == ComplaintStatus.closed;
 
     return CivicFixCard(
       padding: const EdgeInsets.all(CivicFixSpacing.lg),

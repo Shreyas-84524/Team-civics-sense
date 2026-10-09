@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../../core/auth/auth_service_locator.dart';
 import '../../../core/constants/app_spacing.dart';
+import '../../../core/localization/app_localizations.dart';
 import '../../models/govt_user_model.dart';
 import '../../theme/govt_theme_tokens.dart';
 import '../../theme/govt_typography.dart';
 import 'government_confirmation_dialog.dart';
-import 'govt_jurisdiction_badge.dart';
-import '../../services/government_jurisdiction_resolver.dart';
 
 /// Reusable user profile dropdown menu for top app bars and headers.
 class GovtProfileMenu extends StatelessWidget {
@@ -31,12 +30,14 @@ class GovtProfileMenu extends StatelessWidget {
       return;
     }
 
+    final l10n = AppLocalizations.of(context);
+
     GovernmentConfirmationDialog.show(
       context,
-      title: 'Sign Out Officer Session',
-      message:
+      title: l10n?.govSignOut ?? 'Sign Out Officer Session',
+      message: l10n?.govSignOutConfirm ??
           'Are you sure you want to end your active session on the CivicFix Government Portal?',
-      confirmLabel: 'Sign Out',
+      confirmLabel: l10n?.govSignOut ?? 'Sign Out',
       type: GovtDialogType.destructive,
       onConfirm: () async {
         final auth = AuthServiceLocator.govtAuth;
@@ -53,19 +54,21 @@ class GovtProfileMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final displayName = user?.fullName ?? 'Officer Session';
+    final l10n = AppLocalizations.of(context);
+    final displayName = user?.fullName ?? (l10n?.govOfficerName ?? 'Officer Session');
     final designation = (user?.displayDesignation != null && user!.displayDesignation.isNotEmpty)
         ? user!.displayDesignation
         : (user?.designation != null && user!.designation.isNotEmpty
             ? user!.designation
-            : user?.govtRole.displayName ?? 'Municipal Personnel');
-    final roleName = user?.govtRole.displayName ?? 'Government Officer';
-    final jurisdiction = user != null
-        ? GovernmentJurisdictionResolver.resolveContextSummary(user!)
-        : 'Citywide';
+            : (user != null
+                ? localizedGovernmentRole(user!.govtRole, context: context)
+                : 'Municipal Personnel'));
+    final roleName = user != null
+        ? localizedGovernmentRole(user!.govtRole, context: context)
+        : (l10n?.govOfficerProfile ?? 'Government Officer');
 
     return PopupMenuButton<String>(
-      tooltip: 'Officer Profile & Options',
+      tooltip: l10n?.govOfficerProfileSettings ?? 'Officer Profile & Options',
       offset: const Offset(0, 52),
       shape: RoundedRectangleBorder(
         borderRadius: GovtThemeTokens.cardRadius,
@@ -158,7 +161,7 @@ class GovtProfileMenu extends StatelessWidget {
         }
       },
       itemBuilder: (ctx) => [
-        // Header tile with role and jurisdiction
+        // Header tile with role and designation
         PopupMenuItem<String>(
           enabled: false,
           child: Column(
@@ -177,16 +180,6 @@ class GovtProfileMenu extends StatelessWidget {
                   fontSize: 11,
                 ),
               ),
-              const SizedBox(height: 6),
-              GovtJurisdictionBadge(
-                label: jurisdiction,
-                type: user?.wardId != null
-                    ? GovtJurisdictionType.ward
-                    : (user?.zoneId != null
-                        ? GovtJurisdictionType.zone
-                        : GovtJurisdictionType.department),
-                isCompact: true,
-              ),
               CivicFixSpacing.vSpaceSm,
               const Divider(color: GovtThemeTokens.borderLight, height: 1),
             ],
@@ -194,25 +187,25 @@ class GovtProfileMenu extends StatelessWidget {
         ),
 
         // Profile Item
-        const PopupMenuItem<String>(
+        PopupMenuItem<String>(
           value: 'profile',
           child: Row(
             children: [
-              Icon(Icons.person_outline_rounded, size: 18, color: GovtThemeTokens.textPrimary),
-              SizedBox(width: 12),
-              Text('Officer Profile'),
+              const Icon(Icons.person_outline_rounded, size: 18, color: GovtThemeTokens.textPrimary),
+              const SizedBox(width: 12),
+              Text(l10n?.govOfficerProfile ?? 'Officer Profile'),
             ],
           ),
         ),
 
         // Settings Item
-        const PopupMenuItem<String>(
+        PopupMenuItem<String>(
           value: 'settings',
           child: Row(
             children: [
-              Icon(Icons.settings_outlined, size: 18, color: GovtThemeTokens.textPrimary),
-              SizedBox(width: 12),
-              Text('Operational Settings'),
+              const Icon(Icons.settings_outlined, size: 18, color: GovtThemeTokens.textPrimary),
+              const SizedBox(width: 12),
+              Text(l10n?.govOfficerProfileSettings ?? 'Operational Settings'),
             ],
           ),
         ),
@@ -220,15 +213,15 @@ class GovtProfileMenu extends StatelessWidget {
         const PopupMenuDivider(),
 
         // Sign Out Item
-        const PopupMenuItem<String>(
+        PopupMenuItem<String>(
           value: 'logout',
           child: Row(
             children: [
-              Icon(Icons.logout_rounded, size: 18, color: GovtThemeTokens.error),
-              SizedBox(width: 12),
+              const Icon(Icons.logout_rounded, size: 18, color: GovtThemeTokens.error),
+              const SizedBox(width: 12),
               Text(
-                'Sign Out Session',
-                style: TextStyle(color: GovtThemeTokens.error, fontWeight: FontWeight.w600),
+                l10n?.govSignOut ?? 'Sign Out Session',
+                style: const TextStyle(color: GovtThemeTokens.error, fontWeight: FontWeight.w600),
               ),
             ],
           ),

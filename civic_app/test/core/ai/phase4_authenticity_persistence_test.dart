@@ -126,7 +126,7 @@ void main() {
         confidence: 0.88,
         reasoning: 'Authentic camera noise pattern with standard Bayer sensor demosaicing artifacts.',
         indicators: ['natural_sensor_noise', 'consistent_directional_lighting'],
-        model: 'gemini-3.6-flash',
+        model: 'gemini-2.5-flash',
         analyzedAt: analyzedTime,
         isSuccess: true,
       );
@@ -153,7 +153,7 @@ void main() {
       expect(ai.indicators, contains('natural_sensor_noise'));
       expect(ai.isSuccess, isTrue);
       expect(ai.analyzedAt, equals(analyzedTime));
-      expect(ai.model, equals('gemini-3.6-flash'));
+      expect(ai.model, equals('gemini-2.5-flash'));
     });
 
     // -------------------------------------------------------------------------
@@ -165,7 +165,7 @@ void main() {
         confidence: 0.94,
         reasoning: 'Smooth texture diffusion without physical sensor noise; synthetic edge blending detected.',
         indicators: ['unnatural_smoothing', 'diffusion_frequency_signature'],
-        model: 'gemini-3.6-flash',
+        model: 'gemini-2.5-flash',
         analyzedAt: DateTime.now(),
         isSuccess: true,
       );
@@ -195,7 +195,7 @@ void main() {
         confidence: 0.35,
         reasoning: 'Image is heavily compressed and blurry; insufficient frequency detail to determine authenticity.',
         indicators: ['heavy_jpeg_compression'],
-        model: 'gemini-3.6-flash',
+        model: 'gemini-2.5-flash',
         analyzedAt: DateTime.now(),
         isSuccess: true,
       );
@@ -359,7 +359,7 @@ void main() {
         confidence: 0.92,
         reasoning: 'Continuous shadows and optical depth consistency.',
         indicators: ['consistent_lighting', 'authentic_lens_geometry'],
-        model: 'gemini-3.6-flash',
+        model: 'gemini-2.5-flash',
         analyzedAt: now,
         isSuccess: true,
       );
@@ -515,7 +515,7 @@ void main() {
         confidence: 0.89,
         reasoning: 'Verified photo with sensor noise.',
         indicators: ['natural_noise'],
-        model: 'gemini-3.6-flash',
+        model: 'gemini-2.5-flash',
         analyzedAt: DateTime.now(),
         isSuccess: true,
       );

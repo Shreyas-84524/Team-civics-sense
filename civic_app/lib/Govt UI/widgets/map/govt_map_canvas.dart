@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../theme/govt_theme_tokens.dart';
 import '../../../core/location/location_model.dart';
+import '../../../core/map/basemap_mode.dart';
 import '../../../core/map/civic_map_canvas.dart';
 import '../../../core/map/map_constants.dart';
 import '../../../core/map/spatial_data_service.dart';
@@ -20,6 +21,7 @@ class GovtMapCanvas extends StatelessWidget {
   final bool showHeatmap;
   final bool enableClustering;
   final SpatialTimeFilter? timeFilter;
+  final BasemapMode basemapMode;
 
   const GovtMapCanvas({
     super.key,
@@ -33,6 +35,7 @@ class GovtMapCanvas extends StatelessWidget {
     this.showHeatmap = true,
     this.enableClustering = true,
     this.timeFilter,
+    this.basemapMode = BasemapMode.streets,
   });
 
   /// Reference Mumbai municipal GIS center coordinates.
@@ -52,6 +55,7 @@ class GovtMapCanvas extends StatelessWidget {
       initialLatitude: centerLat,
       initialLongitude: centerLng,
       initialZoom: MapConstants.defaultInitialZoom,
+      basemapMode: basemapMode,
       showHeatmap: showHeatmap,
       enableClustering: enableClustering,
       timeFilter: timeFilter,

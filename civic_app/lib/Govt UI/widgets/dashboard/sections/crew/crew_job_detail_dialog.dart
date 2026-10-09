@@ -4,9 +4,7 @@ import '../../../../../core/constants/app_typography.dart';
 import '../../../../../core/models/complaint_model.dart';
 import '../../../../services/government_crew_work_service.dart';
 import '../../../../theme/govt_theme_tokens.dart';
-import '../../../common/govt_priority_badge.dart';
-import '../../../common/govt_sla_badge.dart';
-import '../../../common/govt_status_badge.dart';
+import '../../../complaints/shared/government_evidence_gallery.dart';
 
 /// Comprehensive operational field job detail modal for crew technicians.
 class CrewJobDetailDialog extends StatelessWidget {
@@ -15,6 +13,7 @@ class CrewJobDetailDialog extends StatelessWidget {
   final VoidCallback? onSubmitCompletion;
   final VoidCallback? onReportIssue;
   final VoidCallback? onResumeRework;
+  final VoidCallback? onAssignExecutionOfficer;
 
   const CrewJobDetailDialog({
     super.key,
@@ -23,6 +22,7 @@ class CrewJobDetailDialog extends StatelessWidget {
     this.onSubmitCompletion,
     this.onReportIssue,
     this.onResumeRework,
+    this.onAssignExecutionOfficer,
   });
 
   @override
@@ -61,12 +61,43 @@ class CrewJobDetailDialog extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'FIELD JOB DETAILS',
-                          style: CivicFixTypography.h3.copyWith(
-                            color: GovtThemeTokens.textPrimary,
-                            fontWeight: FontWeight.w700,
-                          ),
+                        Row(
+                          children: [
+                            Text(
+                              'FIELD JOB DETAILS',
+                              style: CivicFixTypography.h3.copyWith(
+                                color: GovtThemeTokens.textPrimary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            CivicFixSpacing.hSpaceSm,
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: GovtThemeTokens.surfaceMuted,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                    color: GovtThemeTokens.borderLight),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.near_me_outlined,
+                                      size: 12,
+                                      color: GovtThemeTokens.textMuted),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    job.formattedDistance,
+                                    style: CivicFixTypography.caption.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      color: GovtThemeTokens.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                         Text(
                           'Ticket #${job.ticketNumber} · ${c.category.name}',
@@ -131,46 +162,6 @@ class CrewJobDetailDialog extends StatelessWidget {
                 ),
                 CivicFixSpacing.vSpaceLg,
               ],
-
-              // Badges Strip
-              Wrap(
-                spacing: 8,
-                runSpacing: 6,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  GovtStatusBadge.complaint(c.status),
-                  GovtPriorityBadge.fromPriority(c.priority),
-                  GovtSlaBadge.fromDuration(
-                    createdAt: c.slaStartedAt,
-                    resolvedAt: c.resolvedAt,
-                  ),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: GovtThemeTokens.surfaceMuted,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: GovtThemeTokens.borderLight),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.near_me_outlined,
-                            size: 12, color: GovtThemeTokens.textMuted),
-                        const SizedBox(width: 4),
-                        Text(
-                          job.formattedDistance,
-                          style: CivicFixTypography.caption.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: GovtThemeTokens.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              CivicFixSpacing.vSpaceLg,
 
               // Title & Description
               Text(
@@ -274,40 +265,17 @@ class CrewJobDetailDialog extends StatelessWidget {
 
               // Citizen Evidence Photos
               if (job.citizenImageUrls.isNotEmpty) ...[
-                Text(
-                  'CITIZEN REPORT EVIDENCE',
-                  style: CivicFixTypography.captionMedium.copyWith(
-                    color: GovtThemeTokens.textMuted,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                CivicFixSpacing.vSpaceSm,
-                SizedBox(
-                  height: 120,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: job.citizenImageUrls.length,
-                    separatorBuilder: (context, index) => CivicFixSpacing.hSpaceMd,
-                    itemBuilder: (ctx, idx) {
-                      return ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          width: 140,
-                          color: GovtThemeTokens.surfaceMuted,
-                          child: Image.network(
-                            job.citizenImageUrls[idx],
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) =>
-                                const Center(
-                              child: Icon(Icons.image_not_supported_outlined,
-                                  color: GovtThemeTokens.textMuted),
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+                GovernmentEvidenceGallery(
+                  title: 'CITIZEN REPORT EVIDENCE (${job.citizenImageUrls.length})',
+                  evidenceItems: [
+                    for (int i = 0; i < job.citizenImageUrls.length; i++)
+                      GovernmentEvidenceItem(
+                        imageUrl: job.citizenImageUrls[i],
+                        title: 'Citizen Report Evidence #${i + 1}',
+                        stage: 'citizen',
+                        timestamp: c.createdAt,
+                      ),
+                  ],
                 ),
                 CivicFixSpacing.vSpaceLg,
               ],
@@ -433,6 +401,20 @@ class CrewJobDetailDialog extends StatelessWidget {
                 alignment: WrapAlignment.end,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
+                  // Assign Execution Officer
+                  if (onAssignExecutionOfficer != null &&
+                      c.assignedFieldOfficerId == null &&
+                      c.assignedCrewMemberId != null) ...[
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.engineering_outlined, size: 18),
+                      label: const Text('Assign Execution Officer'),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        onAssignExecutionOfficer!();
+                      },
+                    ),
+                  ],
+
                   // Rework Resume
                   if (job.isReturnedForRework && onResumeRework != null) ...[
                     ElevatedButton.icon(
@@ -495,7 +477,7 @@ class CrewJobDetailDialog extends StatelessWidget {
                     ElevatedButton.icon(
                       icon: const Icon(Icons.check_circle_outline_rounded,
                           size: 18),
-                      label: const Text('Submit for Verification'),
+                      label: const Text('Solved'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF10B981),
                         foregroundColor: Colors.white,

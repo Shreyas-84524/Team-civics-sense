@@ -403,8 +403,8 @@ class GovernmentWardDashboardService {
     final normB = normalizeWardId(wardB);
     return normA == normB ||
         normA.toLowerCase() == normB.toLowerCase() ||
-        normA.replaceAll('/', '').replaceAll('-', '') ==
-            normB.replaceAll('/', '').replaceAll('-', '');
+        normA.replaceAll('/', '').replaceAll('-', '').replaceAll('_', '').toLowerCase() ==
+            normB.replaceAll('/', '').replaceAll('-', '').replaceAll('_', '').toLowerCase();
   }
 
   bool _isSlaBreached(ComplaintModel c, DateTime now) {
@@ -527,7 +527,10 @@ class GovernmentWardDashboardService {
     }).toList();
 
     // 6. Ward Personnel Isolation (1 Ward Officer + 18 Ward Leads + 90 Crew = 109)
-    final wardPersonnel = allUsers.where((u) => matchesWard(u.wardId, cleanWardCode)).toList();
+    final canonicalWardUsers = allUsers.where((u) => u.employeeId.startsWith('GOV-') && matchesWard(u.wardId, cleanWardCode)).toList();
+    final wardPersonnel = canonicalWardUsers.isNotEmpty
+        ? canonicalWardUsers
+        : allUsers.where((u) => matchesWard(u.wardId, cleanWardCode)).toList();
     final wardLeadsUsers = wardPersonnel.where((u) => u.isWardLead).toList();
     final wardCrewUsers = wardPersonnel.where((u) => u.isCrew).toList();
 

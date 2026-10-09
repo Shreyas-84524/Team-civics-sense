@@ -6,6 +6,7 @@ import '../../../core/repositories/repository_locator.dart';
 import '../../../core/routing/app_routes.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/widgets/status_badge.dart';
+import '../../../core/widgets/supabase_evidence_image.dart';
 import '../../services/govt_complaint_repository.dart';
 import '../../theme/govt_theme_tokens.dart';
 
@@ -187,15 +188,9 @@ class GovtHazardInfoCard extends StatelessWidget {
                 child: SizedBox(
                   height: 100,
                   width: double.infinity,
-                  child: Image.network(
-                    hazard.imageUrl!,
+                  child: SupabaseEvidenceImage(
+                    imagePath: hazard.imageUrl!,
                     fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
-                      color: const Color(0xFFF0F0F0),
-                      child: const Center(
-                        child: Icon(Icons.broken_image_rounded, color: Colors.grey),
-                      ),
-                    ),
                   ),
                 ),
               ),

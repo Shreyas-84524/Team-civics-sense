@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:civic_app/core/models/complaint_model.dart';
 import 'package:civic_app/core/models/complaint_routing_ticket_model.dart';
 import 'package:civic_app/core/models/government_role.dart';
+import 'package:civic_app/core/theme/civicfix_design_tokens.dart';
 import 'package:civic_app/Govt UI/models/govt_user_model.dart';
 import 'package:civic_app/Govt UI/navigation/govt_navigation_config.dart';
 import 'package:civic_app/Govt UI/services/govt_auth_service.dart';
@@ -43,13 +44,13 @@ Widget _buildTestApp(Widget child, {Size size = const Size(1280, 800)}) {
 void main() {
   group('Phase 1: Government Theme Tokens & Typography Tests', () {
     test('Tokens contain authoritative municipal color palette specifications', () {
-      expect(GovtThemeTokens.primary, const Color(0xFF12304A));
-      expect(GovtThemeTokens.secondary, const Color(0xFF2E8B57));
-      expect(GovtThemeTokens.accent, const Color(0xFF7ED6A5));
-      expect(GovtThemeTokens.background, const Color(0xFFF7F9F7));
-      expect(GovtThemeTokens.surface, const Color(0xFFFFFFFF));
-      expect(GovtThemeTokens.border, const Color(0xFFD9E0DC));
-      expect(GovtThemeTokens.critical, const Color(0xFFB71C1C));
+      expect(GovtThemeTokens.primaryDark, CivicFixColors.secondaryAuthority);
+      expect(GovtThemeTokens.secondary, CivicFixColors.secondary);
+      expect(GovtThemeTokens.accent, CivicFixColors.primaryAccent);
+      expect(GovtThemeTokens.background, CivicFixColors.canvas);
+      expect(GovtThemeTokens.surface, CivicFixColors.surfaceContainerLowest);
+      expect(GovtThemeTokens.border, CivicFixColors.border);
+      expect(GovtThemeTokens.critical, CivicFixColors.onErrorContainer);
       expect(GovtThemeTokens.sidebarWidth, 260.0);
       expect(GovtThemeTokens.sidebarCollapsedWidth, 72.0);
       expect(GovtThemeTokens.topBarHeight, 68.0);
@@ -226,7 +227,7 @@ void main() {
       expect(find.text('Reported'), findsOneWidget);
       expect(find.text('Verified'), findsOneWidget);
       expect(find.text('Assigned'), findsOneWidget);
-      expect(find.text('In Progress'), findsOneWidget);
+      expect(find.textContaining('In Progress'), findsOneWidget);
       expect(find.text('Awaiting Verification'), findsOneWidget);
       expect(find.text('Resolved'), findsOneWidget);
       expect(find.text('Rejected'), findsOneWidget);

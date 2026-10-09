@@ -27,6 +27,7 @@ class CitywideKpiMetrics {
   final int pendingRoutingRequests;
   final int activePersonnelCount;
   final double? avgResolutionHours; // null when unavailable
+  final int totalWards;
 
   const CitywideKpiMetrics({
     required this.totalComplaints,
@@ -34,11 +35,12 @@ class CitywideKpiMetrics {
     required this.criticalComplaints,
     required this.resolvedToday,
     required this.resolvedTotal,
-    required this.slaBreachedCount,
+    this.slaBreachedCount = 0,
     this.slaComplianceRate,
     required this.pendingRoutingRequests,
     required this.activePersonnelCount,
     this.avgResolutionHours,
+    this.totalWards = 24,
   });
 
   bool get hasSlaData => slaComplianceRate != null;
@@ -433,8 +435,11 @@ class GovernmentCityDashboardService {
       slaBreachedCount: slaBreachedComplaints.length,
       slaComplianceRate: slaComplianceRate,
       pendingRoutingRequests: pendingTickets.length,
-      activePersonnelCount: allUsers.isNotEmpty ? allUsers.length : 2642,
+      activePersonnelCount: allUsers.any((u) => u.employeeId.startsWith('GOV-'))
+          ? allUsers.where((u) => u.employeeId.startsWith('GOV-')).length
+          : (allUsers.isNotEmpty ? allUsers.length : 2642),
       avgResolutionHours: avgResolutionHours,
+      totalWards: wards.isNotEmpty ? wards.length : 24,
     );
 
     // 8. Operations Overview Data
@@ -672,12 +677,16 @@ class GovernmentCityDashboardService {
     final timeTrends = _generateRealTimeTrends(filteredComplaints, trendDays);
 
     // 13. Personnel Summary
-    final superAdminCount = allUsers.where((u) => u.isSuperAdmin).length;
-    final zonalDmcCount = allUsers.where((u) => u.isZonalDmc).length;
-    final centralHodCount = allUsers.where((u) => u.isCentralHod).length;
-    final wardOfficerCount = allUsers.where((u) => u.isWardOfficer).length;
-    final wardLeadCount = allUsers.where((u) => u.isWardLead).length;
-    final crewCount = allUsers.where((u) => u.isCrew).length;
+    final matrixUsers = allUsers.any((u) => u.employeeId.startsWith('GOV-'))
+        ? allUsers.where((u) => u.employeeId.startsWith('GOV-')).toList()
+        : allUsers;
+
+    final superAdminCount = matrixUsers.where((u) => u.isSuperAdmin).length;
+    final zonalDmcCount = matrixUsers.where((u) => u.isZonalDmc).length;
+    final centralHodCount = matrixUsers.where((u) => u.isCentralHod).length;
+    final wardOfficerCount = matrixUsers.where((u) => u.isWardOfficer).length;
+    final wardLeadCount = matrixUsers.where((u) => u.isWardLead).length;
+    final crewCount = matrixUsers.where((u) => u.isCrew).length;
 
     final Map<String, int> personnelByZone = {};
     final Map<String, int> personnelByDept = {};
@@ -690,7 +699,7 @@ class GovernmentCityDashboardService {
       'Field Crew': crewCount,
     };
 
-    for (final u in allUsers) {
+    for (final u in matrixUsers) {
       if (u.zoneId != null && u.zoneId!.isNotEmpty) {
         personnelByZone[u.zoneId!] = (personnelByZone[u.zoneId!] ?? 0) + 1;
       }
@@ -699,8 +708,8 @@ class GovernmentCityDashboardService {
       }
     }
 
-    final activeAccounts = allUsers.where((u) => u.active).length;
-    final totalPersonnel = allUsers.isNotEmpty ? allUsers.length : 2642;
+    final activeAccounts = matrixUsers.where((u) => u.active).length;
+    final totalPersonnel = matrixUsers.isNotEmpty ? matrixUsers.length : 2642;
     final integrityMatch = totalPersonnel == 2642;
 
     final personnelSummary = PersonnelSummary(

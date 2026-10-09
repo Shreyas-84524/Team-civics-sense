@@ -48,10 +48,7 @@ class AchievementLocalModel {
       title: title,
       description: description,
       howToUnlock: howToUnlock,
-      icon: IconData(
-        iconCodePoint,
-        fontFamily: iconFontFamily ?? 'MaterialIcons',
-      ),
+      icon: _getIconFromCodePoint(iconCodePoint),
       isUnlocked: isUnlocked,
       pointsRequired: pointsRequired,
       unlockedAt: unlockedAtEpochMs != null
@@ -106,10 +103,28 @@ class RewardItemLocalModel {
       description: description,
       pointsCost: pointsCost,
       expiryDate: expiryDate,
-      icon: IconData(
-        iconCodePoint,
-        fontFamily: iconFontFamily ?? 'MaterialIcons',
-      ),
+      icon: _getIconFromCodePoint(iconCodePoint),
     );
   }
+}
+
+/// Helper to map code points back to constant [IconData] to avoid tree-shaking errors in release builds.
+IconData _getIconFromCodePoint(int codePoint) {
+  if (codePoint == Icons.photo_camera_outlined.codePoint) return Icons.photo_camera_outlined;
+  if (codePoint == Icons.location_on_outlined.codePoint) return Icons.location_on_outlined;
+  if (codePoint == Icons.thumb_up_outlined.codePoint) return Icons.thumb_up_outlined;
+  if (codePoint == Icons.people_outline.codePoint) return Icons.people_outline;
+  if (codePoint == Icons.emoji_events_outlined.codePoint) return Icons.emoji_events_outlined;
+  
+  if (codePoint == Icons.flag_rounded.codePoint) return Icons.flag_rounded;
+  if (codePoint == Icons.volunteer_activism_rounded.codePoint) return Icons.volunteer_activism_rounded;
+  if (codePoint == Icons.groups_rounded.codePoint) return Icons.groups_rounded;
+  if (codePoint == Icons.military_tech_rounded.codePoint) return Icons.military_tech_rounded;
+  
+  if (codePoint == Icons.directions_subway_rounded.codePoint) return Icons.directions_subway_rounded;
+  if (codePoint == Icons.park_rounded.codePoint) return Icons.park_rounded;
+  if (codePoint == Icons.sports_tennis_rounded.codePoint) return Icons.sports_tennis_rounded;
+  if (codePoint == Icons.local_offer_rounded.codePoint) return Icons.local_offer_rounded;
+
+  return Icons.star_rounded;
 }

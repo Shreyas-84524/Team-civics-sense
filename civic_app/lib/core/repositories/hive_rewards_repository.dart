@@ -99,18 +99,7 @@ class HiveRewardsRepository implements RewardsRepository {
       user = _dataSource.currentUser;
     }
 
-    final rawAchievements = await getAchievements();
-    final dynamicAchievements = rawAchievements.map((a) {
-      bool isUnlocked = a.isUnlocked;
-      if (a.pointsRequired > 0 && user.civicPoints >= a.pointsRequired) {
-        isUnlocked = true;
-      }
-      return a.copyWith(
-        isUnlocked: isUnlocked,
-        unlockedAt: isUnlocked ? (a.unlockedAt ?? DateTime.now()) : null,
-      );
-    }).toList();
-
+    final achievements = await getAchievements();
     final perks = await getRewardsCatalog();
 
     return RewardDataModel(
@@ -119,7 +108,7 @@ class HiveRewardsRepository implements RewardsRepository {
       nextMilestoneTarget: 1000,
       reportsSubmitted: user.reportsSubmitted,
       reportsResolved: user.reportsResolved,
-      achievements: dynamicAchievements,
+      achievements: achievements,
       perks: perks,
     );
   }
@@ -194,5 +183,10 @@ class HiveRewardsRepository implements RewardsRepository {
       }
     } catch (_) {}
     return false;
+  }
+
+  @override
+  Future<List<RewardEvent>> getRewardEvents(String userId) async {
+    return const [];
   }
 }

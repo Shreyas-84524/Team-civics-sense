@@ -102,8 +102,8 @@ void main() {
     });
   });
 
-  group('Phase 5 - Section 2: Header & Jurisdictional Badges Verification', () {
-    testWidgets('Renders authoritative department name and 24 Wards / 7 Zones jurisdiction badges', (tester) async {
+  group('Phase 5 - Section 2: Header Verification', () {
+    testWidgets('Renders authoritative department name cleanly without badges', (tester) async {
       tester.view.physicalSize = const Size(1440, 900);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -112,10 +112,7 @@ void main() {
       await tester.pumpWidget(_buildScreenTestHarness(user));
       await tester.pumpAndSettle();
 
-      // Check header badges with brackets
-      expect(find.text('[CENTRAL HOD JURISDICTION]'), findsOneWidget);
-      expect(find.text('[24 WARDS]'), findsOneWidget);
-      expect(find.text('[7 ZONES]'), findsOneWidget);
+      expect(find.text('Solid Waste Management Command Center'), findsWidgets);
     });
   });
 

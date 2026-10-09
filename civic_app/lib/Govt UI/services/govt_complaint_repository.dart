@@ -337,6 +337,9 @@ class MockGovtComplaintRepository implements GovtComplaintRepository {
 
     for (final c in list) {
       switch (c.status) {
+        case ComplaintStatus.underVerification:
+          reported++;
+          break;
         case ComplaintStatus.reported:
           reported++;
           break;
@@ -350,6 +353,7 @@ class MockGovtComplaintRepository implements GovtComplaintRepository {
           inProgress++;
           break;
         case ComplaintStatus.resolved:
+        case ComplaintStatus.closed:
           resolved++;
           break;
         case ComplaintStatus.rejected:
@@ -476,6 +480,9 @@ class MockGovtComplaintRepository implements GovtComplaintRepository {
 
     String eventTitle;
     switch (nextStatus) {
+      case ComplaintStatus.underVerification:
+        eventTitle = 'Under AI Verification';
+        break;
       case ComplaintStatus.reported:
         eventTitle = 'Reported';
         break;
@@ -490,6 +497,9 @@ class MockGovtComplaintRepository implements GovtComplaintRepository {
         break;
       case ComplaintStatus.resolved:
         eventTitle = 'Issue Resolved & Inspected';
+        break;
+      case ComplaintStatus.closed:
+        eventTitle = 'Resolution Finalized & Closed';
         break;
       case ComplaintStatus.rejected:
         eventTitle = 'Complaint Closed / Unactionable';

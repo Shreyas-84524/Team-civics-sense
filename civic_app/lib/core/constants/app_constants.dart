@@ -13,5 +13,9 @@ class AppConstants {
   // Animation Durations
   static const Duration fastAnimation = Duration(milliseconds: 150);
   static const Duration defaultAnimation = Duration(milliseconds: 250);
-  static const Duration slowAnimation = Duration(milliseconds: 400);
+  // Verification & Public Web Domain
+  static const String publicBaseUrl = String.fromEnvironment(
+    'PUBLIC_BASE_URL',
+    defaultValue: 'https://civicfix.vercel.app',
+  );
 }

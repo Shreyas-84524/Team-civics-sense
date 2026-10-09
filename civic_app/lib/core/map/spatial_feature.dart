@@ -30,6 +30,10 @@ class SpatialFeature {
   final int upvotes;
   final DateTime createdAt;
   final DateTime? updatedAt;
+  final String? complaintId;
+  final String? ticketNumber;
+  final String? citizenPhaseLabel;
+  final String? spatialChunkId;
   final Map<String, dynamic> customProperties;
 
   const SpatialFeature({
@@ -52,6 +56,10 @@ class SpatialFeature {
     this.upvotes = 0,
     required this.createdAt,
     this.updatedAt,
+    this.complaintId,
+    this.ticketNumber,
+    this.citizenPhaseLabel,
+    this.spatialChunkId,
     this.customProperties = const {},
   });
 
@@ -94,6 +102,10 @@ class SpatialFeature {
       upvotes: complaint.upvotes,
       createdAt: complaint.createdAt,
       updatedAt: complaint.updatedAt,
+      complaintId: complaint.id,
+      ticketNumber: complaint.ticketNumber,
+      citizenPhaseLabel: complaint.citizenPhaseLabel,
+      spatialChunkId: complaint.spatialChunkId ?? complaint.computedSpatialChunkId,
     );
   }
 
@@ -126,6 +138,10 @@ class SpatialFeature {
       upvotes: hazard.upvotes,
       createdAt: hazard.createdAt,
       updatedAt: hazard.updatedAt,
+      complaintId: hazard.complaintId ?? hazard.id,
+      ticketNumber: hazard.ticketNumber,
+      citizenPhaseLabel: hazard.citizenPhaseLabel,
+      spatialChunkId: hazard.spatialChunkId ?? hazard.computedSpatialChunkId,
     );
   }
 
@@ -146,6 +162,7 @@ class SpatialFeature {
         'title': title,
         'status': status.name,
         'statusLabel': status.label,
+        'citizenPhaseLabel': citizenPhaseLabel ?? status.label,
         'severity': severity,
         'category': category,
         'categoryId': categoryId,
@@ -159,6 +176,9 @@ class SpatialFeature {
         'upvotes': upvotes,
         'createdAt': createdAt.toIso8601String(),
         if (updatedAt != null) 'updatedAt': updatedAt!.toIso8601String(),
+        if (complaintId != null) 'complaintId': complaintId,
+        if (ticketNumber != null) 'ticketNumber': ticketNumber,
+        if (spatialChunkId != null) 'spatialChunkId': spatialChunkId,
         ...customProperties,
       },
     };

@@ -4,6 +4,7 @@ import '../../../core/constants/app_radius.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
 import '../../../core/models/complaint_model.dart';
+import '../../../core/localization/widgets/civic_fix_translated_text.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/widgets/civic_fix_card.dart';
 
@@ -15,6 +16,48 @@ class StatusHistoryTimeline extends StatelessWidget {
     super.key,
     required this.timeline,
   });
+
+  IconData _getEventIcon(TimelineEvent event) {
+    final titleLower = event.title.toLowerCase();
+    final descLower = event.description.toLowerCase();
+    if (titleLower.contains('reopen') || descLower.contains('reopen') || titleLower.contains('rework') || descLower.contains('rework')) {
+      return Icons.replay_circle_filled_rounded;
+    }
+    if (titleLower.contains('block') || descLower.contains('block') || titleLower.contains('hold') || descLower.contains('hold')) {
+      return Icons.pause_circle_outline_rounded;
+    }
+    if (titleLower.contains('field officer') || descLower.contains('field officer')) {
+      return Icons.build_circle_outlined;
+    }
+    if (titleLower.contains('junior engineer') || descLower.contains('junior engineer') || titleLower.contains('crew')) {
+      return Icons.shield_outlined;
+    }
+    if (titleLower.contains('started') || titleLower.contains('progress') || descLower.contains('progress')) {
+      return Icons.engineering_rounded;
+    }
+    if (titleLower.contains('resolved') || descLower.contains('resolved')) {
+      return Icons.check_circle_rounded;
+    }
+    return event.status.icon;
+  }
+
+  Color _getEventColor(TimelineEvent event) {
+    final titleLower = event.title.toLowerCase();
+    final descLower = event.description.toLowerCase();
+    if (titleLower.contains('reopen') || descLower.contains('reopen') || titleLower.contains('rework') || descLower.contains('rework')) {
+      return CivicFixColors.alertDark;
+    }
+    if (titleLower.contains('block') || descLower.contains('block') || titleLower.contains('hold') || descLower.contains('hold')) {
+      return CivicFixColors.error;
+    }
+    if (titleLower.contains('field officer') || descLower.contains('field officer')) {
+      return CivicFixColors.info;
+    }
+    if (titleLower.contains('junior engineer') || descLower.contains('junior engineer')) {
+      return CivicFixColors.primary;
+    }
+    return event.status.color;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -84,6 +127,8 @@ class StatusHistoryTimeline extends StatelessWidget {
               final event = sortedTimeline[index];
               final isLast = index == sortedTimeline.length - 1;
               final formattedTime = DateFormatter.formatTimelineDate(event.timestamp);
+              final eventIcon = _getEventIcon(event);
+              final eventColor = _getEventColor(event);
 
               return IntrinsicHeight(
                 child: Row(
@@ -96,17 +141,17 @@ class StatusHistoryTimeline extends StatelessWidget {
                           width: 24,
                           height: 24,
                           decoration: BoxDecoration(
-                            color: event.status.color.withValues(alpha: 0.15),
+                            color: eventColor.withValues(alpha: 0.15),
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: event.status.color,
+                              color: eventColor,
                               width: 1.5,
                             ),
                           ),
                           child: Icon(
-                            event.status.icon,
+                            eventIcon,
                             size: 13,
-                            color: event.status.color,
+                            color: eventColor,
                           ),
                         ),
                         if (!isLast)
@@ -158,36 +203,15 @@ class StatusHistoryTimeline extends StatelessWidget {
                             CivicFixSpacing.vSpaceXs,
 
                             // Status Description / Message
-                            Text(
-                              event.description,
+                            CivicFixTranslatedText(
+                              originalText: event.description,
+                              contentCategory: 'timeline_event_description',
+                              dense: true,
                               style: CivicFixTypography.bodySmall.copyWith(
                                 color: CivicFixColors.secondaryText,
                                 height: 1.35,
                               ),
                             ),
-
-                            // Optional Updated By Tag
-                            if (event.updatedBy != null && event.updatedBy!.isNotEmpty) ...[
-                              CivicFixSpacing.vSpaceXs,
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: CivicFixColors.surfaceMuted,
-                                  borderRadius: CivicFixRadius.chipRadius,
-                                ),
-                                child: Text(
-                                  event.updatedBy!,
-                                  style: CivicFixTypography.caption.copyWith(
-                                    fontSize: 10,
-                                    color: CivicFixColors.secondaryText,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ],
                           ],
                         ),
                       ),

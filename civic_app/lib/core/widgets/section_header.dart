@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
-import '../constants/app_colors.dart';
-import '../constants/app_spacing.dart';
-import '../constants/app_typography.dart';
+import '../theme/civicfix_design_tokens.dart';
 
-/// Section header with optional action button ("View All", "See More").
+/// Standardized section header for dashboards and detail screens.
+///
+/// Follows Design.md:
+/// - Plus Jakarta Sans title
+/// - Inter subtitle
+/// - Restrained gold / slate action button
 class SectionHeader extends StatelessWidget {
   final String title;
   final String? subtitle;
   final String? actionTitle;
   final VoidCallback? onActionTap;
+  final Widget? trailing;
+  final EdgeInsetsGeometry padding;
 
   const SectionHeader({
     super.key,
@@ -16,12 +21,14 @@ class SectionHeader extends StatelessWidget {
     this.subtitle,
     this.actionTitle,
     this.onActionTap,
+    this.trailing,
+    this.padding = const EdgeInsets.symmetric(vertical: CivicFixSpacing.sm),
   });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: CivicFixSpacing.sm),
+      padding: padding,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
@@ -32,30 +39,37 @@ class SectionHeader extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: CivicFixTypography.h3,
+                  style: CivicFixTypographyTokens.headlineSm.copyWith(
+                    color: CivicFixColors.textPrimary,
+                  ),
                 ),
                 if (subtitle != null) ...[
-                  CivicFixSpacing.vSpaceXs,
+                  const SizedBox(height: 4),
                   Text(
                     subtitle!,
-                    style: CivicFixTypography.bodySmall,
+                    style: CivicFixTypographyTokens.bodySm.copyWith(
+                      color: CivicFixColors.textSecondary,
+                    ),
                   ),
                 ],
               ],
             ),
           ),
-          if (actionTitle != null && onActionTap != null)
-            GestureDetector(
+          if (trailing != null)
+            trailing!
+          else if (actionTitle != null && onActionTap != null)
+            InkWell(
               onTap: onActionTap,
+              borderRadius: CivicFixRadius.baseRadius,
               child: Padding(
                 padding: const EdgeInsets.symmetric(
                   vertical: CivicFixSpacing.xs,
-                  horizontal: CivicFixSpacing.xs,
+                  horizontal: CivicFixSpacing.xs + 2,
                 ),
                 child: Text(
                   actionTitle!,
-                  style: CivicFixTypography.bodySmallMedium.copyWith(
-                    color: CivicFixColors.secondary,
+                  style: CivicFixTypographyTokens.labelMd.copyWith(
+                    color: CivicFixColors.primaryAccent,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -66,3 +80,6 @@ class SectionHeader extends StatelessWidget {
     );
   }
 }
+
+/// Standard alias conforming to the CivicFix naming convention.
+typedef CivicFixSectionHeader = SectionHeader;

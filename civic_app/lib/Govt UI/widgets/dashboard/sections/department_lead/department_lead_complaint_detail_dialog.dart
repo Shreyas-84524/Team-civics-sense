@@ -3,6 +3,7 @@ import '../../../../../core/constants/app_spacing.dart';
 import '../../../../../core/constants/app_typography.dart';
 import '../../../../../core/models/complaint_model.dart';
 import '../../../../theme/govt_theme_tokens.dart';
+import '../../../complaints/shared/government_evidence_gallery.dart';
 
 /// Modal dialog for detailed operational complaint view with state-aware actions.
 class DepartmentLeadComplaintDetailDialog extends StatelessWidget {
@@ -207,38 +208,20 @@ class DepartmentLeadComplaintDetailDialog extends StatelessWidget {
                     CivicFixSpacing.vSpaceLg,
 
                     // Citizen Evidence
-                    Text(
-                      'CITIZEN REPORT EVIDENCE',
-                      style: CivicFixTypography.captionMedium.copyWith(
-                        color: GovtThemeTokens.textMuted,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.5,
+                    if (c.imageUrls.isNotEmpty) ...[
+                      GovernmentEvidenceGallery(
+                        title: 'CITIZEN REPORT EVIDENCE (${c.imageUrls.length})',
+                        evidenceItems: [
+                          for (int i = 0; i < c.imageUrls.length; i++)
+                            GovernmentEvidenceItem(
+                              imageUrl: c.imageUrls[i],
+                              title: 'Citizen Report Evidence #${i + 1}',
+                              stage: 'citizen',
+                              timestamp: c.createdAt,
+                            ),
+                        ],
                       ),
-                    ),
-                    CivicFixSpacing.vSpaceSm,
-                    if (c.imageUrls.isNotEmpty)
-                      SizedBox(
-                        height: 140,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: c.imageUrls.length,
-                          separatorBuilder: (context, index) => CivicFixSpacing.hSpaceMd,
-                          itemBuilder: (ctx, i) {
-                            return ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.network(
-                                c.imageUrls[i],
-                                width: 200,
-                                height: 140,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) =>
-                                    _buildImagePlaceholder(),
-                              ),
-                            );
-                          },
-                        ),
-                      )
-                    else
+                    ] else
                       Container(
                         padding: const EdgeInsets.all(CivicFixSpacing.md),
                         decoration: BoxDecoration(
@@ -470,18 +453,6 @@ class DepartmentLeadComplaintDetailDialog extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildImagePlaceholder() {
-    return Container(
-      width: 200,
-      height: 140,
-      color: GovtThemeTokens.surfaceMuted,
-      child: const Center(
-        child: Icon(Icons.image_outlined,
-            size: 24, color: GovtThemeTokens.textMuted),
       ),
     );
   }

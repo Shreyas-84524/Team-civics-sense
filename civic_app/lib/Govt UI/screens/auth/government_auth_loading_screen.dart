@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
+import '../../../core/localization/app_localizations.dart';
 import '../../theme/govt_theme_tokens.dart';
 
 /// Clean, restrained Government Portal authentication & session resolution screen.
@@ -8,15 +9,18 @@ import '../../theme/govt_theme_tokens.dart';
 /// Displayed while verifying officer credentials, fetching backend profiles,
 /// or resolving jurisdiction without leaking citizen UI.
 class GovernmentAuthLoadingScreen extends StatelessWidget {
-  final String message;
+  final String? message;
 
   const GovernmentAuthLoadingScreen({
     super.key,
-    this.message = 'Verifying government credentials...',
+    this.message,
   });
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final displayMessage = message ?? l10n?.govAuthenticating ?? 'Verifying government credentials...';
+
     return Scaffold(
       backgroundColor: GovtThemeTokens.background,
       body: Center(
@@ -47,7 +51,7 @@ class GovernmentAuthLoadingScreen extends StatelessWidget {
 
               // Portal title
               Text(
-                'CivicFix Government Portal',
+                l10n?.govPortalTitle ?? 'CivicFix Government Portal',
                 style: CivicFixTypography.h3.copyWith(
                   color: GovtThemeTokens.primaryDark,
                   fontWeight: FontWeight.w700,
@@ -58,7 +62,7 @@ class GovernmentAuthLoadingScreen extends StatelessWidget {
 
               // Subtitle status message
               Text(
-                message,
+                displayMessage,
                 style: CivicFixTypography.bodySmallMedium.copyWith(
                   color: GovtThemeTokens.textSecondary,
                 ),

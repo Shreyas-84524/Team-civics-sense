@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../../../../core/constants/app_spacing.dart';
 import '../../../../../core/constants/app_typography.dart';
@@ -56,14 +57,31 @@ class _DepartmentLeadAssignDialogState
     });
 
     try {
+      if (kDebugMode) {
+        debugPrint(
+          '[DepartmentLeadAssignDialog] Confirming assignment: '
+          'complaintId=${widget.complaint.id}, serverId=${widget.complaint.serverId}, '
+          'ticketNumber=${widget.complaint.ticketNumber}, crewMemberId=$_selectedCrewId',
+        );
+      }
       await widget.onAssignConfirmed(_selectedCrewId!);
       if (mounted) {
         Navigator.pop(context, true);
       }
     } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[DepartmentLeadAssignDialog] Assignment failed: $e');
+      }
       if (mounted) {
+        final errorString = e.toString();
+        final userFriendlyMsg = errorString.contains('Complaint not found')
+            ? 'Unable to load this complaint for assignment. Please refresh and try again.'
+            : errorString
+                .replaceFirst('Exception: ', '')
+                .replaceFirst('ArgumentError: ', '')
+                .replaceFirst('StateError: ', '');
         setState(() {
-          _errorMessage = e.toString();
+          _errorMessage = userFriendlyMsg;
           _isProcessing = false;
         });
       }

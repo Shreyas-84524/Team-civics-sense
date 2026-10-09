@@ -123,6 +123,9 @@ class _AiAuthenticityCardState extends State<AiAuthenticityCard> {
 
   static String _formatModelName(String rawModel) {
     final lower = rawModel.toLowerCase();
+    if (lower.contains('2.5-flash') || lower.contains('2.5_flash') || lower.contains('2.5 flash')) {
+      return 'Gemini 2.5 Flash';
+    }
     if (lower.contains('3.6-flash') || lower.contains('3.6_flash') || lower.contains('3.6 flash')) {
       return 'Gemini 3.6 Flash';
     }

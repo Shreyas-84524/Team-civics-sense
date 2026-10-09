@@ -24,7 +24,7 @@ class OfflineFirstRewardsRepository implements RewardsRepository {
   Future<RewardDataModel> getRewardData(String userId) async {
     final localData = await _localRepo.getRewardData(userId);
 
-    if (_connectivity.isOnline) {
+    if (_connectivity.isOnline && userId.isNotEmpty) {
       try {
         final remoteReward = await _remoteDataSource.getRewardData(userId);
         if (remoteReward.achievements.isNotEmpty) {
@@ -34,28 +34,30 @@ class OfflineFirstRewardsRepository implements RewardsRepository {
         final perks = await _localRepo.getRewardsCatalog();
 
         return RewardDataModel(
-          userId: localData.userId,
-          currentPoints: remoteReward.currentPoints > localData.currentPoints
-              ? remoteReward.currentPoints
-              : localData.currentPoints,
+          userId: userId,
+          currentPoints: remoteReward.currentPoints,
           nextMilestoneTarget: remoteReward.nextMilestoneTarget,
-          reportsSubmitted: remoteReward.reportsSubmitted > localData.reportsSubmitted
-              ? remoteReward.reportsSubmitted
-              : localData.reportsSubmitted,
-          reportsResolved: remoteReward.reportsResolved > localData.reportsResolved
-              ? remoteReward.reportsResolved
-              : localData.reportsResolved,
+          reportsSubmitted: remoteReward.reportsSubmitted,
+          reportsVerified: remoteReward.reportsVerified,
+          reportsResolved: remoteReward.reportsResolved,
+          communityUpvotes: remoteReward.communityUpvotes,
+          supportedComplaints: remoteReward.supportedComplaints,
           achievements: remoteReward.achievements.isNotEmpty
               ? remoteReward.achievements
               : localData.achievements,
+          recentActivity: remoteReward.recentActivity.isNotEmpty
+              ? remoteReward.recentActivity
+              : localData.recentActivity,
           perks: perks,
+          isCached: false,
+          syncPending: remoteReward.syncPending,
         );
       } catch (e) {
         debugPrint('[OfflineFirstRewardsRepository] Remote reward data fetch failed (using cache): $e');
       }
     }
 
-    return localData;
+    return localData.copyWith(isCached: true);
   }
 
   @override
@@ -96,5 +98,15 @@ class OfflineFirstRewardsRepository implements RewardsRepository {
   @override
   Future<bool> redeemReward(String rewardId) async {
     return _localRepo.redeemReward(rewardId);
+  }
+
+  @override
+  Future<List<RewardEvent>> getRewardEvents(String userId) async {
+    if (_connectivity.isOnline) {
+      try {
+        return await _remoteDataSource.getRewardEvents(userId);
+      } catch (_) {}
+    }
+    return _localRepo.getRewardEvents(userId);
   }
 }

@@ -34,6 +34,9 @@ class PermanentEvidenceStorage {
     String? complaintId,
     int index = 0,
   }) async {
+    if (kIsWeb) {
+      return sourceFilePath;
+    }
     final sourceFile = File(sourceFilePath);
     if (!await sourceFile.exists()) {
       debugPrint('[PermanentEvidenceStorage] Warning: Source file does not exist: $sourceFilePath');
@@ -79,6 +82,7 @@ class PermanentEvidenceStorage {
 
   /// Checks if a file path is located in the permanent evidence storage directory.
   Future<bool> isPermanentPath(String filePath) async {
+    if (kIsWeb) return false;
     try {
       final evidenceDir = await getEvidenceDirectory();
       final targetDir = p.normalize(File(filePath).parent.path);

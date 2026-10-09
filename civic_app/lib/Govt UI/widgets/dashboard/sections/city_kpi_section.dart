@@ -12,6 +12,7 @@ class CityKpiSection extends StatelessWidget {
   final VoidCallback? onRetry;
   final VoidCallback? onOpenComplaintsTap;
   final VoidCallback? onCriticalComplaintsTap;
+  final VoidCallback? onTotalWardsTap;
   final VoidCallback? onSlaBreachedTap;
   final VoidCallback? onRoutingRequestsTap;
   final VoidCallback? onPersonnelTap;
@@ -24,6 +25,7 @@ class CityKpiSection extends StatelessWidget {
     this.onRetry,
     this.onOpenComplaintsTap,
     this.onCriticalComplaintsTap,
+    this.onTotalWardsTap,
     this.onSlaBreachedTap,
     this.onRoutingRequestsTap,
     this.onPersonnelTap,
@@ -35,7 +37,7 @@ class CityKpiSection extends StatelessWidget {
       return _buildGrid(
         context,
         List.generate(
-          8,
+          7,
           (index) => const GovernmentKpiCard(
             title: 'Loading metric...',
             metric: '—',
@@ -97,11 +99,8 @@ class CityKpiSection extends StatelessWidget {
           slaBreachedCount: 0,
           pendingRoutingRequests: 0,
           activePersonnelCount: 2642,
+          totalWards: 24,
         );
-
-    final slaText = m.slaComplianceRate != null
-        ? '${m.slaComplianceRate!.toStringAsFixed(1)}%'
-        : 'Unavailable';
 
     final avgTimeText = m.avgResolutionHours != null
         ? '${m.avgResolutionHours!.toStringAsFixed(1)} hrs'
@@ -136,33 +135,13 @@ class CityKpiSection extends StatelessWidget {
         supportingText: 'Cumulative resolved: ${m.resolvedTotal}',
       ),
       GovernmentKpiCard(
-        title: 'SLA Compliance',
-        metric: slaText,
-        icon: Icons.timer_outlined,
-        iconColor: m.slaComplianceRate != null && m.slaComplianceRate! >= 90
-            ? GovtThemeTokens.slaHealthy
-            : GovtThemeTokens.slaWarning,
-        iconBackgroundColor: (m.slaComplianceRate != null && m.slaComplianceRate! >= 90
-                ? GovtThemeTokens.slaHealthy
-                : GovtThemeTokens.slaWarning)
-            .withValues(alpha: 0.12),
-        status: m.slaComplianceRate != null && m.slaComplianceRate! >= 90
-            ? 'Compliant'
-            : (m.slaComplianceRate != null ? 'Attention Needed' : 'No Data'),
-        statusColor: m.slaComplianceRate != null && m.slaComplianceRate! >= 90
-            ? GovtThemeTokens.success
-            : GovtThemeTokens.slaWarning,
-      ),
-      GovernmentKpiCard(
-        title: 'SLA Breached',
-        metric: '${m.slaBreachedCount}',
-        icon: Icons.alarm_off_rounded,
-        iconColor: m.slaBreachedCount > 0 ? GovtThemeTokens.slaBreached : GovtThemeTokens.textSecondary,
-        iconBackgroundColor: (m.slaBreachedCount > 0 ? GovtThemeTokens.slaBreached : GovtThemeTokens.textSecondary)
-            .withValues(alpha: 0.12),
-        status: m.slaBreachedCount > 0 ? 'Overdue' : 'Zero Breaches',
-        statusColor: m.slaBreachedCount > 0 ? GovtThemeTokens.slaBreached : GovtThemeTokens.success,
-        onTap: onSlaBreachedTap,
+        title: 'Total Wards',
+        metric: '${m.totalWards}',
+        icon: Icons.location_city_rounded,
+        iconColor: GovtThemeTokens.primary,
+        iconBackgroundColor: GovtThemeTokens.primary.withValues(alpha: 0.1),
+        supportingText: 'All Administrative Wards',
+        onTap: onTotalWardsTap,
       ),
       GovernmentKpiCard(
         title: 'Pending Routing Requests',

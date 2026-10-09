@@ -59,4 +59,7 @@ class AppRoutes {
 
   // Development & Verification Showcase Route
   static const String govtShowcase = '/govt/showcase';
+
+  // Public Certificate Verification Portal Route (/verify/:verificationSlug)
+  static const String verify = '/verify';
 }

@@ -5,6 +5,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_radius.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/constants/app_typography.dart';
+import '../../core/localization/app_localizations.dart';
 import '../../core/models/user_model.dart';
 import '../../core/repositories/repository_locator.dart';
 import '../../core/repositories/user_repository.dart';
@@ -43,18 +44,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showLogoutConfirmation() {
+    final l10n = context.l10nOrNull;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: CivicFixRadius.cardRadius),
         title: Text(
-          'Log out?',
+          l10n?.logoutConfirmationTitle ?? 'Log out?',
           style: CivicFixTypography.h3.copyWith(
             color: CivicFixColors.primaryText,
           ),
         ),
         content: Text(
-          'Are you sure you want to log out?',
+          l10n?.logoutConfirmationMessage ?? 'Are you sure you want to log out?',
           style: CivicFixTypography.bodySmall.copyWith(
             color: CivicFixColors.secondaryText,
           ),
@@ -62,7 +64,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            child: Text(l10n?.commonCancel ?? 'Cancel'),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -80,7 +82,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               backgroundColor: CivicFixColors.error,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Log Out'),
+            child: Text(l10n?.logout ?? 'Log Out'),
           ),
         ],
       ),
@@ -89,10 +91,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10nOrNull;
     return Scaffold(
       backgroundColor: CivicFixColors.background,
-      appBar: const CivicFixAppBar(
-        title: 'Settings',
+      appBar: CivicFixAppBar(
+        title: l10n?.settingsTitle ?? 'Settings',
       ),
       body: SafeArea(
         child: ResponsiveContainer(
@@ -106,7 +109,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Account Section
-                    const SectionHeader(title: 'Account & Preferences'),
+                    SectionHeader(title: l10n?.accountAndPreferences ?? 'Account & Preferences'),
                     CivicFixSpacing.vSpaceSm,
                     CivicFixCard(
                       padding: EdgeInsets.zero,
@@ -114,7 +117,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         children: [
                           _buildSettingsTile(
                             icon: Icons.language_rounded,
-                            title: 'Preferred Language',
+                            title: l10n?.preferredLanguage ?? 'Preferred Language',
                             subtitle: user.languageName,
                             onTap: () async {
                               await LanguageSelectorSheet.show(
@@ -126,15 +129,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           const Divider(height: 1),
                           _buildSettingsTile(
                             icon: Icons.notifications_outlined,
-                            title: 'Notification Preferences',
-                            subtitle: 'Status alerts, hazard warnings & sound',
+                            title: l10n?.notificationPreferences ?? 'Notification Preferences',
+                            subtitle: l10n?.notificationPreferencesSubtitle ?? 'Status alerts, hazard warnings & sound',
                             onTap: () => Navigator.pushNamed(context, AppRoutes.notificationSettings),
                           ),
                           const Divider(height: 1),
                           _buildSettingsTile(
                             icon: Icons.privacy_tip_outlined,
-                            title: 'Privacy & Safety',
-                            subtitle: 'Confidentiality and public map policy',
+                            title: l10n?.privacyAndSafety ?? 'Privacy & Safety',
+                            subtitle: l10n?.privacyAndSafetySubtitle ?? 'Confidentiality and public map policy',
                             onTap: () => Navigator.pushNamed(context, AppRoutes.privacySettings),
                           ),
                         ],
@@ -143,14 +146,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     CivicFixSpacing.vSpaceXl,
 
                     // Appearance Section
-                    const SectionHeader(title: 'Appearance'),
+                    SectionHeader(title: l10n?.appearance ?? 'Appearance'),
                     CivicFixSpacing.vSpaceSm,
                     CivicFixCard(
                       padding: EdgeInsets.zero,
                       child: ListTile(
                         leading: const Icon(Icons.palette_outlined, color: CivicFixColors.primary),
                         title: Text(
-                          'Theme Mode',
+                          l10n?.themeMode ?? 'Theme Mode',
                           style: CivicFixTypography.bodySmallMedium.copyWith(fontWeight: FontWeight.w700),
                         ),
                         subtitle: Text(
@@ -160,10 +163,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         trailing: DropdownButtonHideUnderline(
                           child: DropdownButton<String>(
                             value: _selectedTheme,
-                            items: const [
-                              DropdownMenuItem(value: 'System Default', child: Text('System Default')),
-                              DropdownMenuItem(value: 'Light Theme', child: Text('Light Theme')),
-                              DropdownMenuItem(value: 'Dark Theme', child: Text('Dark Theme')),
+                            items: [
+                              DropdownMenuItem(value: 'System Default', child: Text(l10n?.systemDefault ?? 'System Default')),
+                              DropdownMenuItem(value: 'Light Theme', child: Text(l10n?.lightTheme ?? 'Light Theme')),
+                              DropdownMenuItem(value: 'Dark Theme', child: Text(l10n?.darkTheme ?? 'Dark Theme')),
                             ],
                             onChanged: (val) {
                               if (val != null) {
@@ -177,7 +180,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     CivicFixSpacing.vSpaceXl,
 
                     // About Section
-                    const SectionHeader(title: 'About'),
+                    SectionHeader(title: l10n?.aboutCivicFix ?? 'About'),
                     CivicFixSpacing.vSpaceSm,
                     CivicFixCard(
                       padding: EdgeInsets.zero,
@@ -185,15 +188,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         children: [
                           _buildSettingsTile(
                             icon: Icons.info_outline_rounded,
-                            title: 'About CivicFix',
-                            subtitle: 'Mission, governance model, and technology',
+                            title: l10n?.aboutCivicFix ?? 'About CivicFix',
+                            subtitle: l10n?.aboutCivicFixSubtitle ?? 'Mission, governance model, and technology',
                             onTap: () => Navigator.pushNamed(context, AppRoutes.about),
                           ),
                           const Divider(height: 1),
                           ListTile(
                             leading: const Icon(Icons.verified_outlined, color: CivicFixColors.primary),
                             title: Text(
-                              'App Version',
+                              l10n?.appVersion ?? 'App Version',
                               style: CivicFixTypography.bodySmallMedium.copyWith(fontWeight: FontWeight.w700),
                             ),
                             trailing: Text(
@@ -209,14 +212,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     CivicFixSpacing.vSpaceXl,
 
                     // Actions / Logout Section
-                    const SectionHeader(title: 'Actions'),
+                    SectionHeader(title: l10n?.actions ?? 'Actions'),
                     CivicFixSpacing.vSpaceSm,
                     CivicFixCard(
                       padding: EdgeInsets.zero,
                       child: ListTile(
                         leading: const Icon(Icons.logout_rounded, color: CivicFixColors.error),
                         title: Text(
-                          'Log Out',
+                          l10n?.logout ?? 'Log Out',
                           style: CivicFixTypography.bodySmallMedium.copyWith(
                             fontWeight: FontWeight.w700,
                             color: CivicFixColors.error,

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import '../models/civic_department_model.dart';
 import '../models/civic_ward_model.dart';
@@ -36,6 +37,7 @@ abstract class GovernmentHierarchyRepository {
   });
   Future<GovtUserModel?> getUserById(String id);
   Future<GovtUserModel?> getUserByEmployeeId(String employeeId);
+  Future<GovtUserModel?> getUserByEmail(String email);
 
   // Dual-Hierarchy Traversal
   Future<GovtUserModel?> getAdministrativeSupervisor(GovtUserModel user);
@@ -64,6 +66,7 @@ class LocalGovernmentHierarchyRepository implements GovernmentHierarchyRepositor
   final Map<String, WardDepartment> _wardDepartmentsByKey = {}; // "wardId:departmentId"
   final Map<String, GovtUserModel> _usersById = {};
   final Map<String, GovtUserModel> _usersByEmployeeId = {};
+  final Map<String, GovtUserModel> _usersByEmail = {};
 
   @override
   Future<void> initialize() async {
@@ -120,10 +123,24 @@ class LocalGovernmentHierarchyRepository implements GovernmentHierarchyRepositor
       final decoded = jsonDecode(usersJson) as Map<String, dynamic>;
       final list = decoded['governmentUsers'] as List<dynamic>? ?? [];
       for (final item in list) {
-        final u = GovtUserModel.fromJson(Map<String, dynamic>.from(item as Map));
+        final map = Map<String, dynamic>.from(item as Map);
+        final u = GovtUserModel.fromJson(map);
         _users.add(u);
-        _usersById[u.id] = u;
-        _usersByEmployeeId[u.employeeId] = u;
+        if (u.id.isNotEmpty) {
+          _usersById[u.id] = u;
+        }
+        final rawUserId = map['userId'] as String?;
+        if (rawUserId != null && rawUserId.isNotEmpty) {
+          _usersById[rawUserId] = u;
+        }
+        if (u.employeeId.isNotEmpty) {
+          _usersByEmployeeId[u.employeeId] = u;
+          _usersByEmployeeId[u.employeeId.toUpperCase()] = u;
+          _usersById[u.employeeId] = u;
+        }
+        if (u.email.isNotEmpty) {
+          _usersByEmail[u.email.toLowerCase()] = u;
+        }
       }
     }
 
@@ -174,38 +191,47 @@ class LocalGovernmentHierarchyRepository implements GovernmentHierarchyRepositor
       _users.clear();
       _usersById.clear();
       _usersByEmployeeId.clear();
+      _usersByEmail.clear();
       for (final u in users) {
         _users.add(u);
-        _usersById[u.id] = u;
-        _usersByEmployeeId[u.employeeId] = u;
+        if (u.id.isNotEmpty) _usersById[u.id] = u;
+        if (u.employeeId.isNotEmpty) {
+          _usersByEmployeeId[u.employeeId] = u;
+          _usersById[u.employeeId] = u;
+        }
+        if (u.email.isNotEmpty) {
+          _usersByEmail[u.email.toLowerCase()] = u;
+        }
       }
     }
     _initialized = true;
   }
 
   Future<String?> _loadJsonContent(String fileName) async {
-    // 1. Try file system directly (for CLI / tests / root runs)
-    final candidatePaths = [
-      'assets/govt_data/$fileName',
-      'civic_app/assets/govt_data/$fileName',
-      'resources/Govt Data/$fileName',
-      '../resources/Govt Data/$fileName',
-      '../../resources/Govt Data/$fileName',
-    ];
-
-    for (final p in candidatePaths) {
-      final f = File(p);
-      if (f.existsSync()) {
-        try {
-          return await f.readAsString();
-        } catch (_) {}
-      }
-    }
-
-    // 2. Try Flutter AssetBundle (for app runtime)
+    // 1. Try Flutter AssetBundle first (works across Web, Android, iOS, and Desktop in app runtime)
     try {
       return await rootBundle.loadString('assets/govt_data/$fileName');
     } catch (_) {}
+
+    // 2. Try file system directly (for CLI / headless tests where rootBundle is unavailable)
+    if (!kIsWeb) {
+      final candidatePaths = [
+        'assets/govt_data/$fileName',
+        'civic_app/assets/govt_data/$fileName',
+        'resources/Govt Data/$fileName',
+        '../resources/Govt Data/$fileName',
+        '../../resources/Govt Data/$fileName',
+      ];
+
+      for (final p in candidatePaths) {
+        try {
+          final f = File(p);
+          if (f.existsSync()) {
+            return await f.readAsString();
+          }
+        } catch (_) {}
+      }
+    }
 
     return null;
   }
@@ -295,13 +321,19 @@ class LocalGovernmentHierarchyRepository implements GovernmentHierarchyRepositor
   @override
   Future<GovtUserModel?> getUserById(String id) async {
     await initialize();
-    return _usersById[id];
+    return _usersById[id] ?? _usersByEmployeeId[id] ?? _usersByEmail[id.toLowerCase()];
   }
 
   @override
   Future<GovtUserModel?> getUserByEmployeeId(String employeeId) async {
     await initialize();
-    return _usersByEmployeeId[employeeId];
+    return _usersByEmployeeId[employeeId] ?? _usersByEmployeeId[employeeId.toUpperCase()];
+  }
+
+  @override
+  Future<GovtUserModel?> getUserByEmail(String email) async {
+    await initialize();
+    return _usersByEmail[email.trim().toLowerCase()];
   }
 
   @override

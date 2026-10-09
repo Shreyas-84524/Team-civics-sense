@@ -6,18 +6,20 @@ import '../../Govt UI/services/government_account_validator.dart';
 import '../../Govt UI/services/govt_auth_service.dart';
 import '../firebase/firestore/firebase_user_data_source.dart';
 import '../notifications/notification_service_locator.dart';
+import '../services/government_hierarchy_repository.dart';
 import '../sync/realtime_subscription_manager.dart';
 import 'auth_error_handler.dart';
-
 
 /// Production Firebase-backed Government Authentication Service.
 ///
 /// Enforces strict role verification for Municipal Government Officers and Administrators.
+/// Authenticates against Firebase Authentication Email/Password on project `civicfix-38d53`.
 /// Prevents unauthorized citizen accounts or unverified users from gaining access
 /// to administrative dashboards and control desks.
 class FirebaseGovtAuthService implements GovtAuthService {
   final FirebaseAuth? _auth;
   final FirebaseUserDataSource _userDataSource;
+  final GovernmentHierarchyRepository _hierarchyRepository;
 
   final ValueNotifier<GovtUserModel?> _userNotifier;
   final ValueNotifier<GovtAuthState> _authStateNotifier;
@@ -26,10 +28,12 @@ class FirebaseGovtAuthService implements GovtAuthService {
   FirebaseGovtAuthService({
     FirebaseAuth? auth,
     FirebaseUserDataSource? userDataSource,
+    GovernmentHierarchyRepository? hierarchyRepository,
     GovtUserModel? initialUser,
     GovtAuthState initialAuthState = GovtAuthState.unauthenticated,
   })  : _auth = auth,
         _userDataSource = userDataSource ?? FirebaseUserDataSource(),
+        _hierarchyRepository = hierarchyRepository ?? LocalGovernmentHierarchyRepository(),
         _userNotifier = ValueNotifier<GovtUserModel?>(initialUser),
         _authStateNotifier = ValueNotifier<GovtAuthState>(initialAuthState) {
     _initAuthStateListener();
@@ -83,12 +87,29 @@ class FirebaseGovtAuthService implements GovtAuthService {
   @override
   Future<bool> checkAuthState() async {
     try {
-      final firebaseUser = _authInstance.currentUser;
+      User? firebaseUser = _authInstance.currentUser;
+      if (firebaseUser == null) {
+        try {
+          firebaseUser = await _authInstance
+              .authStateChanges()
+              .firstWhere((user) => user != null)
+              .timeout(const Duration(milliseconds: 1500));
+        } catch (_) {
+          try {
+            firebaseUser = _authInstance.currentUser;
+          } catch (_) {}
+        }
+      }
+
       if (firebaseUser == null) {
         _userNotifier.value = null;
         _authStateNotifier.value = GovtAuthState.unauthenticated;
         return false;
       }
+
+      try {
+        await firebaseUser.getIdToken();
+      } catch (_) {}
 
       final isAuthorized = await _verifyAndRestoreOfficerProfile(firebaseUser);
       if (isAuthorized) {
@@ -127,15 +148,15 @@ class FirebaseGovtAuthService implements GovtAuthService {
     final rawInput = emailOrEmployeeId.trim();
     if (rawInput.isEmpty || password.isEmpty) {
       _authStateNotifier.value = GovtAuthState.authenticationError;
-      return const GovtAuthResult.failure('Please enter your Government ID and password.');
+      return const GovtAuthResult.failure('Please enter your government email and password.');
     }
 
     final trimmedInput = rawInput.toLowerCase();
 
-    // Deterministic Government ID -> Firebase identity mapping
+    // Normalize email: append @civicfix.dev domain if only username or ID is provided
     String email = trimmedInput;
     if (!email.contains('@')) {
-      email = '$trimmedInput@civicfix.gov.in';
+      email = '$trimmedInput@civicfix.dev';
     }
 
     try {
@@ -151,46 +172,44 @@ class FirebaseGovtAuthService implements GovtAuthService {
         return const GovtAuthResult.failure('Authentication failed. No user record found.');
       }
 
-      // 2. Authorize Government Role via Custom Claims & Firestore Profile
-      final tokenResult = await firebaseUser.getIdTokenResult(true);
-      final customRole = tokenResult.claims?['role']?.toString();
+      // 2. Resolve CivicFix Government Profile by Firebase UID
+      GovtUserModel? officer;
+      try {
+        officer = await _userDataSource.getGovtUserById(firebaseUser.uid);
+      } catch (e) {
+        debugPrint('[FirebaseGovtAuthService] Firestore profile lookup note: $e');
+      }
 
-      final remoteGovtProfile = await _userDataSource.getGovtUserById(firebaseUser.uid);
+      // Fallback to local hierarchy repository by UID or Email
+      if (officer == null) {
+        await _hierarchyRepository.initialize();
+        officer = await _hierarchyRepository.getUserById(firebaseUser.uid) ??
+            (firebaseUser.email != null
+                ? await _hierarchyRepository.getUserByEmail(firebaseUser.email!)
+                : null) ??
+            await _hierarchyRepository.getUserByEmail(email);
+      }
 
-      final isGovtClaim = customRole == 'government' || customRole == 'admin';
-      final isGovtDoc = remoteGovtProfile != null &&
-          (remoteGovtProfile.role == 'government' || remoteGovtProfile.role == 'admin');
-
-      // SECURITY INVARIANT: Reject non-government accounts
-      if (!isGovtClaim && !isGovtDoc) {
-        // Sign out immediately to preserve security
+      // SECURITY INVARIANT: Fail-Closed. Reject non-government accounts or unconfigured UIDs
+      if (officer == null) {
         await _authInstance.signOut();
         _userNotifier.value = null;
         _authStateNotifier.value = GovtAuthState.authenticationError;
         return const GovtAuthResult.failure(
-          'Access denied. This account does not possess authorized Municipal Government Officer credentials.',
+          'Your account is authenticated but is not configured for CivicFix Government access.',
         );
       }
 
-      // 3. Assemble Authorized GovtUserModel
-      GovtUserModel officer = remoteGovtProfile ??
-          GovtUserModel(
-            id: firebaseUser.uid,
-            fullName: firebaseUser.displayName ?? 'Municipal Officer',
-            email: firebaseUser.email ?? email,
-            employeeId: rawInput.toUpperCase(),
-            departmentId: departmentId ?? 'dept_admin',
-            departmentName: 'Municipal Administration',
-            designation: 'Municipal Officer',
-            assignedWard: 'HQ',
-            role: 'government',
-          );
+      // If user ID needs mapping to the active Firebase UID
+      if (officer.id != firebaseUser.uid) {
+        officer = officer.copyWith(id: firebaseUser.uid);
+      }
 
       if (departmentId != null && departmentId.isNotEmpty) {
         officer = officer.copyWith(departmentId: departmentId);
       }
 
-      // 4. Validate Account Integrity (active, valid role, required jurisdiction, supervisor)
+      // 3. Validate Account Integrity (active, canonical role, jurisdiction requirements)
       final validation = GovernmentAccountValidator.validate(officer);
       if (!validation.isValid) {
         await _authInstance.signOut();
@@ -204,7 +223,7 @@ class FirebaseGovtAuthService implements GovtAuthService {
       _userNotifier.value = officer;
       _authStateNotifier.value = GovtAuthState.authenticated;
 
-      // Register device token for government push alerts
+      // 4. Register device token for government push alerts
       try {
         await NotificationServiceLocator.instance.registerDeviceToken(officer.id);
       } catch (e) {
@@ -213,7 +232,7 @@ class FirebaseGovtAuthService implements GovtAuthService {
 
       return GovtAuthResult.success(
         officer,
-        'Welcome, Officer ${officer.fullName}. Municipal console active.',
+        'Welcome, ${officer.fullName}. Municipal console active.',
       );
     } catch (e) {
       debugPrint('[FirebaseGovtAuthService] Login error: $e');
@@ -293,7 +312,6 @@ class FirebaseGovtAuthService implements GovtAuthService {
     }
   }
 
-
   @override
   void switchDepartment(String departmentId, String departmentName) {
     if (_userNotifier.value != null) {
@@ -310,30 +328,24 @@ class FirebaseGovtAuthService implements GovtAuthService {
   }
 
   Future<bool> _verifyAndRestoreOfficerProfile(User firebaseUser) async {
-    final tokenResult = await firebaseUser.getIdTokenResult();
-    final customRole = tokenResult.claims?['role']?.toString();
+    GovtUserModel? officer;
+    try {
+      officer = await _userDataSource.getGovtUserById(firebaseUser.uid);
+    } catch (_) {}
 
-    final remoteProfile = await _userDataSource.getGovtUserById(firebaseUser.uid);
+    if (officer == null) {
+      await _hierarchyRepository.initialize();
+      officer = await _hierarchyRepository.getUserById(firebaseUser.uid) ??
+          (firebaseUser.email != null
+              ? await _hierarchyRepository.getUserByEmail(firebaseUser.email!)
+              : null);
+    }
 
-    final isGovt = (customRole == 'government' || customRole == 'admin') ||
-        (remoteProfile != null && remoteProfile.role == 'government');
+    if (officer == null) return false;
 
-    if (!isGovt) return false;
-
-    final officer = remoteProfile ??
-        GovtUserModel(
-          id: firebaseUser.uid,
-          fullName: firebaseUser.displayName ?? 'Municipal Officer',
-          email: firebaseUser.email ?? '',
-          employeeId: firebaseUser.uid.substring(0, 8).toUpperCase(),
-          departmentId: 'dept_roads',
-          departmentName: 'Roads & Infrastructure',
-          designation: 'Senior Municipal Nodal Officer',
-          assignedWard: 'Ward 14 (Central)',
-          wardId: 'ward_14',
-          zoneId: 'zone_04',
-          role: 'ward_department_lead',
-        );
+    if (officer.id != firebaseUser.uid) {
+      officer = officer.copyWith(id: firebaseUser.uid);
+    }
 
     final validation = GovernmentAccountValidator.validate(officer);
     if (!validation.isValid) return false;

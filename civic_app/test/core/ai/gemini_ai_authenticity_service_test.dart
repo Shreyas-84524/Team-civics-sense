@@ -55,7 +55,7 @@ void main() {
       }
       ''';
 
-      final result = AiAuthenticityResult.fromJsonString(jsonStr, model: 'gemini-3.6-flash');
+      final result = AiAuthenticityResult.fromJsonString(jsonStr, model: 'gemini-2.5-flash');
 
       expect(result.status, AiAuthenticityStatus.likelyReal);
       expect(result.isLikelyReal, isTrue);
@@ -64,7 +64,7 @@ void main() {
       expect(result.confidence, 0.9);
       expect(result.reasoning, 'Natural photographic characteristics.');
       expect(result.indicators, ['natural texture', 'consistent lighting']);
-      expect(result.model, 'gemini-3.6-flash');
+      expect(result.model, 'gemini-2.5-flash');
       expect(result.isSuccess, isTrue);
     });
 
@@ -78,7 +78,7 @@ void main() {
       }
       ''';
 
-      final result = AiAuthenticityResult.fromJsonString(jsonStr, model: 'gemini-3.6-flash');
+      final result = AiAuthenticityResult.fromJsonString(jsonStr, model: 'gemini-2.5-flash');
 
       expect(result.status, AiAuthenticityStatus.likelyAiGenerated);
       expect(result.isLikelyAiGenerated, isTrue);
@@ -101,7 +101,7 @@ void main() {
       }
       ''';
 
-      final result = AiAuthenticityResult.fromJsonString(jsonStr, model: 'gemini-3.6-flash');
+      final result = AiAuthenticityResult.fromJsonString(jsonStr, model: 'gemini-2.5-flash');
 
       expect(result.status, AiAuthenticityStatus.uncertain);
       expect(result.isUncertain, isTrue);
@@ -115,7 +115,7 @@ void main() {
     test('Step 14 Test 4: Malformed JSON fails safely without crashing', () {
       const malformedJson = '<<< NOT JSON >>> This is an invalid text response';
 
-      final result = AiAuthenticityResult.fromJsonString(malformedJson, model: 'gemini-3.6-flash');
+      final result = AiAuthenticityResult.fromJsonString(malformedJson, model: 'gemini-2.5-flash');
 
       expect(result.status, AiAuthenticityStatus.uncertain);
       expect(result.isUncertain, isTrue);
@@ -133,7 +133,7 @@ void main() {
       }
       ''';
 
-      final result = AiAuthenticityResult.fromJsonString(jsonStr, model: 'gemini-3.6-flash');
+      final result = AiAuthenticityResult.fromJsonString(jsonStr, model: 'gemini-2.5-flash');
 
       expect(result.status, AiAuthenticityStatus.uncertain);
       expect(result.isUncertain, isTrue);
@@ -152,7 +152,7 @@ void main() {
 ```
 ''';
 
-      final result = AiAuthenticityResult.fromJsonString(wrappedJson, model: 'gemini-3.6-flash');
+      final result = AiAuthenticityResult.fromJsonString(wrappedJson, model: 'gemini-2.5-flash');
 
       expect(result.status, AiAuthenticityStatus.likelyReal);
       expect(result.confidence, 0.88);
@@ -166,7 +166,7 @@ void main() {
         confidence: 0.85,
         reasoning: 'Authentic photograph.',
         indicators: const ['natural texture', 'real noise'],
-        model: 'gemini-3.6-flash',
+        model: 'gemini-2.5-flash',
         analyzedAt: now,
       );
 
@@ -175,7 +175,7 @@ void main() {
       expect(map['confidence'], 0.85);
       expect(map['reasoning'], 'Authentic photograph.');
       expect(map['indicators'], ['natural texture', 'real noise']);
-      expect(map['model'], 'gemini-3.6-flash');
+      expect(map['model'], 'gemini-2.5-flash');
 
       final reconstructed = AiAuthenticityResult.fromMap(map);
       expect(reconstructed.status, original.status);

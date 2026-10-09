@@ -86,23 +86,6 @@ class CrewJobQueueSection extends StatelessWidget {
         ),
         CivicFixSpacing.vSpaceMd,
 
-        // Quick Category Filter Tabs
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              _buildFilterChip('All Assigned', 'all'),
-              CivicFixSpacing.hSpaceSm,
-              _buildFilterChip('In Progress', 'in_progress'),
-              CivicFixSpacing.hSpaceSm,
-              _buildFilterChip('Critical / Urgent', 'critical'),
-              CivicFixSpacing.hSpaceSm,
-              _buildFilterChip('SLA At Risk', 'sla_risk'),
-            ],
-          ),
-        ),
-        CivicFixSpacing.vSpaceMd,
-
         // Search & Filter Toolbar
         Container(
           padding: const EdgeInsets.all(CivicFixSpacing.md),
@@ -208,10 +191,7 @@ class CrewJobQueueSection extends StatelessWidget {
                       hint: const Text('SLA: All'),
                       underline: const SizedBox.shrink(),
                       items: const [
-                        DropdownMenuItem(
-                          value: null,
-                          child: Text('SLA: All'),
-                        ),
+                        DropdownMenuItem(value: null, child: Text('SLA: All')),
                         DropdownMenuItem(
                           value: 'breached',
                           child: Text('SLA Breached'),
@@ -284,39 +264,16 @@ class CrewJobQueueSection extends StatelessWidget {
             ),
           ),
         ] else ...[
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: jobs.length,
-            itemBuilder: (context, index) {
-              final job = jobs[index];
-              return CrewJobCard(
-                job: job,
-                onViewDetails: () => onViewDetails(job),
-                onStartJob: onStartJob != null ? () => onStartJob!(job) : null,
-              );
-            },
+          ...jobs.map(
+            (job) => CrewJobCard(
+              key: ValueKey(job.id),
+              job: job,
+              onViewDetails: () => onViewDetails(job),
+              onStartJob: onStartJob != null ? () => onStartJob!(job) : null,
+            ),
           ),
         ],
       ],
-    );
-  }
-
-  Widget _buildFilterChip(String label, String key) {
-    final isSelected = activeTab == key;
-    return ChoiceChip(
-      label: Text(label),
-      selected: isSelected,
-      onSelected: (_) => onTabChanged(key),
-      selectedColor: GovtThemeTokens.primary,
-      labelStyle: CivicFixTypography.captionMedium.copyWith(
-        color: isSelected ? Colors.white : GovtThemeTokens.textPrimary,
-        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-      ),
-      backgroundColor: GovtThemeTokens.surface,
-      side: BorderSide(
-        color: isSelected ? GovtThemeTokens.primary : GovtThemeTokens.border,
-      ),
     );
   }
 }

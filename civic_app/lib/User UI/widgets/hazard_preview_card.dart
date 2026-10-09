@@ -5,6 +5,7 @@ import '../../core/constants/app_spacing.dart';
 import '../../core/constants/app_typography.dart';
 import '../../core/models/complaint_model.dart';
 import '../../core/widgets/civic_fix_card.dart';
+import '../../l10n/generated/app_localizations.dart';
 
 /// Card showing hazard alert summaries.
 class HazardPreviewCard extends StatelessWidget {
@@ -19,6 +20,9 @@ class HazardPreviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final upvotesText = l10n?.supportsCount(hazard.upvotes) ?? '${hazard.upvotes} supports';
+
     return CivicFixCard(
       onTap: onTap,
       borderColor: CivicFixColors.alert.withValues(alpha: 0.5),
@@ -69,7 +73,7 @@ class HazardPreviewCard extends StatelessWidget {
                 ),
                 CivicFixSpacing.vSpaceXs,
                 Text(
-                  '${hazard.upvotes} citizens reported/verified nearby',
+                  upvotesText,
                   style: CivicFixTypography.caption.copyWith(
                     color: CivicFixColors.alertDark,
                     fontWeight: FontWeight.w500,

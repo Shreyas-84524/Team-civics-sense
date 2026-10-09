@@ -37,6 +37,8 @@ class MockEvidenceStorageService implements EvidenceStorageService {
     required String fileName,
     required Uint8List fileBytes,
     EvidenceMetadata? metadata,
+    String? ticketNumber,
+    int? evidenceIndex,
     void Function(double progress)? onProgress,
   }) async {
     await _applySimulation();
@@ -60,12 +62,16 @@ class MockEvidenceStorageService implements EvidenceStorageService {
       onProgress(1.0);
     }
 
-    final path = FirebaseStoragePaths.complaintEvidencePath(complaintId, fileName);
+    final effectiveTicket = ticketNumber ?? complaintId;
+    final int index = evidenceIndex ?? 1;
+    final paddedIndex = index.toString().padLeft(2, '0');
+    final ext = fileName.contains('.') ? fileName.substring(fileName.lastIndexOf('.')) : '.jpg';
+    final path = '$effectiveTicket/${effectiveTicket}_evidence_$paddedIndex$ext';
     _storage[path] = Uint8List.fromList(fileBytes);
     _metadataStorage[path] = metadata;
 
     final downloadUrl =
-        'https://firebasestorage.googleapis.com/v0/b/civicfix-38d53.appspot.com/o/${Uri.encodeComponent(path)}?alt=media';
+        'https://hkgwsqasmboadvpjckbj.supabase.co/storage/v1/object/sign/complaint-evidence/$path?token=mock_signed_token';
 
     return EvidenceUploadResult(
       storagePath: path,
@@ -82,6 +88,7 @@ class MockEvidenceStorageService implements EvidenceStorageService {
   Future<List<EvidenceUploadResult>> uploadMultipleEvidence({
     required String complaintId,
     required List<EvidenceUploadInput> items,
+    String? ticketNumber,
     void Function(int itemIndex, double progress)? onProgress,
   }) async {
     final List<EvidenceUploadResult> results = [];
@@ -93,6 +100,8 @@ class MockEvidenceStorageService implements EvidenceStorageService {
         fileName: item.fileName,
         fileBytes: item.fileBytes,
         metadata: item.metadata,
+        ticketNumber: ticketNumber,
+        evidenceIndex: i + 1,
         onProgress: onProgress != null ? (p) => onProgress(i, p) : null,
       );
       results.add(result);
@@ -151,7 +160,7 @@ class MockEvidenceStorageService implements EvidenceStorageService {
   }
 
   @override
-  Future<String> getDownloadUrl(String storagePath) async {
+  Future<String> getDownloadUrl(String storagePath, {int? expiresInSeconds}) async {
     await _applySimulation();
 
     if (!_storage.containsKey(storagePath)) {
@@ -162,7 +171,7 @@ class MockEvidenceStorageService implements EvidenceStorageService {
       );
     }
 
-    return 'https://firebasestorage.googleapis.com/v0/b/civicfix-38d53.appspot.com/o/${Uri.encodeComponent(storagePath)}?alt=media';
+    return 'https://hkgwsqasmboadvpjckbj.supabase.co/storage/v1/object/sign/complaint-evidence/$storagePath?token=mock_signed_token';
   }
 
   @override
@@ -185,8 +194,11 @@ class MockEvidenceStorageService implements EvidenceStorageService {
   Future<List<String>> listEvidenceForComplaint(String complaintId) async {
     await _applySimulation();
 
-    final prefix = '${FirebaseStoragePaths.complaintEvidence}/$complaintId/';
-    return _storage.keys.where((path) => path.startsWith(prefix)).toList();
+    return _storage.keys
+        .where((path) =>
+            path.startsWith('$complaintId/') ||
+            path.startsWith('${FirebaseStoragePaths.complaintEvidence}/$complaintId/'))
+        .toList();
   }
 
   Future<void> _applySimulation() async {

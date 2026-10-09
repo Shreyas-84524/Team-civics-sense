@@ -3,9 +3,12 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_radius.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
+import '../../../core/localization/mappers/canonical_display_mappers.dart';
 import '../../../core/models/complaint_model.dart';
 import '../../../core/utils/department_helper.dart';
 import '../../../core/widgets/civic_fix_card.dart';
+import '../../../core/localization/widgets/civic_fix_translated_text.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 /// Card summarizing issue information: Category, Department, Description, and Priority.
 class IssueInfoCard extends StatelessWidget {
@@ -18,7 +21,11 @@ class IssueInfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final department = DepartmentHelper.getDepartmentName(complaint.category);
+    final l10n = AppLocalizations.of(context);
+    final rawDepartment = DepartmentHelper.getDepartmentName(complaint.category);
+    final displayDepartment = localizedDepartment(rawDepartment, context: context);
+    final displayCategory = localizedCategory(complaint.category, context: context);
+    final displayPriority = localizedComplaintPriority(complaint.priority, context: context);
 
     return CivicFixCard(
       padding: const EdgeInsets.all(CivicFixSpacing.lg),
@@ -26,7 +33,7 @@ class IssueInfoCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Issue Information',
+            l10n?.issueInformation ?? 'Issue Information',
             style: CivicFixTypography.bodyMedium.copyWith(
               fontWeight: FontWeight.w700,
               color: CivicFixColors.primaryText,
@@ -44,7 +51,7 @@ class IssueInfoCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Category',
+                      l10n?.categoryLabel ?? 'Category',
                       style: CivicFixTypography.caption.copyWith(
                         color: CivicFixColors.secondaryText,
                       ),
@@ -60,7 +67,7 @@ class IssueInfoCard extends StatelessWidget {
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
-                            complaint.category.name,
+                            displayCategory,
                             style: CivicFixTypography.bodySmallMedium.copyWith(
                               fontWeight: FontWeight.w700,
                               color: CivicFixColors.primaryText,
@@ -80,7 +87,7 @@ class IssueInfoCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Department',
+                      l10n?.department ?? 'Department',
                       style: CivicFixTypography.caption.copyWith(
                         color: CivicFixColors.secondaryText,
                       ),
@@ -96,7 +103,7 @@ class IssueInfoCard extends StatelessWidget {
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
-                            department,
+                            displayDepartment,
                             style: CivicFixTypography.bodySmallMedium.copyWith(
                               fontWeight: FontWeight.w700,
                               color: CivicFixColors.primaryText,
@@ -112,23 +119,32 @@ class IssueInfoCard extends StatelessWidget {
           ),
           CivicFixSpacing.vSpaceLg,
 
-          // Description Section
+          // Description Section (Dynamic presentation translation with View Original toggle)
           Text(
-            'Description',
+            l10n?.describeTheIssue ?? 'Description',
             style: CivicFixTypography.caption.copyWith(
               color: CivicFixColors.secondaryText,
             ),
           ),
           CivicFixSpacing.vSpaceXs,
-          Text(
-            complaint.description.isNotEmpty
-                ? complaint.description
-                : 'No additional description provided.',
-            style: CivicFixTypography.bodySmall.copyWith(
-              color: CivicFixColors.primaryText,
-              height: 1.45,
-            ),
-          ),
+          complaint.description.isNotEmpty
+              ? CivicFixTranslatedText(
+                  originalText: complaint.description,
+                  contentId: complaint.id,
+                  fieldName: 'description',
+                  contentCategory: 'complaint_description',
+                  style: CivicFixTypography.bodySmall.copyWith(
+                    color: CivicFixColors.primaryText,
+                    height: 1.45,
+                  ),
+                )
+              : Text(
+                  l10n?.noDescriptionProvided ?? 'No additional description provided.',
+                  style: CivicFixTypography.bodySmall.copyWith(
+                    color: CivicFixColors.disabledText,
+                    height: 1.45,
+                  ),
+                ),
           CivicFixSpacing.vSpaceLg,
 
           const Divider(height: 1, color: CivicFixColors.border),
@@ -141,7 +157,7 @@ class IssueInfoCard extends StatelessWidget {
               Row(
                 children: [
                   Text(
-                    'Priority: ',
+                    '${l10n?.priorityLabel ?? 'Priority'}: ',
                     style: CivicFixTypography.caption.copyWith(
                       color: CivicFixColors.secondaryText,
                     ),
@@ -156,7 +172,7 @@ class IssueInfoCard extends StatelessWidget {
                       ),
                     ),
                     child: Text(
-                      complaint.priority.label,
+                      displayPriority,
                       style: CivicFixTypography.captionMedium.copyWith(
                         color: complaint.priority.color,
                         fontWeight: FontWeight.w700,
@@ -185,7 +201,7 @@ class IssueInfoCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        'Safety Hazard',
+                        l10n?.safetyHazard ?? 'Safety Hazard',
                         style: CivicFixTypography.caption.copyWith(
                           color: CivicFixColors.alertDark,
                           fontWeight: FontWeight.w700,

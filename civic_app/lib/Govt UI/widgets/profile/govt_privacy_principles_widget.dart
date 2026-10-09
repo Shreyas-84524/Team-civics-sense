@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_spacing.dart';
 import '../../../../core/constants/app_typography.dart';
+import '../../../../core/localization/app_localizations.dart';
 import '../../theme/govt_theme_tokens.dart';
 import '../dashboard/dashboard_card.dart';
 
@@ -10,8 +11,10 @@ class GovtPrivacyPrinciplesWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
     return DashboardCard(
-      title: 'Privacy & Municipal Data Governance Principles',
+      title: l10n?.govPrivacyPrinciples ?? 'Privacy & Municipal Data Governance Principles',
       subtitle: 'Mandatory civic data protection and confidentiality standards',
       child: Column(
         children: [

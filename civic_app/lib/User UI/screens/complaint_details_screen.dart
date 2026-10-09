@@ -6,6 +6,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_radius.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/constants/app_typography.dart';
+import '../../core/localization/app_localizations.dart';
 import '../../core/models/complaint_model.dart';
 import '../../core/repositories/complaint_repository.dart';
 import '../../core/repositories/repository_locator.dart';
@@ -22,8 +23,12 @@ import '../widgets/complaint_details/complaint_tracker.dart';
 import '../widgets/complaint_details/evidence_gallery.dart';
 import '../widgets/complaint_details/issue_info_card.dart';
 import '../widgets/complaint_details/location_info_card.dart';
+import '../widgets/complaint_details/officers_handling_card.dart';
+import '../widgets/complaint_details/resolution_evidence_card.dart';
+import '../widgets/complaint_details/rework_status_card.dart';
 import '../widgets/complaint_details/status_history_timeline.dart';
 import '../../core/sync/sync_manager.dart';
+import '../../core/services/supabase_complaint_verification_service.dart';
 
 /// Complete Citizen Complaint Details and 5-Stage Lifecycle Tracker Screen.
 class ComplaintDetailsScreen extends StatefulWidget {
@@ -45,6 +50,8 @@ class ComplaintDetailsScreen extends StatefulWidget {
 }
 
 class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
+  static final Set<String> _shownRejectionPopups = {};
+
   late final ComplaintRepository _repository;
   late final AuthService _authService;
   StreamSubscription<ComplaintModel?>? _complaintSubscription;
@@ -53,6 +60,117 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
   bool _isLoading = true;
   String? _errorMessage;
   bool _isUnauthorized = false;
+  bool _isSubmittingSupport = false;
+  bool _hasSupported = false;
+  bool _isRetryingVerification = false;
+
+  Future<void> _retryVerification(ComplaintModel complaint) async {
+    setState(() => _isRetryingVerification = true);
+    try {
+      await SupabaseComplaintVerificationService.start(
+        complaint.id,
+        complaint.citizenId,
+      );
+      if (mounted) {
+        await _loadComplaintById(complaint.id, forceRefresh: true);
+      }
+    } finally {
+      if (mounted) setState(() => _isRetryingVerification = false);
+    }
+  }
+
+  void _checkAndShowAiRejectionDialog(ComplaintModel complaint) {
+    if (!complaint.isAiGeneratedEvidenceRejected) return;
+    if (_shownRejectionPopups.contains(complaint.id)) return;
+    _shownRejectionPopups.add(complaint.id);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogCtx) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: CivicFixRadius.cardRadius,
+          ),
+          icon: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: CivicFixColors.statusRejectedBg,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.cancel_outlined,
+              color: CivicFixColors.error,
+              size: 32,
+            ),
+          ),
+          title: Text(
+            context.l10nOrNull?.complaintRejected ?? 'Complaint Rejected',
+            textAlign: TextAlign.center,
+            style: CivicFixTypography.h3.copyWith(
+              color: CivicFixColors.primaryText,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          content: Text(
+            context.l10nOrNull?.complaintRejectedAuthenticityBody ??
+                'The evidence uploaded with this complaint did not pass CivicFix\'s authenticity verification and was identified as AI-generated or digitally manipulated.\n\nFor civic complaints, please upload a genuine photo of the issue captured from the actual location.',
+            textAlign: TextAlign.center,
+            style: CivicFixTypography.bodySmall.copyWith(
+              color: CivicFixColors.secondaryText,
+              height: 1.4,
+            ),
+          ),
+          actionsAlignment: MainAxisAlignment.center,
+          actionsOverflowButtonSpacing: 8,
+          actions: [
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.of(dialogCtx).pop();
+                  Navigator.pushNamed(
+                    context,
+                    AppRoutes.reportIssue,
+                    arguments: complaint,
+                  );
+                },
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: Text(
+                  context.l10nOrNull?.reportAgain ?? 'Report Again',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: CivicFixColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: CivicFixRadius.buttonRadius,
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: () => Navigator.of(dialogCtx).pop(),
+                style: TextButton.styleFrom(
+                  foregroundColor: CivicFixColors.secondaryText,
+                ),
+                child: Text(
+                  context.l10nOrNull?.close ?? 'Close',
+                  style: CivicFixTypography.captionMedium.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    });
+  }
 
   @override
   void initState() {
@@ -80,18 +198,27 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
 
   void _subscribeToRealtimeUpdates(String id) {
     _complaintSubscription?.cancel();
-    _complaintSubscription = _repository.watchComplaint(id).listen((updated) {
-      if (mounted && updated != null) {
-        _verifyAndSetComplaint(updated);
-      }
-    }, onError: (e) {
-      debugPrint('[ComplaintDetailsScreen] Real-time stream error: $e');
-    });
+    _complaintSubscription = _repository
+        .watchComplaint(id)
+        .listen(
+          (updated) {
+            if (mounted && updated != null) {
+              _verifyAndSetComplaint(updated);
+            }
+          },
+          onError: (e) {
+            debugPrint('[ComplaintDetailsScreen] Real-time stream error: $e');
+          },
+        );
   }
 
   void _verifyAndSetComplaint(ComplaintModel complaint) {
-    final currentUserId = _authService.currentUser?.id ?? _authService.currentUid ?? 'user_citizen_001';
-    final isUnauthorized = currentUserId.isNotEmpty &&
+    final currentUserId =
+        _authService.currentUser?.id ??
+        _authService.currentUid ??
+        'user_citizen_001';
+    final isUnauthorized =
+        currentUserId.isNotEmpty &&
         complaint.citizenId.isNotEmpty &&
         complaint.citizenId != currentUserId &&
         !complaint.isHazard;
@@ -111,9 +238,14 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
       _errorMessage = null;
       _isUnauthorized = false;
     });
+
+    _checkAndShowAiRejectionDialog(complaint);
   }
 
-  Future<void> _loadComplaintById(String id, {bool forceRefresh = false}) async {
+  Future<void> _loadComplaintById(
+    String id, {
+    bool forceRefresh = false,
+  }) async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -146,13 +278,15 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
     }
   }
 
-
   void _copyTicketNumber(String ticketNumber) {
     Clipboard.setData(ClipboardData(text: ticketNumber));
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    final message = context.l10nOrNull != null
+        ? context.l10n.complaintIdCopied(ticketNumber)
+        : 'Complaint ID $ticketNumber copied.';
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Complaint ID $ticketNumber copied.'),
+        content: Text(message),
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 2),
       ),
@@ -163,8 +297,8 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: CivicFixColors.background,
-      appBar: const CivicFixAppBar(
-        title: 'Complaint Details',
+      appBar: CivicFixAppBar(
+        title: context.l10nOrNull?.complaintDetails ?? 'Complaint Details',
         automaticallyImplyLeading: true,
       ),
       body: SafeArea(
@@ -187,9 +321,12 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
         child: Padding(
           padding: CivicFixSpacing.pagePadding,
           child: EmptyState(
-            title: 'Unable to open this complaint.',
-            description: 'This report belongs to a different citizen account.',
-            actionText: 'Back to My Complaints',
+            title: context.l10nOrNull?.unableToOpenComplaint ??
+                'Unable to open this complaint.',
+            description: context.l10nOrNull?.complaintBelongsToOther ??
+                'This report belongs to a different citizen account.',
+            actionText: context.l10nOrNull?.backToMyComplaints ??
+                'Back to My Complaints',
             icon: Icons.lock_outline_rounded,
             onActionPressed: () => Navigator.pop(context),
           ),
@@ -202,8 +339,11 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
         child: Padding(
           padding: CivicFixSpacing.pagePadding,
           child: ErrorState(
-            title: "Couldn't load this complaint.",
-            message: _errorMessage!,
+            title: context.l10nOrNull?.couldNotLoadComplaint ??
+                "Couldn't load this complaint.",
+            message: _errorMessage == "Couldn't load this complaint."
+                ? (context.l10nOrNull?.couldNotLoadComplaint ?? _errorMessage!)
+                : _errorMessage!,
             onRetry: () {
               if (widget.complaintId != null) {
                 _loadComplaintById(widget.complaintId!, forceRefresh: true);
@@ -221,9 +361,12 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
         child: Padding(
           padding: CivicFixSpacing.pagePadding,
           child: EmptyState(
-            title: 'Complaint not found.',
-            description: 'This complaint may no longer be available.',
-            actionText: 'Back to My Complaints',
+            title: context.l10nOrNull?.complaintNotFound ??
+                'Complaint not found.',
+            description: context.l10nOrNull?.complaintNotFoundDesc ??
+                'This complaint may no longer be available.',
+            actionText: context.l10nOrNull?.backToMyComplaints ??
+                'Back to My Complaints',
             icon: Icons.search_off_rounded,
             onActionPressed: () {
               if (Navigator.canPop(context)) {
@@ -263,7 +406,10 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
                   onTap: () => _copyTicketNumber(complaint.ticketNumber),
                   borderRadius: CivicFixRadius.chipRadius,
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 4,
+                      horizontal: 2,
+                    ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -294,12 +440,17 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
                   children: [
                     if (complaint.syncStatus == SyncStatus.pending)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
                         decoration: BoxDecoration(
                           color: CivicFixColors.statusInProgressBg,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: CivicFixColors.alertDark.withValues(alpha: 0.3),
+                            color: CivicFixColors.alertDark.withValues(
+                              alpha: 0.3,
+                            ),
                           ),
                         ),
                         child: Row(
@@ -312,7 +463,7 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              'Pending Sync',
+                              context.l10nOrNull?.pendingSync ?? 'Pending Sync',
                               style: CivicFixTypography.captionMedium.copyWith(
                                 color: CivicFixColors.alertDark,
                                 fontWeight: FontWeight.w700,
@@ -324,7 +475,10 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
                       )
                     else if (complaint.syncStatus == SyncStatus.syncing)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
                         decoration: BoxDecoration(
                           color: CivicFixColors.statusUnderReviewBg,
                           borderRadius: BorderRadius.circular(12),
@@ -338,11 +492,14 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
                             const SizedBox(
                               width: 10,
                               height: 10,
-                              child: CircularProgressIndicator(strokeWidth: 1.5, color: CivicFixColors.info),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 1.5,
+                                color: CivicFixColors.info,
+                              ),
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              'Syncing...',
+                              context.l10nOrNull?.syncing ?? 'Syncing...',
                               style: CivicFixTypography.captionMedium.copyWith(
                                 color: CivicFixColors.info,
                                 fontWeight: FontWeight.w700,
@@ -354,7 +511,10 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
                       )
                     else if (complaint.syncStatus == SyncStatus.failed)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
                         decoration: BoxDecoration(
                           color: CivicFixColors.statusRejectedBg,
                           borderRadius: BorderRadius.circular(12),
@@ -372,7 +532,7 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              'Sync Failed',
+                              context.l10nOrNull?.syncFailed ?? 'Sync Failed',
                               style: CivicFixTypography.captionMedium.copyWith(
                                 color: CivicFixColors.error,
                                 fontWeight: FontWeight.w700,
@@ -394,8 +554,11 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: Text(
-                    complaint.title,
+                  child: CivicFixTranslatedText(
+                    originalText: complaint.title,
+                    contentId: complaint.id,
+                    fieldName: 'title',
+                    contentCategory: 'complaint_title',
                     style: CivicFixTypography.h2.copyWith(
                       color: CivicFixColors.primaryText,
                       height: 1.25,
@@ -406,31 +569,58 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
                 Material(
                   color: Colors.transparent,
                   child: InkWell(
-                    onTap: () async {
-                      final messenger = ScaffoldMessenger.of(context);
-                      try {
-                        await _repository.upvoteComplaint(complaint.id);
-                        if (!mounted) return;
-                        setState(() {
-                          _complaint = complaint.copyWith(upvotes: complaint.upvotes + 1);
-                        });
-                        messenger.hideCurrentSnackBar();
-                        messenger.showSnackBar(
-                          const SnackBar(
-                            content: Text('Supported this complaint!'),
-                            duration: Duration(seconds: 1),
-                          ),
-                        );
-                      } catch (e) {
-                        if (!mounted) return;
-                        messenger.showSnackBar(
-                          SnackBar(content: Text('Failed to upvote: $e')),
-                        );
-                      }
-                    },
+                    onTap: _isSubmittingSupport || _hasSupported
+                        ? null
+                        : () async {
+                            final messenger = ScaffoldMessenger.of(context);
+                            final l10n = context.l10nOrNull;
+                            final supportedText =
+                                l10n?.supportedComplaintSuccess ??
+                                'Supported this complaint!';
+                            final alreadySupportedText =
+                                l10n?.alreadySupportedComplaint ??
+                                'You already supported this complaint.';
+                            final errorPrefix =
+                                l10n?.somethingWentWrong ?? 'Failed to upvote';
+
+                            setState(() => _isSubmittingSupport = true);
+                            try {
+                              final result = await _repository.upvoteComplaint(
+                                complaint.id,
+                              );
+                              if (!mounted) return;
+                              setState(() {
+                                _isSubmittingSupport = false;
+                                _hasSupported = true;
+                                _complaint = (_complaint ?? complaint).copyWith(
+                                  upvotes: result.upvotes,
+                                );
+                              });
+                              messenger.hideCurrentSnackBar();
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    result.added
+                                        ? supportedText
+                                        : alreadySupportedText,
+                                  ),
+                                  duration: const Duration(seconds: 1),
+                                ),
+                              );
+                            } catch (e) {
+                              if (!mounted) return;
+                              setState(() => _isSubmittingSupport = false);
+                              messenger.showSnackBar(
+                                SnackBar(content: Text('$errorPrefix: $e')),
+                              );
+                            }
+                          },
                     borderRadius: CivicFixRadius.chipRadius,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: complaint.upvotes > 0
                             ? CivicFixColors.primary.withValues(alpha: 0.1)
@@ -458,7 +648,7 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
                           Text(
                             complaint.upvotes > 0
                                 ? '${complaint.upvotes}'
-                                : 'Support',
+                                : (context.l10nOrNull?.support ?? 'Support'),
                             style: CivicFixTypography.captionMedium.copyWith(
                               color: complaint.upvotes > 0
                                   ? CivicFixColors.primary
@@ -508,7 +698,8 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Waiting for connection',
+                            context.l10nOrNull?.waitingForConnection ??
+                                'Waiting for connection',
                             style: CivicFixTypography.bodySmallMedium.copyWith(
                               color: CivicFixColors.alertDark,
                               fontWeight: FontWeight.w800,
@@ -516,7 +707,8 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
                           ),
                           CivicFixSpacing.vSpaceXs,
                           Text(
-                            'Your complaint is stored securely on this device and will be submitted once internet is available.',
+                            context.l10nOrNull?.complaintStoredSecurelyOffline ??
+                                'Your complaint is stored securely on this device and will be submitted once internet is available.',
                             style: CivicFixTypography.caption.copyWith(
                               color: CivicFixColors.primaryText,
                               height: 1.3,
@@ -552,7 +744,10 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
                       child: const SizedBox(
                         width: 20,
                         height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: CivicFixColors.info),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: CivicFixColors.info,
+                        ),
                       ),
                     ),
                     CivicFixSpacing.hSpaceMd,
@@ -561,7 +756,8 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Synchronizing with Cloud',
+                            context.l10nOrNull?.synchronizingWithCloud ??
+                                'Synchronizing with Cloud',
                             style: CivicFixTypography.bodySmallMedium.copyWith(
                               color: CivicFixColors.info,
                               fontWeight: FontWeight.w800,
@@ -569,7 +765,8 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
                           ),
                           CivicFixSpacing.vSpaceXs,
                           Text(
-                            'Uploading complaint data and evidence to the municipal network...',
+                            context.l10nOrNull?.uploadingComplaintData ??
+                                'Uploading complaint data and evidence to the municipal network...',
                             style: CivicFixTypography.caption.copyWith(
                               color: CivicFixColors.primaryText,
                               height: 1.3,
@@ -614,7 +811,8 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Synchronization Failed',
+                            context.l10nOrNull?.synchronizationFailed ??
+                                'Synchronization Failed',
                             style: CivicFixTypography.bodySmallMedium.copyWith(
                               color: CivicFixColors.error,
                               fontWeight: FontWeight.w800,
@@ -622,7 +820,8 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
                           ),
                           CivicFixSpacing.vSpaceXs,
                           Text(
-                            'Failed to synchronize this report with the cloud backend. Check connection and retry.',
+                            context.l10nOrNull?.failedToSyncWithCloud ??
+                                'Failed to synchronize this report with the cloud backend. Check connection and retry.',
                             style: CivicFixTypography.caption.copyWith(
                               color: CivicFixColors.primaryText,
                               height: 1.3,
@@ -632,15 +831,24 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
                           ElevatedButton.icon(
                             onPressed: () async {
                               await SyncManager().retryComplaint(complaint.id);
-                              await _loadComplaintById(complaint.id, forceRefresh: true);
+                              await _loadComplaintById(
+                                complaint.id,
+                                forceRefresh: true,
+                              );
                             },
                             icon: const Icon(Icons.refresh_rounded, size: 16),
-                            label: const Text('Retry Sync'),
+                            label: Text(
+                              context.l10nOrNull?.retrySync ?? 'Retry Sync',
+                            ),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: CivicFixColors.error,
                               foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              textStyle: CivicFixTypography.captionMedium.copyWith(fontWeight: FontWeight.bold),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              textStyle: CivicFixTypography.captionMedium
+                                  .copyWith(fontWeight: FontWeight.bold),
                             ),
                           ),
                         ],
@@ -684,7 +892,8 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            '✓ Issue Resolved',
+                            context.l10nOrNull?.issueResolvedBanner ??
+                                '✓ Issue Resolved',
                             style: CivicFixTypography.bodySmallMedium.copyWith(
                               color: CivicFixColors.secondaryDark,
                               fontWeight: FontWeight.w800,
@@ -692,7 +901,8 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
                           ),
                           CivicFixSpacing.vSpaceXs,
                           Text(
-                            'This complaint has been marked as resolved.',
+                            context.l10nOrNull?.complaintMarkedResolved ??
+                                'This complaint has been marked as resolved.',
                             style: CivicFixTypography.caption.copyWith(
                               color: CivicFixColors.secondaryDark,
                             ),
@@ -706,26 +916,78 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
               CivicFixSpacing.vSpaceLg,
             ],
 
+            // Rework Alert Card (if reopened for quality rework)
+            if (complaint.isReopened || (complaint.reopenCount > 0 && complaint.status != ComplaintStatus.resolved)) ...[
+              ReworkStatusCard(complaint: complaint),
+              CivicFixSpacing.vSpaceLg,
+            ],
+
+            // Rejection Banner (if rejected due to AI authenticity or evidence failure)
+            if (complaint.isAiGeneratedEvidenceRejected ||
+                (complaint.status == ComplaintStatus.rejected && complaint.isEvidenceRejected)) ...[
+              _buildRejectionBanner(complaint),
+              CivicFixSpacing.vSpaceLg,
+            ],
+
             // 4. Five-Stage Progress Tracker
             ComplaintTracker(
               currentStatus: complaint.status,
               customStatusMessage: complaint.officerNotes,
+              complaint: complaint,
             ),
+            if (complaint.status == ComplaintStatus.underVerification &&
+                !complaint.isAiGeneratedEvidenceRejected &&
+                !complaint.isEvidenceRejected &&
+                (complaint.evidenceVerificationStatus == 'temporarily_unavailable' ||
+                    complaint.departmentVerificationStatus == 'temporarily_unavailable'))
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: _isRetryingVerification
+                          ? null
+                          : () => _retryVerification(complaint),
+                      icon: const Icon(Icons.refresh),
+                      label: Text(_isRetryingVerification
+                          ? 'Requesting verification…'
+                          : 'Retry verification'),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'The AI service is temporarily unavailable. No report data was lost; retry after the service recovers.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
             CivicFixSpacing.vSpaceLg,
 
-            // 5. Issue Information Card (Category, Department, Description, Priority)
+            // 5. Assigned Municipal Team Card (Supervising JE & Ground FO)
+            OfficersHandlingCard(complaint: complaint),
+            CivicFixSpacing.vSpaceLg,
+
+            // 6. Resolution & Work Verification Evidence Card (if resolved or evidence exists)
+            if (isResolved || complaint.afterWorkPhoto != null || (complaint.resolutionRemarks != null && complaint.resolutionRemarks!.isNotEmpty)) ...[
+              ResolutionEvidenceCard(complaint: complaint),
+              CivicFixSpacing.vSpaceLg,
+            ],
+
+            // 7. Issue Information Card (Category, Department, Description, Priority)
             IssueInfoCard(complaint: complaint),
             CivicFixSpacing.vSpaceLg,
 
-            // 6. Location Information Card with "View Location" trigger
+            // 8. Location Information Card with "View Location" trigger
             LocationInfoCard(location: complaint.location),
             CivicFixSpacing.vSpaceLg,
 
-            // 7. Evidence Gallery with Fullscreen Viewer
+            // 9. Evidence Gallery with Fullscreen Viewer
             EvidenceGallery(imageUrls: complaint.imageUrls),
             CivicFixSpacing.vSpaceLg,
 
-            // 8. Status History / Updates Timeline
+            // 10. Status History / Updates Timeline
             StatusHistoryTimeline(timeline: complaint.timeline),
             CivicFixSpacing.vSpaceLg,
 
@@ -734,14 +996,22 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
               child: Column(
                 children: [
                   Text(
-                    'Reported on ${DateFormatter.formatFullDate(complaint.createdAt)}',
+                    context.l10nOrNull != null
+                        ? context.l10n.reportedOn(
+                            DateFormatter.formatFullDate(complaint.createdAt),
+                          )
+                        : 'Reported on ${DateFormatter.formatFullDate(complaint.createdAt)}',
                     style: CivicFixTypography.caption.copyWith(
                       color: CivicFixColors.secondaryText,
                     ),
                   ),
                   CivicFixSpacing.vSpaceXs,
                   Text(
-                    'Last updated ${DateFormatter.formatRelativeTime(complaint.updatedAt)}',
+                    context.l10nOrNull != null
+                        ? context.l10n.lastUpdatedTime(
+                            DateFormatter.formatRelativeTime(complaint.updatedAt),
+                          )
+                        : 'Last updated ${DateFormatter.formatRelativeTime(complaint.updatedAt)}',
                     style: CivicFixTypography.caption.copyWith(
                       color: CivicFixColors.disabledText,
                     ),
@@ -752,6 +1022,98 @@ class _ComplaintDetailsScreenState extends State<ComplaintDetailsScreen> {
             CivicFixSpacing.vSpaceXxl,
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildRejectionBanner(ComplaintModel complaint) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(CivicFixSpacing.md),
+      decoration: BoxDecoration(
+        color: CivicFixColors.statusRejectedBg,
+        borderRadius: CivicFixRadius.cardRadius,
+        border: Border.all(
+          color: CivicFixColors.error.withValues(alpha: 0.4),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: CivicFixColors.error.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.cancel_rounded,
+                  color: CivicFixColors.error,
+                  size: 20,
+                ),
+              ),
+              CivicFixSpacing.hSpaceMd,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      context.l10nOrNull?.complaintRejected ?? 'Complaint Rejected',
+                      style: CivicFixTypography.bodySmallMedium.copyWith(
+                        color: CivicFixColors.error,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    CivicFixSpacing.vSpaceXs,
+                    Text(
+                      complaint.isAiGeneratedEvidenceRejected
+                          ? (context.l10nOrNull?.complaintRejectedAuthenticityBody ??
+                              'The evidence uploaded with this complaint did not pass authenticity verification and was identified as AI-generated or digitally manipulated. Please upload a genuine photo from the actual site.')
+                          : (complaint.verificationFailureReason ??
+                              'This complaint did not pass verification and has been closed.'),
+                      style: CivicFixTypography.caption.copyWith(
+                        color: CivicFixColors.primaryText,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          CivicFixSpacing.vSpaceSm,
+          Align(
+            alignment: Alignment.centerRight,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pushNamed(
+                  context,
+                  AppRoutes.reportIssue,
+                  arguments: complaint,
+                );
+              },
+              icon: const Icon(Icons.refresh_rounded, size: 16),
+              label: Text(context.l10nOrNull?.reportAgain ?? 'Report Again'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: CivicFixColors.error,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
+                textStyle: CivicFixTypography.captionMedium.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: CivicFixRadius.buttonRadius,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

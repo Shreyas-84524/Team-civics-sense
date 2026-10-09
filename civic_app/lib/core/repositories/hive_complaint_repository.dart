@@ -12,6 +12,7 @@ import '../local/models/pending_sync_local_model.dart';
 import '../location/location_model.dart';
 import '../models/category_model.dart';
 import '../models/complaint_model.dart';
+import '../models/complaint_upvote_result.dart';
 import '../models/hazard_model.dart';
 import 'complaint_repository.dart';
 
@@ -19,13 +20,14 @@ import 'complaint_repository.dart';
 class HiveComplaintRepository implements ComplaintRepository {
   final LocalStorageService _storage;
   final MockDataSource _dataSource;
+  final Set<String> _memoryUpvoteMarkers = {};
   int _ticketCounter = 24;
 
   HiveComplaintRepository({
     LocalStorageService? storage,
     MockDataSource? dataSource,
-  })  : _storage = storage ?? HiveStorageService.instance,
-        _dataSource = dataSource ?? MockDataSource() {
+  }) : _storage = storage ?? HiveStorageService.instance,
+       _dataSource = dataSource ?? MockDataSource() {
     _dataSource.complaints.clear();
   }
 
@@ -39,7 +41,6 @@ class HiveComplaintRepository implements ComplaintRepository {
       syncStatus: targetStatus,
       localId: localRef,
     );
-
 
     // 1-3. Attempt to save persistently to Hive boxes
     if (_storage.isInitialized) {
@@ -75,7 +76,8 @@ class HiveComplaintRepository implements ComplaintRepository {
             'pincode': offlineComplaint.location.pincode,
             'source': offlineComplaint.location.source.name,
             'accuracyMeters': offlineComplaint.location.accuracyMeters,
-            'locationTimestamp': offlineComplaint.location.timestamp?.toIso8601String(),
+            'locationTimestamp': offlineComplaint.location.timestamp
+                ?.toIso8601String(),
             'imageUrls': offlineComplaint.imageUrls,
           }),
           createdAtEpochMs: DateTime.now().millisecondsSinceEpoch,
@@ -108,9 +110,11 @@ class HiveComplaintRepository implements ComplaintRepository {
             severity: offlineComplaint.priority == ComplaintPriority.emergency
                 ? 'critical'
                 : offlineComplaint.priority == ComplaintPriority.high
-                    ? 'high'
-                    : 'medium',
-            imageUrl: offlineComplaint.imageUrls.isNotEmpty ? offlineComplaint.imageUrls.first : null,
+                ? 'high'
+                : 'medium',
+            imageUrl: offlineComplaint.imageUrls.isNotEmpty
+                ? offlineComplaint.imageUrls.first
+                : null,
             createdAtEpochMs: offlineComplaint.createdAt.millisecondsSinceEpoch,
             updatedAtEpochMs: offlineComplaint.updatedAt.millisecondsSinceEpoch,
           );
@@ -122,13 +126,16 @@ class HiveComplaintRepository implements ComplaintRepository {
           );
         }
       } catch (e) {
-        debugPrint('Warning: Hive local persistence not active, stored in-memory fallback: $e');
+        debugPrint(
+          'Warning: Hive local persistence not active, stored in-memory fallback: $e',
+        );
       }
     }
 
     // 4. Update in-memory fallback data source for instantaneous UI responsiveness
     final existingIndex = _dataSource.complaints.indexWhere(
-      (c) => c.id == offlineComplaint.id || c.localId == offlineComplaint.localId,
+      (c) =>
+          c.id == offlineComplaint.id || c.localId == offlineComplaint.localId,
     );
     if (existingIndex != -1) {
       _dataSource.complaints[existingIndex] = offlineComplaint;
@@ -150,7 +157,9 @@ class HiveComplaintRepository implements ComplaintRepository {
   Future<List<ComplaintModel>> getPendingComplaints() async {
     if (_storage.isInitialized) {
       try {
-        final storedList = await _storage.getAll<ComplaintLocalModel>(HiveBoxes.complaints);
+        final storedList = await _storage.getAll<ComplaintLocalModel>(
+          HiveBoxes.complaints,
+        );
         if (storedList.isNotEmpty) {
           return storedList
               .map((e) => e.toDomain())
@@ -177,14 +186,20 @@ class HiveComplaintRepository implements ComplaintRepository {
     // 1. Update in Hive 'complaints' box
     if (_storage.isInitialized) {
       try {
-        ComplaintLocalModel? stored =
-            await _storage.get<ComplaintLocalModel>(HiveBoxes.complaints, complaintId);
+        ComplaintLocalModel? stored = await _storage.get<ComplaintLocalModel>(
+          HiveBoxes.complaints,
+          complaintId,
+        );
 
         // Search by ticketNumber / localId if direct key not found
         if (stored == null) {
-          final all = await _storage.getAll<ComplaintLocalModel>(HiveBoxes.complaints);
+          final all = await _storage.getAll<ComplaintLocalModel>(
+            HiveBoxes.complaints,
+          );
           for (final item in all) {
-            if (item.id == complaintId || item.ticketNumber == complaintId || item.localId == complaintId) {
+            if (item.id == complaintId ||
+                item.ticketNumber == complaintId ||
+                item.localId == complaintId) {
               stored = item;
               break;
             }
@@ -200,7 +215,11 @@ class HiveComplaintRepository implements ComplaintRepository {
                 : stored.aiAuthenticityJson,
             aiAnalysisStatus: aiAnalysisStatus?.name ?? stored.aiAnalysisStatus,
           );
-          await _storage.put<ComplaintLocalModel>(HiveBoxes.complaints, updated.id, updated);
+          await _storage.put<ComplaintLocalModel>(
+            HiveBoxes.complaints,
+            updated.id,
+            updated,
+          );
         }
       } catch (e) {
         debugPrint('Warning: Failed updating sync status in Hive: $e');
@@ -212,7 +231,10 @@ class HiveComplaintRepository implements ComplaintRepository {
         if (status == SyncStatus.synced) {
           await _storage.delete(HiveBoxes.pendingSync, syncKey);
         } else {
-          final syncItem = await _storage.get<PendingSyncLocalModel>(HiveBoxes.pendingSync, syncKey);
+          final syncItem = await _storage.get<PendingSyncLocalModel>(
+            HiveBoxes.pendingSync,
+            syncKey,
+          );
           if (syncItem != null) {
             await _storage.put<PendingSyncLocalModel>(
               HiveBoxes.pendingSync,
@@ -228,7 +250,10 @@ class HiveComplaintRepository implements ComplaintRepository {
 
     // 3. Update in-memory data source
     final index = _dataSource.complaints.indexWhere(
-      (c) => c.id == complaintId || c.localId == complaintId || c.ticketNumber == complaintId,
+      (c) =>
+          c.id == complaintId ||
+          c.localId == complaintId ||
+          c.ticketNumber == complaintId,
     );
     if (index != -1) {
       final current = _dataSource.complaints[index];
@@ -245,9 +270,13 @@ class HiveComplaintRepository implements ComplaintRepository {
   Future<List<ComplaintModel>> getCitizenComplaints(String citizenId) async {
     if (_storage.isInitialized) {
       try {
-        final localComplaints = await _storage.getAll<ComplaintLocalModel>(HiveBoxes.complaints);
+        final localComplaints = await _storage.getAll<ComplaintLocalModel>(
+          HiveBoxes.complaints,
+        );
         if (localComplaints.isNotEmpty) {
-          final domainComplaints = localComplaints.map((e) => e.toDomain()).toList();
+          final domainComplaints = localComplaints
+              .map((e) => e.toDomain())
+              .toList();
           // Sort newest first
           domainComplaints.sort((a, b) => b.createdAt.compareTo(a.createdAt));
           return domainComplaints.where((c) {
@@ -274,7 +303,9 @@ class HiveComplaintRepository implements ComplaintRepository {
   Future<List<ComplaintModel>> getComplaints() async {
     if (_storage.isInitialized) {
       try {
-        final localComplaints = await _storage.getAll<ComplaintLocalModel>(HiveBoxes.complaints);
+        final localComplaints = await _storage.getAll<ComplaintLocalModel>(
+          HiveBoxes.complaints,
+        );
         if (localComplaints.isNotEmpty) {
           final list = localComplaints.map((e) => e.toDomain()).toList();
           list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
@@ -298,13 +329,18 @@ class HiveComplaintRepository implements ComplaintRepository {
   Future<ComplaintModel?> getComplaintById(String id) async {
     if (_storage.isInitialized) {
       try {
-        final local = await _storage.get<ComplaintLocalModel>(HiveBoxes.complaints, id);
+        final local = await _storage.get<ComplaintLocalModel>(
+          HiveBoxes.complaints,
+          id,
+        );
         if (local != null) {
           return local.toDomain();
         }
 
         // Check all items for ticket number or localId match
-        final all = await _storage.getAll<ComplaintLocalModel>(HiveBoxes.complaints);
+        final all = await _storage.getAll<ComplaintLocalModel>(
+          HiveBoxes.complaints,
+        );
         for (final item in all) {
           if (item.id == id || item.ticketNumber == id || item.localId == id) {
             return item.toDomain();
@@ -317,7 +353,10 @@ class HiveComplaintRepository implements ComplaintRepository {
 
     try {
       return _dataSource.complaints.firstWhere(
-        (c) => c.id == id || c.ticketNumber == id || (c.localId != null && c.localId == id),
+        (c) =>
+            c.id == id ||
+            c.ticketNumber == id ||
+            (c.localId != null && c.localId == id),
       );
     } catch (_) {
       return null;
@@ -328,16 +367,21 @@ class HiveComplaintRepository implements ComplaintRepository {
   Future<ComplaintModel?> getComplaintByTicketId(String ticketId) async {
     if (_storage.isInitialized) {
       try {
-        final all = await _storage.getAll<ComplaintLocalModel>(HiveBoxes.complaints);
+        final all = await _storage.getAll<ComplaintLocalModel>(
+          HiveBoxes.complaints,
+        );
         for (final item in all) {
           if (item.ticketNumber.toLowerCase() == ticketId.toLowerCase() ||
               item.id.toLowerCase() == ticketId.toLowerCase() ||
-              (item.localId != null && item.localId!.toLowerCase() == ticketId.toLowerCase())) {
+              (item.localId != null &&
+                  item.localId!.toLowerCase() == ticketId.toLowerCase())) {
             return item.toDomain();
           }
         }
       } catch (e) {
-        debugPrint('Warning: Failed finding complaint by ticketId from Hive: $e');
+        debugPrint(
+          'Warning: Failed finding complaint by ticketId from Hive: $e',
+        );
       }
     }
 
@@ -346,7 +390,8 @@ class HiveComplaintRepository implements ComplaintRepository {
         (c) =>
             c.ticketNumber.toLowerCase() == ticketId.toLowerCase() ||
             c.id.toLowerCase() == ticketId.toLowerCase() ||
-            (c.localId != null && c.localId!.toLowerCase() == ticketId.toLowerCase()),
+            (c.localId != null &&
+                c.localId!.toLowerCase() == ticketId.toLowerCase()),
       );
     } catch (_) {
       return null;
@@ -387,7 +432,8 @@ class HiveComplaintRepository implements ComplaintRepository {
       timeline: [
         TimelineEvent(
           title: 'Issue Reported',
-          description: 'Ticket created and assigned to Ward ${location.ward ?? "Central"}.',
+          description:
+              'Ticket created and assigned to Ward ${location.ward ?? "Central"}.',
           timestamp: DateTime.now(),
           status: ComplaintStatus.reported,
         ),
@@ -425,9 +471,11 @@ class HiveComplaintRepository implements ComplaintRepository {
         severity: newComplaint.priority == ComplaintPriority.emergency
             ? HazardSeverity.critical
             : newComplaint.priority == ComplaintPriority.high
-                ? HazardSeverity.high
-                : HazardSeverity.medium,
-        imageUrl: newComplaint.imageUrls.isNotEmpty ? newComplaint.imageUrls.first : null,
+            ? HazardSeverity.high
+            : HazardSeverity.medium,
+        imageUrl: newComplaint.imageUrls.isNotEmpty
+            ? newComplaint.imageUrls.first
+            : null,
         createdAt: newComplaint.createdAt,
         updatedAt: newComplaint.updatedAt,
       );
@@ -445,25 +493,79 @@ class HiveComplaintRepository implements ComplaintRepository {
   }
 
   @override
-  Future<void> upvoteComplaint(String id) async {
+  Future<ComplaintUpvoteResult> upvoteComplaint(String id) async {
     final complaint = await getComplaintById(id);
-    if (complaint != null) {
-      final updated = complaint.copyWith(upvotes: complaint.upvotes + 1);
+    if (complaint == null) {
+      throw StateError('Complaint not found.');
+    }
+
+    final updated = complaint.copyWith(upvotes: complaint.upvotes + 1);
+    await setUpvoteCount(id, updated.upvotes);
+    return ComplaintUpvoteResult(added: true, upvotes: updated.upvotes);
+  }
+
+  Future<void> setUpvoteCount(String id, int upvotes) async {
+    final complaint = await getComplaintById(id);
+    if (complaint == null) return;
+
+    final updated = complaint.copyWith(upvotes: upvotes);
+    if (_storage.isInitialized) {
+      try {
+        await _storage.put<ComplaintLocalModel>(
+          HiveBoxes.complaints,
+          updated.id,
+          ComplaintLocalModel.fromDomain(updated),
+        );
+      } catch (e) {
+        debugPrint('Warning: Failed saving upvote count to Hive: $e');
+      }
+    }
+
+    final index = _dataSource.complaints.indexWhere(
+      (c) => c.id == id || c.ticketNumber == id || c.localId == id,
+    );
+    if (index != -1) {
+      _dataSource.complaints[index] = updated;
+    }
+  }
+
+  String _upvoteMarker(String userId, String complaintId) =>
+      '$userId::$complaintId';
+
+  Future<bool> hasRecordedUpvote(
+    String userId,
+    Iterable<String> complaintIds,
+  ) async {
+    for (final complaintId in complaintIds.where((id) => id.isNotEmpty)) {
+      final marker = _upvoteMarker(userId, complaintId);
+      if (_memoryUpvoteMarkers.contains(marker)) return true;
       if (_storage.isInitialized) {
         try {
-          await _storage.put<ComplaintLocalModel>(
-            HiveBoxes.complaints,
-            updated.id,
-            ComplaintLocalModel.fromDomain(updated),
-          );
+          if (await _storage.containsKey(HiveBoxes.complaintUpvotes, marker)) {
+            _memoryUpvoteMarkers.add(marker);
+            return true;
+          }
         } catch (e) {
-          debugPrint('Warning: Failed saving upvote to Hive: $e');
+          debugPrint('Warning: Failed reading local upvote marker: $e');
         }
       }
+    }
+    return false;
+  }
 
-      final index = _dataSource.complaints.indexWhere((c) => c.id == id || c.ticketNumber == id);
-      if (index != -1) {
-        _dataSource.complaints[index] = updated;
+  Future<void> recordUpvote(
+    String userId,
+    Iterable<String> complaintIds,
+  ) async {
+    for (final complaintId in complaintIds.where((id) => id.isNotEmpty)) {
+      final marker = _upvoteMarker(userId, complaintId);
+      _memoryUpvoteMarkers.add(marker);
+      if (_storage.isInitialized) {
+        try {
+          await _storage.put<bool>(HiveBoxes.complaintUpvotes, marker, true);
+        } catch (e) {
+          debugPrint('Warning: Failed saving local upvote marker: $e');
+        }
       }
     }
   }
@@ -478,15 +580,22 @@ class HiveComplaintRepository implements ComplaintRepository {
         final Map<String, ComplaintLocalModel> entries = {
           for (final c in complaints) c.id: ComplaintLocalModel.fromDomain(c),
         };
-        await _storage.putAll<ComplaintLocalModel>(HiveBoxes.complaints, entries);
+        await _storage.putAll<ComplaintLocalModel>(
+          HiveBoxes.complaints,
+          entries,
+        );
         _lastCachedAt = DateTime.now();
       } catch (e) {
-        debugPrint('Warning: HiveComplaintRepository.cacheComplaints fallback: $e');
+        debugPrint(
+          'Warning: HiveComplaintRepository.cacheComplaints fallback: $e',
+        );
       }
     }
 
     for (final c in complaints) {
-      final index = _dataSource.complaints.indexWhere((item) => item.id == c.id);
+      final index = _dataSource.complaints.indexWhere(
+        (item) => item.id == c.id,
+      );
       if (index != -1) {
         _dataSource.complaints[index] = c;
       } else {
@@ -503,24 +612,34 @@ class HiveComplaintRepository implements ComplaintRepository {
         await _storage.delete(HiveBoxes.pendingSync, 'sync_$id');
         await _storage.delete(HiveBoxes.hazards, 'haz_$id');
       } catch (e) {
-        debugPrint('Warning: HiveComplaintRepository.deleteComplaint error: $e');
+        debugPrint(
+          'Warning: HiveComplaintRepository.deleteComplaint error: $e',
+        );
       }
     }
 
-    _dataSource.complaints.removeWhere((c) => c.id == id || c.ticketNumber == id || c.localId == id);
-    _dataSource.hazards.removeWhere((h) => h.complaintId == id || h.id == 'haz_$id');
+    _dataSource.complaints.removeWhere(
+      (c) => c.id == id || c.ticketNumber == id || c.localId == id,
+    );
+    _dataSource.hazards.removeWhere(
+      (h) => h.complaintId == id || h.id == 'haz_$id',
+    );
   }
 
   /// Purge old temporary complaints cache that exceeds maxAge.
-  /// 
+  ///
   /// STRICT RULE: NEVER deletes pending offline complaints (syncStatus == pending).
-  Future<void> clearStaleComplaints({Duration maxAge = const Duration(days: 14)}) async {
+  Future<void> clearStaleComplaints({
+    Duration maxAge = const Duration(days: 14),
+  }) async {
     final nowMs = DateTime.now().millisecondsSinceEpoch;
     final cutoffMs = nowMs - maxAge.inMilliseconds;
 
     if (_storage.isInitialized) {
       try {
-        final all = await _storage.getAll<ComplaintLocalModel>(HiveBoxes.complaints);
+        final all = await _storage.getAll<ComplaintLocalModel>(
+          HiveBoxes.complaints,
+        );
 
         for (final item in all) {
           // Never purge pending sync items!
@@ -532,14 +651,18 @@ class HiveComplaintRepository implements ComplaintRepository {
           }
         }
       } catch (e) {
-        debugPrint('Warning: HiveComplaintRepository.clearStaleComplaints error: $e');
+        debugPrint(
+          'Warning: HiveComplaintRepository.clearStaleComplaints error: $e',
+        );
       }
     }
 
-    _dataSource.complaints.removeWhere((c) =>
-        c.syncStatus != SyncStatus.pending &&
-        c.updatedAt.millisecondsSinceEpoch < cutoffMs &&
-        c.status == ComplaintStatus.resolved);
+    _dataSource.complaints.removeWhere(
+      (c) =>
+          c.syncStatus != SyncStatus.pending &&
+          c.updatedAt.millisecondsSinceEpoch < cutoffMs &&
+          c.status == ComplaintStatus.resolved,
+    );
   }
 
   @override
@@ -547,11 +670,38 @@ class HiveComplaintRepository implements ComplaintRepository {
     try {
       final all = await getComplaints();
       return all
-          .where((c) =>
-              c.isHazard ||
-              c.priority == ComplaintPriority.emergency ||
-              c.priority == ComplaintPriority.high)
+          .where(
+            (c) =>
+                c.isHazard ||
+                c.priority == ComplaintPriority.emergency ||
+                c.priority == ComplaintPriority.high,
+          )
           .toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  @override
+  Future<List<ComplaintModel>> getCitizenVisibleComplaints({
+    String? citizenId,
+    int limit = 100,
+  }) async {
+    try {
+      final all = await getComplaints();
+      final filtered = all
+          .where(
+            (c) =>
+                c.isHazard ||
+                c.priority == ComplaintPriority.emergency ||
+                c.priority == ComplaintPriority.high ||
+                (citizenId != null && citizenId.isNotEmpty && c.citizenId == citizenId),
+          )
+          .toList();
+      if (filtered.length > limit) {
+        return filtered.sublist(0, limit);
+      }
+      return filtered;
     } catch (_) {
       return const [];
     }
@@ -567,7 +717,9 @@ class HiveComplaintRepository implements ComplaintRepository {
   }
 
   @override
-  Stream<List<TimelineEvent>> watchComplaintTimeline(String complaintId) async* {
+  Stream<List<TimelineEvent>> watchComplaintTimeline(
+    String complaintId,
+  ) async* {
     final complaint = await getComplaintById(complaintId);
     yield complaint?.timeline ?? [];
   }
@@ -586,5 +738,12 @@ class HiveComplaintRepository implements ComplaintRepository {
   Stream<List<ComplaintModel>> watchNearbyHazards() async* {
     yield await getNearbyHazards();
   }
-}
 
+  @override
+  Stream<List<ComplaintModel>> watchCitizenVisibleComplaints({
+    String? citizenId,
+    int limit = 100,
+  }) async* {
+    yield await getCitizenVisibleComplaints(citizenId: citizenId, limit: limit);
+  }
+}

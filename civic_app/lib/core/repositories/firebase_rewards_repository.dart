@@ -39,4 +39,9 @@ class FirebaseRewardsRepository implements RewardsRepository {
     // Reward redemption is managed by authoritative backend logic / Cloud Functions
     return false;
   }
+
+  @override
+  Future<List<RewardEvent>> getRewardEvents(String userId) async {
+    return _dataSource.getRewardEvents(userId);
+  }
 }

@@ -172,14 +172,7 @@ void main() {
         phone: '+91 98765 43210',
       ));
 
-      mockComplaintRepo.createComplaint(
-        citizenId: 'user_citizen_001',
-        title: testComplaint.title,
-        description: testComplaint.description,
-        category: testComplaint.category,
-        location: testComplaint.location,
-        priority: testComplaint.priority,
-      );
+      await mockComplaintRepo.saveOfflineComplaint(testComplaint);
 
       await tester.pumpWidget(
         MaterialApp(

@@ -9,6 +9,7 @@ import '../../core/widgets/civic_fix_app_bar.dart';
 import '../../core/widgets/civic_fix_button.dart';
 import '../../core/widgets/responsive_container.dart';
 import '../../core/auth/auth_service.dart';
+import '../../core/localization/app_localizations.dart';
 import '../widgets/auth_error_banner.dart';
 import '../widgets/auth_header.dart';
 import '../widgets/auth_success_banner.dart';
@@ -66,21 +67,21 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
   String? _validateName(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'Please enter your name.';
+      return context.l10nOrNull?.pleaseEnterName ?? 'Please enter your name.';
     }
     if (value.trim().length < 2) {
-      return 'Name must be at least 2 characters.';
+      return context.l10nOrNull?.nameMinLength ?? 'Name must be at least 2 characters.';
     }
     return null;
   }
 
   String? _validateEmail(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'Please enter your email.';
+      return context.l10nOrNull?.pleaseEnterEmail ?? 'Please enter your email.';
     }
     final emailRegex = RegExp(r'^[\w\.-]+@([\w-]+\.)+[\w-]{2,4}$');
     if (!emailRegex.hasMatch(value.trim())) {
-      return 'Please enter a valid email address.';
+      return context.l10nOrNull?.pleaseEnterValidEmail ?? 'Please enter a valid email address.';
     }
     return null;
   }
@@ -91,27 +92,27 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     }
     final digits = value.replaceAll(RegExp(r'\D'), '');
     if (digits.length < 10) {
-      return 'Please enter a valid phone number (at least 10 digits).';
+      return context.l10nOrNull?.pleaseEnterValidPhone ?? 'Please enter a valid phone number (at least 10 digits).';
     }
     return null;
   }
 
   String? _validatePassword(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Please enter a password.';
+      return context.l10nOrNull?.pleaseEnterPassword ?? 'Please enter a password.';
     }
     if (value.length < 8) {
-      return 'Password must be at least 8 characters.';
+      return context.l10nOrNull?.passwordMinLength ?? 'Password must be at least 8 characters.';
     }
     return null;
   }
 
   String? _validateConfirmPassword(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Please confirm your password.';
+      return context.l10nOrNull?.pleaseConfirmPassword ?? 'Please confirm your password.';
     }
     if (value != _passwordController.text) {
-      return 'Passwords do not match.';
+      return context.l10nOrNull?.passwordsDoNotMatch ?? 'Passwords do not match.';
     }
     return null;
   }
@@ -143,7 +144,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     if (result.isSuccess) {
       setState(() {
         _isLoading = false;
-        _successMessage = result.successMessage ?? 'Account created successfully.';
+        _successMessage = result.successMessage ?? context.l10nOrNull?.accountCreatedSuccess ?? 'Account created successfully.';
       });
 
       // Brief pause to allow user to see success state, then navigate
@@ -162,7 +163,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     } else {
       setState(() {
         _isLoading = false;
-        _errorMessage = result.errorMessage ?? 'Registration failed. Please try again.';
+        _errorMessage = result.errorMessage ?? context.l10nOrNull?.registrationFailed ?? 'Registration failed. Please try again.';
       });
     }
   }
@@ -219,9 +220,9 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const AuthHeader(
-                    title: 'Create your CivicFix account',
-                    subtitle: 'Your civic participation starts here.',
+                  AuthHeader(
+                    title: context.l10nOrNull?.createCivicFixAccount ?? 'Create your CivicFix account',
+                    subtitle: context.l10nOrNull?.civicParticipationStarts ?? 'Your civic participation starts here.',
                   ),
                   CivicFixSpacing.vSpaceXl,
 
@@ -240,8 +241,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
                   // Full Name
                   AuthTextField(
-                    label: 'Full Name',
-                    hintText: 'Enter your full name',
+                    label: context.l10nOrNull?.fullName ?? 'Full Name',
+                    hintText: context.l10nOrNull?.fullNameHint ?? 'Enter your full name',
                     controller: _nameController,
                     enabled: !_isLoading,
                     textInputAction: TextInputAction.next,
@@ -252,8 +253,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
                   // Email
                   AuthTextField(
-                    label: 'Email',
-                    hintText: 'e.g. name@example.com',
+                    label: context.l10nOrNull?.email ?? 'Email',
+                    hintText: context.l10nOrNull?.emailHint ?? 'e.g. name@example.com',
                     controller: _emailController,
                     enabled: !_isLoading,
                     keyboardType: TextInputType.emailAddress,
@@ -265,8 +266,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
                   // Phone Number (Optional)
                   AuthTextField(
-                    label: 'Phone Number (Optional)',
-                    hintText: 'e.g. +91 98765 43210',
+                    label: context.l10nOrNull?.phoneOptional ?? 'Phone Number (Optional)',
+                    hintText: context.l10nOrNull?.mobileNumberHint ?? 'e.g. 9876543210',
                     controller: _phoneController,
                     enabled: !_isLoading,
                     keyboardType: TextInputType.phone,
@@ -278,8 +279,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
                   // Password
                   AuthTextField(
-                    label: 'Password',
-                    hintText: 'Minimum 8 characters',
+                    label: context.l10nOrNull?.password ?? 'Password',
+                    hintText: context.l10nOrNull?.passwordMinCharsHint ?? 'Minimum 8 characters',
                     controller: _passwordController,
                     enabled: !_isLoading,
                     isPassword: true,
@@ -295,8 +296,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
                   // Confirm Password
                   AuthTextField(
-                    label: 'Confirm Password',
-                    hintText: 'Re-enter your password',
+                    label: context.l10nOrNull?.confirmPassword ?? 'Confirm Password',
+                    hintText: context.l10nOrNull?.confirmPasswordHint ?? 'Re-enter your password',
                     controller: _confirmPasswordController,
                     enabled: !_isLoading,
                     isPassword: true,
@@ -316,7 +317,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Preferred Language',
+                        context.l10nOrNull?.preferredLanguage ?? 'Preferred Language',
                         style: CivicFixTypography.bodySmallMedium.copyWith(
                           color: CivicFixColors.primaryText,
                           fontWeight: FontWeight.w600,
@@ -368,7 +369,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
                   // Create Account Button
                   CivicFixButton(
-                    text: 'Create Account',
+                    text: context.l10nOrNull?.createAccountBtn ?? 'Create Account',
                     isLoading: _isLoading,
                     onPressed: (_isLoading || _isGoogleLoading) ? null : _handleRegister,
                   ),
@@ -381,7 +382,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: CivicFixSpacing.md),
                         child: Text(
-                          'OR',
+                          context.l10nOrNull?.orDivider ?? 'OR',
                           style: CivicFixTypography.caption.copyWith(
                             color: CivicFixColors.secondaryText,
                             fontWeight: FontWeight.w600,
@@ -408,7 +409,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                       spacing: CivicFixSpacing.xs,
                       children: [
                         Text(
-                          'Already have an account?',
+                          context.l10nOrNull?.alreadyHaveAccount ?? 'Already have an account?',
                           style: CivicFixTypography.bodySmall,
                         ),
                         GestureDetector(
@@ -420,7 +421,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                           child: Padding(
                             padding: const EdgeInsets.symmetric(vertical: CivicFixSpacing.xs),
                             child: Text(
-                              'Login',
+                              context.l10nOrNull?.login ?? 'Login',
                               style: CivicFixTypography.bodySmallMedium.copyWith(
                                 color: CivicFixColors.secondary,
                                 fontWeight: FontWeight.w700,

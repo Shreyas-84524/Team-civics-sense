@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_spacing.dart';
+import '../../../core/localization/mappers/canonical_display_mappers.dart';
 import '../../../core/models/complaint_model.dart';
 import '../../../core/models/complaint_routing_ticket_model.dart';
 import '../../theme/govt_theme_tokens.dart';
@@ -18,6 +19,8 @@ class GovtStatusBadge extends StatelessWidget {
   final Color backgroundColor;
   final bool isCompact;
   final String? tooltip;
+  final ComplaintStatus? complaintStatus;
+  final ComplaintRoutingStatus? routingStatus;
 
   const GovtStatusBadge({
     super.key,
@@ -27,11 +30,23 @@ class GovtStatusBadge extends StatelessWidget {
     required this.backgroundColor,
     this.isCompact = false,
     this.tooltip,
+    this.complaintStatus,
+    this.routingStatus,
   });
 
   /// Factory constructor for [ComplaintStatus].
   factory GovtStatusBadge.complaint(ComplaintStatus status, {bool isCompact = false}) {
     switch (status) {
+      case ComplaintStatus.underVerification:
+        return GovtStatusBadge(
+          label: 'Under Verification',
+          icon: Icons.search_rounded,
+          color: const Color(0xFF7C3AED),
+          backgroundColor: const Color(0xFFF3E8FF),
+          isCompact: isCompact,
+          tooltip: 'Two-stage AI verification in progress',
+          complaintStatus: status,
+        );
       case ComplaintStatus.reported:
         return GovtStatusBadge(
           label: 'Reported',
@@ -40,6 +55,7 @@ class GovtStatusBadge extends StatelessWidget {
           backgroundColor: const Color(0xFFE8F2F8),
           isCompact: isCompact,
           tooltip: 'Initial complaint submitted by citizen',
+          complaintStatus: status,
         );
       case ComplaintStatus.verified:
         return GovtStatusBadge(
@@ -49,6 +65,7 @@ class GovtStatusBadge extends StatelessWidget {
           backgroundColor: const Color(0xFFE8F8F0),
           isCompact: isCompact,
           tooltip: 'Complaint verified by municipal reviewer or AI',
+          complaintStatus: status,
         );
       case ComplaintStatus.assigned:
         return GovtStatusBadge(
@@ -58,6 +75,7 @@ class GovtStatusBadge extends StatelessWidget {
           backgroundColor: const Color(0xFFE8F2F8),
           isCompact: isCompact,
           tooltip: 'Assigned to ward department crew',
+          complaintStatus: status,
         );
       case ComplaintStatus.inProgress:
         return GovtStatusBadge(
@@ -67,6 +85,7 @@ class GovtStatusBadge extends StatelessWidget {
           backgroundColor: const Color(0xFFFEF8EC),
           isCompact: isCompact,
           tooltip: 'Field work currently underway',
+          complaintStatus: status,
         );
       case ComplaintStatus.resolved:
         return GovtStatusBadge(
@@ -76,6 +95,17 @@ class GovtStatusBadge extends StatelessWidget {
           backgroundColor: const Color(0xFFE8F8F0),
           isCompact: isCompact,
           tooltip: 'Remediation completed and verified',
+          complaintStatus: status,
+        );
+      case ComplaintStatus.closed:
+        return GovtStatusBadge(
+          label: 'Closed',
+          icon: Icons.task_alt_rounded,
+          color: const Color(0xFF059669),
+          backgroundColor: const Color(0xFFECFDF5),
+          isCompact: isCompact,
+          tooltip: 'Complaint resolution closed and finalized',
+          complaintStatus: status,
         );
       case ComplaintStatus.rejected:
         return GovtStatusBadge(
@@ -85,6 +115,7 @@ class GovtStatusBadge extends StatelessWidget {
           backgroundColor: const Color(0xFFFDE8E8),
           isCompact: isCompact,
           tooltip: 'Complaint rejected or deemed invalid',
+          complaintStatus: status,
         );
     }
   }
@@ -92,6 +123,9 @@ class GovtStatusBadge extends StatelessWidget {
   /// Factory constructor from raw string complaint status (including awaiting_verification).
   factory GovtStatusBadge.fromComplaintStatusString(String? status, {bool isCompact = false}) {
     final normalized = (status ?? '').toLowerCase().trim();
+    if (normalized == 'under_verification' || normalized == 'underverification') {
+      return GovtStatusBadge.complaint(ComplaintStatus.underVerification, isCompact: isCompact);
+    }
     if (normalized == 'awaiting_verification' || normalized == 'awaitingverification') {
       return GovtStatusBadge(
         label: 'Awaiting Verification',
@@ -117,6 +151,9 @@ class GovtStatusBadge extends StatelessWidget {
     if (normalized == 'resolved') {
       return GovtStatusBadge.complaint(ComplaintStatus.resolved, isCompact: isCompact);
     }
+    if (normalized == 'closed') {
+      return GovtStatusBadge.complaint(ComplaintStatus.closed, isCompact: isCompact);
+    }
     if (normalized == 'rejected') {
       return GovtStatusBadge.complaint(ComplaintStatus.rejected, isCompact: isCompact);
     }
@@ -133,6 +170,7 @@ class GovtStatusBadge extends StatelessWidget {
           color: GovtThemeTokens.info,
           backgroundColor: const Color(0xFFE8F2F8),
           isCompact: isCompact,
+          routingStatus: status,
         );
       case ComplaintRoutingStatus.reassignmentRequested:
         return GovtStatusBadge(
@@ -142,6 +180,7 @@ class GovtStatusBadge extends StatelessWidget {
           backgroundColor: const Color(0xFFFEF8EC),
           isCompact: isCompact,
           tooltip: 'Ward department requested transfer to another department',
+          routingStatus: status,
         );
       case ComplaintRoutingStatus.unassigned:
         return GovtStatusBadge(
@@ -150,6 +189,7 @@ class GovtStatusBadge extends StatelessWidget {
           color: GovtThemeTokens.textSecondary,
           backgroundColor: const Color(0xFFEFF3F0),
           isCompact: isCompact,
+          routingStatus: status,
         );
       case ComplaintRoutingStatus.transferred:
         return GovtStatusBadge(
@@ -158,6 +198,7 @@ class GovtStatusBadge extends StatelessWidget {
           color: const Color(0xFF4F46E5),
           backgroundColor: const Color(0xFFEEF2FF),
           isCompact: isCompact,
+          routingStatus: status,
         );
       case ComplaintRoutingStatus.inProgress:
         return GovtStatusBadge(
@@ -166,6 +207,7 @@ class GovtStatusBadge extends StatelessWidget {
           color: const Color(0xFFD97706),
           backgroundColor: const Color(0xFFFEF8EC),
           isCompact: isCompact,
+          routingStatus: status,
         );
       case ComplaintRoutingStatus.resolved:
         return GovtStatusBadge(
@@ -174,6 +216,7 @@ class GovtStatusBadge extends StatelessWidget {
           color: GovtThemeTokens.success,
           backgroundColor: const Color(0xFFE8F8F0),
           isCompact: isCompact,
+          routingStatus: status,
         );
     }
   }
@@ -221,13 +264,20 @@ class GovtStatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    String displayLabel = label;
+    if (complaintStatus != null) {
+      displayLabel = localizedComplaintStatus(complaintStatus!, context: context);
+    } else if (routingStatus != null) {
+      displayLabel = localizedRoutingStatus(routingStatus!, context: context);
+    }
+
     final badgeWidget = Container(
       padding: EdgeInsets.symmetric(
         horizontal: isCompact ? CivicFixSpacing.sm : CivicFixSpacing.md,
         vertical: isCompact ? 2 : 4,
       ),
       decoration: BoxDecoration(
-        color: backgroundColor,
+        color: GovtThemeTokens.elevatedSurface,
         borderRadius: GovtThemeTokens.chipRadius,
         border: Border.all(
           color: color.withValues(alpha: 0.35),
@@ -245,7 +295,7 @@ class GovtStatusBadge extends StatelessWidget {
           ),
           SizedBox(width: isCompact ? 4 : 6),
           Text(
-            label,
+            displayLabel,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: GovtTypography.caption.copyWith(

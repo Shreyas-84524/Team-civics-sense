@@ -446,8 +446,8 @@ void main() {
     test('Converts CivicAchievement and CivicRewardItem with Local Models', () {
       final achievement = CivicAchievement.defaultAchievements().first;
       final localAch = AchievementLocalModel.fromDomain(achievement);
-      expect(localAch.id, 'ach_1');
-      expect(localAch.title, 'First Report');
+      expect(localAch.id, 'evidence_expert');
+      expect(localAch.title, 'Evidence Expert');
 
       final domainAch = localAch.toDomain();
       expect(domainAch.id, achievement.id);

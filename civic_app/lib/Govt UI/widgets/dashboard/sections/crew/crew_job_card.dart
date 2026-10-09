@@ -4,8 +4,6 @@ import '../../../../../core/constants/app_typography.dart';
 import '../../../../../core/models/complaint_model.dart';
 import '../../../../services/government_crew_work_service.dart';
 import '../../../../theme/govt_theme_tokens.dart';
-import '../../../common/govt_priority_badge.dart';
-import '../../../common/govt_sla_badge.dart';
 import '../../../common/govt_status_badge.dart';
 
 /// Action-oriented, mobile-first field job card for frontline crew technicians.
@@ -34,9 +32,13 @@ class CrewJobCard extends StatelessWidget {
           color: job.isReturnedForRework
               ? const Color(0xFFEF4444).withValues(alpha: 0.5)
               : (c.priority == ComplaintPriority.emergency
-                  ? GovtThemeTokens.alert.withValues(alpha: 0.5)
-                  : GovtThemeTokens.border),
-          width: job.isReturnedForRework || c.priority == ComplaintPriority.emergency ? 1.5 : 1.0,
+                    ? GovtThemeTokens.alert.withValues(alpha: 0.5)
+                    : GovtThemeTokens.border),
+          width:
+              job.isReturnedForRework ||
+                  c.priority == ComplaintPriority.emergency
+              ? 1.5
+              : 1.0,
         ),
         boxShadow: GovtThemeTokens.cardShadow,
       ),
@@ -59,7 +61,11 @@ class CrewJobCard extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.replay_rounded, size: 16, color: Color(0xFFEF4444)),
+                  const Icon(
+                    Icons.replay_rounded,
+                    size: 16,
+                    color: Color(0xFFEF4444),
+                  ),
                   CivicFixSpacing.hSpaceXs,
                   Expanded(
                     child: Text(
@@ -95,33 +101,45 @@ class CrewJobCard extends StatelessWidget {
                             children: [
                               Text(
                                 'TICKET #${job.ticketNumber}',
-                                style: CivicFixTypography.captionMedium.copyWith(
-                                  color: GovtThemeTokens.primaryDark,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 0.5,
-                                ),
+                                style: CivicFixTypography.captionMedium
+                                    .copyWith(
+                                      color: GovtThemeTokens.primaryDark,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.5,
+                                    ),
                               ),
                               CivicFixSpacing.hSpaceSm,
                               // Distance badge
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
                                 decoration: BoxDecoration(
                                   color: GovtThemeTokens.surfaceMuted,
                                   borderRadius: BorderRadius.circular(4),
-                                  border: Border.all(color: GovtThemeTokens.borderLight),
+                                  border: Border.all(
+                                    color: GovtThemeTokens.borderLight,
+                                  ),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    const Icon(Icons.near_me_outlined, size: 10, color: GovtThemeTokens.textMuted),
+                                    const Icon(
+                                      Icons.near_me_outlined,
+                                      size: 10,
+                                      color: GovtThemeTokens.textMuted,
+                                    ),
                                     const SizedBox(width: 3),
                                     Text(
                                       job.formattedDistance,
-                                      style: CivicFixTypography.caption.copyWith(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w600,
-                                        color: GovtThemeTokens.textSecondary,
-                                      ),
+                                      style: CivicFixTypography.caption
+                                          .copyWith(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w600,
+                                            color:
+                                                GovtThemeTokens.textSecondary,
+                                          ),
                                     ),
                                   ],
                                 ),
@@ -142,8 +160,6 @@ class CrewJobCard extends StatelessWidget {
                         ],
                       ),
                     ),
-                    CivicFixSpacing.hSpaceSm,
-                    GovtPriorityBadge.fromPriority(c.priority, isCompact: true),
                   ],
                 ),
                 CivicFixSpacing.vSpaceSm,
@@ -163,7 +179,11 @@ class CrewJobCard extends StatelessWidget {
                 // Location & Category details
                 Row(
                   children: [
-                    const Icon(Icons.location_on_outlined, size: 15, color: GovtThemeTokens.textMuted),
+                    const Icon(
+                      Icons.location_on_outlined,
+                      size: 15,
+                      color: GovtThemeTokens.textMuted,
+                    ),
                     CivicFixSpacing.hSpaceXs,
                     Expanded(
                       child: Text(
@@ -181,7 +201,11 @@ class CrewJobCard extends StatelessWidget {
                 CivicFixSpacing.vSpaceXs,
                 Row(
                   children: [
-                    const Icon(Icons.category_outlined, size: 15, color: GovtThemeTokens.textMuted),
+                    const Icon(
+                      Icons.category_outlined,
+                      size: 15,
+                      color: GovtThemeTokens.textMuted,
+                    ),
                     CivicFixSpacing.hSpaceXs,
                     Text(
                       '${c.category.name} · Ward ${job.ward}',
@@ -197,46 +221,59 @@ class CrewJobCard extends StatelessWidget {
                 CivicFixSpacing.vSpaceMd,
 
                 // Footer Row: Status, SLA, Action Buttons
-                Row(
+                Wrap(
+                  spacing: CivicFixSpacing.sm,
+                  runSpacing: CivicFixSpacing.sm,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  alignment: WrapAlignment.spaceBetween,
                   children: [
-                    GovtStatusBadge.complaint(c.status, isCompact: true),
-                    CivicFixSpacing.hSpaceSm,
-                    GovtSlaBadge.fromDuration(
-                      createdAt: c.slaStartedAt,
-                      resolvedAt: c.resolvedAt,
-                      isCompact: true,
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        GovtStatusBadge.complaint(c.status, isCompact: true),
+                      ],
                     ),
-                    const Spacer(),
-
-                    // Action button
-                    if (job.canStart && onStartJob != null) ...[
-                      OutlinedButton.icon(
-                        icon: const Icon(Icons.play_arrow_rounded, size: 16),
-                        label: const Text('Start Job'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFFD97706),
-                          side: const BorderSide(color: Color(0xFFD97706)),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          textStyle: CivicFixTypography.captionMedium.copyWith(
-                            fontWeight: FontWeight.w700,
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Action button
+                        if (job.canStart && onStartJob != null) ...[
+                          OutlinedButton.icon(
+                            icon: const Icon(
+                              Icons.play_arrow_rounded,
+                              size: 16,
+                            ),
+                            label: const Text('Start Job'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFFD97706),
+                              side: const BorderSide(color: Color(0xFFD97706)),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              textStyle: CivicFixTypography.captionMedium
+                                  .copyWith(fontWeight: FontWeight.w700),
+                            ),
+                            onPressed: onStartJob,
                           ),
-                        ),
-                        onPressed: onStartJob,
-                      ),
-                      CivicFixSpacing.hSpaceSm,
-                    ],
+                          CivicFixSpacing.hSpaceSm,
+                        ],
 
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: GovtThemeTokens.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        textStyle: CivicFixTypography.captionMedium.copyWith(
-                          fontWeight: FontWeight.w700,
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: GovtThemeTokens.primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 8,
+                            ),
+                            textStyle: CivicFixTypography.captionMedium
+                                .copyWith(fontWeight: FontWeight.w700),
+                          ),
+                          onPressed: onViewDetails,
+                          child: const Text('View Job'),
                         ),
-                      ),
-                      onPressed: onViewDetails,
-                      child: const Text('View Job'),
+                      ],
                     ),
                   ],
                 ),

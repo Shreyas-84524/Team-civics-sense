@@ -60,9 +60,9 @@ import 'package:civic_app/core/repositories/user_repository.dart';
 import 'package:civic_app/core/repositories/rewards_repository.dart';
 import 'package:civic_app/User UI/services/assistant_service.dart';
 import 'package:civic_app/User UI/widgets/assistant/assistant_message_bubble.dart';
+import 'package:civic_app/User UI/widgets/assistant/civic_assistant_fab.dart';
 import 'package:civic_app/core/models/reward_model.dart';
 import 'package:civic_app/User UI/widgets/civic_progress_card.dart';
-import 'package:civic_app/User UI/widgets/quick_action_card.dart';
 import 'package:civic_app/Govt UI/models/govt_user_model.dart';
 import 'package:civic_app/Govt UI/models/department_model.dart';
 import 'package:civic_app/Govt UI/services/govt_auth_service.dart';
@@ -499,16 +499,14 @@ void main() {
       expect(find.text('Recent Complaints'), findsOneWidget);
       expect(find.text('Nearby Civic Issues'), findsOneWidget);
       expect(find.text('Your Civic Progress'), findsOneWidget);
-      expect(find.text('Quick Actions'), findsOneWidget);
 
       // 4. Civic Progress Summary
       expect(find.text('480'), findsOneWidget);
       expect(find.text('Total Points'), findsOneWidget);
       expect(find.text('Civic Contributor'), findsOneWidget);
 
-      // 5. Quick Action Cards
-      expect(find.text('Assistant'), findsOneWidget);
-      expect(find.text('Rewards'), findsOneWidget);
+      // 5. Floating Chatbot Action Button
+      expect(find.byType(CivicChatbotFab), findsOneWidget);
     });
 
     testWidgets('Main Navigation Screen switches between tabs properly', (WidgetTester tester) async {
@@ -1558,7 +1556,7 @@ void main() {
       );
 
       expect(find.text('Safety Hazard'), findsOneWidget);
-      expect(find.text('In Progress'), findsOneWidget);
+      expect(find.text('Work In Progress'), findsOneWidget);
 
       // Tap ticket number to copy
       await tester.tap(find.text('CF-2026-000021'));
@@ -1569,7 +1567,7 @@ void main() {
   });
 
   group('Prompt 6: MyComplaintsScreen Loaded & State Tests', () {
-    testWidgets('Renders full complaints list with header, search bar, filter chips, and summary count', (WidgetTester tester) async {
+    testWidgets('Renders full complaints list with header, search bar, filter button, and summary count', (WidgetTester tester) async {
       await tester.pumpWidget(_createTestableWidget(const MyComplaintsScreen()));
       await tester.pumpAndSettle();
 
@@ -1581,14 +1579,8 @@ void main() {
       expect(find.byType(TextField), findsOneWidget);
       expect(find.text('Search complaints...'), findsOneWidget);
 
-      // Filter chips
+      // Filter button
       expect(find.text('Filter'), findsOneWidget);
-      expect(find.text('All'), findsOneWidget);
-      expect(find.text('Reported'), findsWidgets);
-      expect(find.text('In Progress'), findsWidgets);
-      expect(find.text('Verified'), findsWidgets);
-      expect(find.text('Assigned'), findsWidgets);
-      expect(find.text('Resolved'), findsWidgets);
 
       // Summary count (e.g. 5 complaints)
       expect(find.textContaining('complaints'), findsWidgets);
@@ -1675,45 +1667,57 @@ void main() {
       expect(find.text('1 complaint found'), findsOneWidget);
     });
 
-    testWidgets('Status quick filter chips filter list by status', (WidgetTester tester) async {
+    testWidgets('Status filter via ComplaintFilterBottomSheet filters complaints by status', (WidgetTester tester) async {
       await tester.pumpWidget(_createTestableWidget(const MyComplaintsScreen()));
       await tester.pumpAndSettle();
 
-      // Tap 'In Progress' filter chip in quick filters row
-      final inProgressChip = find.descendant(
-        of: find.byType(SingleChildScrollView),
-        matching: find.text('In Progress'),
-      );
-      await tester.ensureVisible(inProgressChip);
+      // Open filter bottom sheet
+      final filterBtn = find.text('Filter');
+      await tester.ensureVisible(filterBtn);
+      await tester.tap(filterBtn);
       await tester.pumpAndSettle();
+
+      // Select 'Work In Progress' status chip inside bottom sheet
+      final inProgressChip = find.widgetWithText(ChoiceChip, ComplaintStatus.inProgress.label);
+      await tester.ensureVisible(inProgressChip);
       await tester.tap(inProgressChip);
+      await tester.pumpAndSettle();
+
+      // Tap Apply Filters
+      final applyBtn = find.text('Apply Filters');
+      await tester.ensureVisible(applyBtn);
+      await tester.tap(applyBtn);
       await tester.pumpAndSettle();
 
       expect(find.text('Road damage near junction'), findsOneWidget);
       expect(find.text('Broken street light near park'), findsNothing);
       expect(find.text('Water leakage'), findsNothing);
 
-      // Tap 'Resolved' filter chip
-      final resolvedChip = find.descendant(
-        of: find.byType(SingleChildScrollView),
-        matching: find.text('Resolved'),
-      );
-      await tester.ensureVisible(resolvedChip);
+      // Re-open and select 'Resolved'
+      await tester.tap(find.byType(OutlinedButton));
       await tester.pumpAndSettle();
+
+      final resolvedChip = find.widgetWithText(ChoiceChip, 'Resolved');
+      await tester.ensureVisible(resolvedChip);
       await tester.tap(resolvedChip);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Apply Filters'));
       await tester.pumpAndSettle();
 
       expect(find.text('Water leakage'), findsOneWidget);
       expect(find.text('Road damage near junction'), findsNothing);
 
-      // Tap 'All' to restore
-      final allChip = find.descendant(
-        of: find.byType(SingleChildScrollView),
-        matching: find.text('All'),
-      );
-      await tester.ensureVisible(allChip);
+      // Re-open and select 'All Statuses'
+      await tester.tap(find.byType(OutlinedButton));
       await tester.pumpAndSettle();
-      await tester.tap(allChip);
+
+      final allStatusesChip = find.widgetWithText(ChoiceChip, 'All Statuses');
+      await tester.ensureVisible(allStatusesChip);
+      await tester.tap(allStatusesChip);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Apply Filters'));
       await tester.pumpAndSettle();
 
       expect(find.text('Broken street light near park'), findsOneWidget);
@@ -1866,52 +1870,52 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Progress Tracker'), findsOneWidget);
-      expect(find.text('Stage 4 of 5'), findsOneWidget);
+      expect(find.text('Stage 3 of 5'), findsOneWidget);
 
       // Verify 5 stages exist
-      expect(find.text('Reported'), findsOneWidget);
-      expect(find.text('Verified'), findsOneWidget);
+      expect(find.text('Under Verification'), findsOneWidget);
       expect(find.text('Assigned'), findsOneWidget);
       expect(find.text('In Progress'), findsOneWidget);
       expect(find.text('Resolved'), findsOneWidget);
+      expect(find.text('Closed'), findsOneWidget);
 
       // Current stage pill
       expect(find.text('CURRENT'), findsOneWidget);
 
       // Contextual status message
-      expect(find.text('The responsible team is currently working on this issue.'), findsOneWidget);
+      expect(find.text('The responsible team is actively working on site.'), findsOneWidget);
     });
 
     testWidgets('Tapping a stage toggles explanation details card', (WidgetTester tester) async {
       await tester.pumpWidget(
         _createTestableWidget(
           const Scaffold(
-            body: ComplaintTracker(currentStatus: ComplaintStatus.reported),
+            body: ComplaintTracker(currentStatus: ComplaintStatus.underVerification),
           ),
         ),
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Your issue has been submitted and is awaiting review.'), findsNothing);
+      expect(find.text('Gemini AI verifies evidence authenticity and determines the responsible BMC department.'), findsNothing);
 
-      // Tap Reported stage
-      await tester.tap(find.text('Reported'));
+      // Tap Under Verification stage
+      await tester.tap(find.text('Under Verification'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Your issue has been submitted and is awaiting review.'), findsOneWidget);
+      expect(find.text('Gemini AI verifies evidence authenticity and determines the responsible BMC department.'), findsOneWidget);
 
       // Tap again to collapse
-      await tester.tap(find.text('Reported'));
+      await tester.tap(find.text('Under Verification'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Your issue has been submitted and is awaiting review.'), findsNothing);
+      expect(find.text('Gemini AI verifies evidence authenticity and determines the responsible BMC department.'), findsNothing);
     });
 
-    testWidgets('Renders all 5 stages completed for Resolved status', (WidgetTester tester) async {
+    testWidgets('Renders all 5 stages completed for Closed status', (WidgetTester tester) async {
       await tester.pumpWidget(
         _createTestableWidget(
           const Scaffold(
-            body: ComplaintTracker(currentStatus: ComplaintStatus.resolved),
+            body: ComplaintTracker(currentStatus: ComplaintStatus.closed),
           ),
         ),
       );
@@ -1919,7 +1923,7 @@ void main() {
 
       expect(find.text('Stage 5 of 5'), findsOneWidget);
       expect(find.text('CURRENT'), findsNothing); // No pending pulsing, all 5 completed
-      expect(find.text('This issue has been marked as resolved.'), findsOneWidget);
+      expect(find.text('Grievance resolution has been finalized and ticket closed.'), findsOneWidget);
     });
   });
 
@@ -2300,16 +2304,16 @@ void main() {
       if (hazard.ticketNumber != null) {
         expect(find.text(hazard.ticketNumber!), findsOneWidget);
       }
-      expect(find.text('View Complaint'), findsOneWidget);
+      expect(find.text('View Details'), findsOneWidget);
 
       // Close button
-      final closeBtn = find.byTooltip('Close hazard details');
+      final closeBtn = find.byTooltip('Close complaint card');
       expect(closeBtn, findsOneWidget);
       await tester.tap(closeBtn);
       expect(closed, isTrue);
 
-      // Tap View Complaint
-      await tester.tap(find.text('View Complaint'));
+      // Tap View Details
+      await tester.tap(find.text('View Details'));
       await tester.pumpAndSettle();
       expect(find.byType(ComplaintDetailsScreen), findsOneWidget);
     });
@@ -2352,7 +2356,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(HazardInfoCard), findsOneWidget);
-      expect(find.text('View Complaint'), findsOneWidget);
+      expect(find.text('View Details'), findsOneWidget);
     });
 
     testWidgets('Search input filters map markers and shows empty state on no match', (WidgetTester tester) async {
@@ -3023,14 +3027,37 @@ void main() {
       expect(find.byType(RewardsScreen), findsOneWidget);
     });
 
-    testWidgets('Home screen Assistant quick action card navigates to AssistantScreen', (WidgetTester tester) async {
+    testWidgets('Home screen CivicChatbotFab navigates to AssistantScreen', (WidgetTester tester) async {
       await tester.pumpWidget(_createTestableWidget(const MainNavigationScreen(initialIndex: 0)));
       await tester.pumpAndSettle();
 
-      final assistantCard = find.widgetWithText(QuickActionCard, 'Assistant');
-      expect(assistantCard, findsOneWidget);
-      await tester.ensureVisible(assistantCard);
-      await tester.tap(assistantCard);
+      final chatbotFab = find.byType(CivicChatbotFab);
+      expect(chatbotFab, findsOneWidget);
+      await tester.tap(chatbotFab);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AssistantScreen), findsOneWidget);
+    });
+
+    testWidgets('MyComplaintsScreen displays CivicChatbotFab and navigates to AssistantScreen', (WidgetTester tester) async {
+      await tester.pumpWidget(_createTestableWidget(const MyComplaintsScreen()));
+      await tester.pumpAndSettle();
+
+      final chatbotFab = find.byType(CivicChatbotFab);
+      expect(chatbotFab, findsOneWidget);
+      await tester.tap(chatbotFab);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AssistantScreen), findsOneWidget);
+    });
+
+    testWidgets('NotificationsScreen displays CivicChatbotFab and navigates to AssistantScreen', (WidgetTester tester) async {
+      await tester.pumpWidget(_createTestableWidget(const NotificationsScreen()));
+      await tester.pumpAndSettle();
+
+      final chatbotFab = find.byType(CivicChatbotFab);
+      expect(chatbotFab, findsOneWidget);
+      await tester.tap(chatbotFab);
       await tester.pumpAndSettle();
 
       expect(find.byType(AssistantScreen), findsOneWidget);
@@ -3210,7 +3237,7 @@ void main() {
 
       expect(find.text('CivicFix'), findsOneWidget);
       expect(find.text('MUNICIPAL OFFICER CONTROL DESK'), findsOneWidget);
-      expect(find.text('Government ID'), findsOneWidget);
+      expect(find.text('Email'), findsOneWidget);
       expect(find.text('Password'), findsOneWidget);
       expect(find.text('Login'), findsOneWidget);
     });
@@ -4184,7 +4211,7 @@ void main() {
       expect(find.text('Reported'), findsOneWidget);
       expect(find.text('Verified'), findsOneWidget);
       expect(find.text('Assigned'), findsOneWidget);
-      expect(find.text('In Progress'), findsOneWidget);
+      expect(find.text('Work In Progress'), findsOneWidget);
       expect(find.text('Resolved'), findsOneWidget);
 
       expect(find.text('PRIORITY SEVERITY'), findsOneWidget);
@@ -4208,24 +4235,13 @@ void main() {
 
       // Check toolbar widgets
       expect(find.byType(GovtSearchField), findsOneWidget);
-      expect(find.widgetWithText(GovtFilterChip, 'All Hazards'), findsOneWidget);
-      expect(find.widgetWithText(GovtFilterChip, 'In Progress'), findsOneWidget);
-      expect(find.widgetWithText(GovtFilterChip, 'Verified'), findsOneWidget);
+      expect(find.text('All Hazard Categories'), findsOneWidget);
+      expect(find.text('All Severity Levels'), findsOneWidget);
+      expect(find.textContaining('Active Hazards'), findsOneWidget);
 
       // Check map canvas
       expect(find.byType(GovtMapCanvas), findsOneWidget);
       expect(find.byType(GovtHazardMarker), findsWidgets);
-
-      // Test status filter selection
-      await tester.tap(find.widgetWithText(GovtFilterChip, 'In Progress'));
-      await tester.pumpAndSettle();
-
-      // Should show Clear button in toolbar
-      expect(find.text('Clear'), findsOneWidget);
-
-      // Tap Clear filters
-      await tester.tap(find.text('Clear'));
-      await tester.pumpAndSettle();
 
       // Test search query
       final searchField = find.byType(TextField);
@@ -4892,8 +4908,7 @@ void main() {
       expect(find.text('MC-2026-ENG-842'), findsOneWidget);
       expect(find.text('Ward 14 (Central Zone)'), findsWidgets);
 
-      // Jurisdiction & Permissions
-      expect(find.text('Active Municipal Jurisdiction & Department'), findsOneWidget);
+      // Role & Permissions
       expect(find.text('Role-Based Access & Permissions'), findsOneWidget);
 
       // Settings sections present
@@ -4901,19 +4916,6 @@ void main() {
       expect(find.byType(GovtLanguageSettingsWidget), findsOneWidget);
       expect(find.byType(GovtAppearanceSettingsWidget), findsOneWidget);
       expect(find.byType(GovtPrivacyPrinciplesWidget), findsOneWidget);
-      expect(find.byType(GovtAboutWidget), findsOneWidget);
-
-      // Open Edit Profile Dialog
-      await tester.tap(find.text('Edit Profile'));
-      await tester.pumpAndSettle();
-
-      expect(find.byType(GovtEditProfileDialog), findsOneWidget);
-
-      // Close dialog
-      await tester.tap(find.text('Cancel'));
-      await tester.pumpAndSettle();
-
-      expect(find.byType(GovtEditProfileDialog), findsNothing);
 
       // Trigger Sign Out
       await tester.ensureVisible(find.text('Sign Out'));

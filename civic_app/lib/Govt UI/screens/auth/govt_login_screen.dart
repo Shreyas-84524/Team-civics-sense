@@ -1,20 +1,22 @@
 import 'package:flutter/material.dart';
+import '../../../../User UI/widgets/auth_error_banner.dart';
+import '../../../../User UI/widgets/auth_header.dart';
+import '../../../../User UI/widgets/auth_text_field.dart';
 import '../../../core/auth/auth_service_locator.dart';
-import '../../../core/constants/app_constants.dart';
+import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/app_typography.dart';
+import '../../../core/localization/app_localizations.dart';
 import '../../../core/routing/app_routes.dart';
 import '../../../core/widgets/civic_fix_button.dart';
-import '../../../core/widgets/civic_fix_text_field.dart';
 import '../../../core/widgets/responsive_container.dart';
 import '../../models/government_session.dart';
 import '../../services/govt_auth_service.dart';
-import '../../theme/govt_theme_tokens.dart';
 
 /// Official Government & Municipal Administration Login Portal.
 ///
-/// Authentication is strictly restricted to authorized Municipal Officers
-/// using their Government ID and Password.
+/// Styled consistently with the citizen authentication layout for a unified brand experience,
+/// while restricting authentication strictly to authorized Municipal Officers.
 class GovtLoginScreen extends StatefulWidget {
   final GovtAuthService? authService;
 
@@ -26,7 +28,7 @@ class GovtLoginScreen extends StatefulWidget {
 
 class _GovtLoginScreenState extends State<GovtLoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _govtIdController = TextEditingController();
+  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   late final GovtAuthService _authService;
 
@@ -42,9 +44,26 @@ class _GovtLoginScreenState extends State<GovtLoginScreen> {
 
   @override
   void dispose() {
-    _govtIdController.dispose();
+    _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  String? _validateEmail(String? value) {
+    final text = value?.trim() ?? '';
+    if (text.isEmpty) {
+      final l10n = AppLocalizations.of(context);
+      return l10n?.govEmployeeIdOrEmail ?? 'Please enter your government email.';
+    }
+    return null;
+  }
+
+  String? _validatePassword(String? value) {
+    if (value == null || value.isEmpty) {
+      final l10n = AppLocalizations.of(context);
+      return l10n?.govPassword ?? 'Please enter your password.';
+    }
+    return null;
   }
 
   Future<void> _handleLogin() async {
@@ -57,8 +76,8 @@ class _GovtLoginScreenState extends State<GovtLoginScreen> {
 
     setState(() => _isLoading = true);
 
-    final result = await _authService.loginWithGovernmentId(
-      governmentId: _govtIdController.text.trim(),
+    final result = await _authService.login(
+      emailOrEmployeeId: _emailController.text.trim(),
       password: _passwordController.text,
     );
 
@@ -74,214 +93,174 @@ class _GovtLoginScreenState extends State<GovtLoginScreen> {
         Navigator.pushReplacementNamed(context, AppRoutes.govtDashboard);
       }
     } else {
+      final l10n = AppLocalizations.of(context);
       setState(() {
-        _errorMessage = result.errorMessage ??
-            'Invalid Government ID or password. Please verify your municipal credentials.';
+        _errorMessage = result.errorMessage ?? l10n?.govInvalidCredentials ?? 'Invalid email or password.';
       });
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0F263B), // Deep Navy backdrop
+      backgroundColor: CivicFixColors.background,
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            child: ResponsiveContainer(
-              maxWidth: 480,
-              padding: const EdgeInsets.symmetric(
-                horizontal: CivicFixSpacing.xl,
-                vertical: CivicFixSpacing.xxl,
-              ),
-              child: Container(
-                padding: const EdgeInsets.all(CivicFixSpacing.xxl),
-                decoration: BoxDecoration(
-                  color: GovtThemeTokens.surface,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x33000000),
-                      blurRadius: 24,
-                      offset: Offset(0, 10),
+        child: ResponsiveContainer(
+          maxWidth: 480,
+          padding: CivicFixSpacing.pagePadding,
+          child: Center(
+            child: SingleChildScrollView(
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CivicFixSpacing.vSpaceLg,
+
+                    AuthHeader(
+                      title: l10n?.govPortalTitle ?? 'CivicFix Government',
+                      subtitle:
+                          'Sign in to access your municipal department dashboard, review complaints, and update grievance status.',
                     ),
+                    CivicFixSpacing.vSpaceSm,
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: CivicFixColors.surfaceMuted,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: CivicFixColors.border),
+                      ),
+                      child: Text(
+                        l10n?.govMunicipalCorporation.toUpperCase() ?? 'MUNICIPAL OFFICER CONTROL DESK',
+                        style: CivicFixTypography.captionMedium.copyWith(
+                          color: CivicFixColors.secondaryText,
+                          letterSpacing: 0.8,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    CivicFixSpacing.vSpaceLg,
+
+                    // Authentication Error State
+                    if (_errorMessage != null)
+                      AuthErrorBanner(
+                        message: _errorMessage!,
+                        onDismiss: () => setState(() => _errorMessage = null),
+                      ),
+
+                    // 1. Email Field
+                    AuthTextField(
+                      label: l10n?.govEmployeeIdOrEmail ?? 'Email',
+                      hintText: 'e.g. officer@civicfix.dev',
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
+                      enabled: !_isLoading,
+                      prefixIcon: const Icon(
+                        Icons.mail_outline_rounded,
+                        color: CivicFixColors.secondaryText,
+                        size: 20,
+                      ),
+                      validator: _validateEmail,
+                    ),
+                    CivicFixSpacing.vSpaceLg,
+
+                    // 2. Password Field
+                    AuthTextField(
+                      label: l10n?.govPassword ?? 'Password',
+                      hintText: l10n?.govPassword ?? 'Enter password',
+                      controller: _passwordController,
+                      isPassword: true,
+                      isPasswordVisible: _isPasswordVisible,
+                      enabled: !_isLoading,
+                      textInputAction: TextInputAction.done,
+                      prefixIcon: const Icon(
+                        Icons.lock_outline_rounded,
+                        color: CivicFixColors.secondaryText,
+                        size: 20,
+                      ),
+                      onTogglePasswordVisibility: () {
+                        setState(() => _isPasswordVisible = !_isPasswordVisible);
+                      },
+                      validator: _validatePassword,
+                      onFieldSubmitted: (_) => _isLoading ? null : _handleLogin(),
+                    ),
+                    CivicFixSpacing.vSpaceXs,
+
+                    // Forgot Password Link
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: _isLoading
+                            ? null
+                            : () {
+                                Navigator.pushNamed(context, AppRoutes.govtForgotPassword);
+                              },
+                        child: Text(
+                          l10n?.govForgotPassword ?? 'Forgot Password?',
+                          style: CivicFixTypography.bodySmallMedium.copyWith(
+                            color: CivicFixColors.secondary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                    CivicFixSpacing.vSpaceMd,
+
+                    // 3. Login Button
+                    CivicFixButton(
+                      text: l10n?.govSignInButton ?? 'Login',
+                      isLoading: _isLoading,
+                      onPressed: _isLoading ? null : _handleLogin,
+                    ),
+                    CivicFixSpacing.vSpaceLg,
+
+                    const Divider(color: CivicFixColors.border, thickness: 1),
+                    CivicFixSpacing.vSpaceMd,
+
+                    // 4. Back to Citizen Login Button
+                    Center(
+                      child: OutlinedButton.icon(
+                        key: const Key('back_to_citizen_login_button'),
+                        onPressed: _isLoading
+                            ? null
+                            : () {
+                                if (Navigator.canPop(context)) {
+                                  Navigator.pop(context);
+                                } else {
+                                  Navigator.pushReplacementNamed(context, AppRoutes.login);
+                                }
+                              },
+                        icon: const Icon(
+                          Icons.person_outline_rounded,
+                          size: 18,
+                          color: CivicFixColors.primary,
+                        ),
+                        label: Text(
+                          'Back to Citizen Login',
+                          style: CivicFixTypography.bodySmallMedium.copyWith(
+                            color: CivicFixColors.primary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: CivicFixSpacing.lg,
+                            vertical: CivicFixSpacing.sm + 2,
+                          ),
+                          side: const BorderSide(color: CivicFixColors.primary, width: 1.2),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                    ),
+                    CivicFixSpacing.vSpaceLg,
                   ],
-                ),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Header Badge & Municipal Portal Seal
-                      Center(
-                        child: Column(
-                          children: [
-                            Container(
-                              width: 64,
-                              height: 64,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFE8F2F8),
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: const Color(0xFFB8D8EA)),
-                              ),
-                              child: const Center(
-                                child: Icon(
-                                  Icons.account_balance_rounded,
-                                  size: 36,
-                                  color: GovtThemeTokens.primary,
-                                ),
-                              ),
-                            ),
-                            CivicFixSpacing.vSpaceMd,
-                            Text(
-                              AppConstants.appName,
-                              style: CivicFixTypography.h1.copyWith(
-                                color: GovtThemeTokens.primary,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            CivicFixSpacing.vSpaceXs,
-                            Text(
-                              'CivicFix Government Portal',
-                              style: CivicFixTypography.bodyMedium.copyWith(
-                                color: GovtThemeTokens.primary,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            CivicFixSpacing.vSpaceXs,
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFEFF3F0),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                'MUNICIPAL OFFICER CONTROL DESK',
-                                style: CivicFixTypography.captionMedium.copyWith(
-                                  color: GovtThemeTokens.textSecondary,
-                                  letterSpacing: 0.8,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      CivicFixSpacing.vSpaceXl,
-
-                      // Authentication Error State
-                      if (_errorMessage != null) ...[
-                        Container(
-                          padding: const EdgeInsets.all(CivicFixSpacing.md),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFDE8E8),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: const Color(0xFFF5B7B7)),
-                          ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Icon(
-                                Icons.error_outline_rounded,
-                                color: GovtThemeTokens.error,
-                                size: 20,
-                              ),
-                              CivicFixSpacing.hSpaceSm,
-                              Expanded(
-                                child: Text(
-                                  _errorMessage!,
-                                  style: CivicFixTypography.captionMedium.copyWith(
-                                    color: GovtThemeTokens.error,
-                                    height: 1.4,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        CivicFixSpacing.vSpaceMd,
-                      ],
-
-                      // 1. Government ID Field
-                      Text(
-                        'Government ID',
-                        style: CivicFixTypography.bodySmallMedium.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      CivicFixSpacing.vSpaceXs,
-                      CivicFixTextField(
-                        hintText: 'e.g. MUMHQ00001',
-                        controller: _govtIdController,
-                        prefixIcon: const Icon(Icons.badge_outlined, size: 20),
-                        validator: (v) {
-                          final text = v?.trim() ?? '';
-                          if (text.isEmpty) {
-                            return 'Please enter your Government ID.';
-                          }
-                          return null;
-                        },
-                      ),
-                      CivicFixSpacing.vSpaceMd,
-
-                      // 2. Password Field
-                      Text(
-                        'Password',
-                        style: CivicFixTypography.bodySmallMedium.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      CivicFixSpacing.vSpaceXs,
-                      TextFormField(
-                        controller: _passwordController,
-                        obscureText: !_isPasswordVisible,
-                        style: CivicFixTypography.body,
-                        decoration: InputDecoration(
-                          hintText: 'Enter password',
-                          prefixIcon: const Icon(Icons.lock_outline_rounded, size: 20),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _isPasswordVisible
-                                  ? Icons.visibility_off_rounded
-                                  : Icons.visibility_rounded,
-                              size: 18,
-                            ),
-                            tooltip: _isPasswordVisible ? 'Hide password' : 'Show password',
-                            onPressed: () {
-                              setState(() => _isPasswordVisible = !_isPasswordVisible);
-                            },
-                          ),
-                          filled: true,
-                          fillColor: GovtThemeTokens.surface,
-                          border: OutlineInputBorder(
-                            borderRadius: GovtThemeTokens.chipRadius,
-                            borderSide: const BorderSide(color: GovtThemeTokens.border),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: GovtThemeTokens.chipRadius,
-                            borderSide: const BorderSide(color: GovtThemeTokens.border),
-                          ),
-                        ),
-                        validator: (v) {
-                          if (v == null || v.isEmpty) {
-                            return 'Please enter your password.';
-                          }
-                          return null;
-                        },
-                      ),
-                      CivicFixSpacing.vSpaceXl,
-
-                      // 3. Login Button
-                      CivicFixButton(
-                        text: 'Login',
-                        icon: Icons.login_rounded,
-                        isLoading: _isLoading,
-                        onPressed: _isLoading ? null : _handleLogin,
-                      ),
-                    ],
-                  ),
                 ),
               ),
             ),

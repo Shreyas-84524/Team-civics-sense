@@ -5,6 +5,9 @@ class HiveBoxes {
   /// Complaints box storing [ComplaintLocalModel] keyed by complaint ID or ticket number.
   static const String complaints = 'complaints';
 
+  /// Per-user complaint support markers used to deduplicate offline taps.
+  static const String complaintUpvotes = 'complaint_upvotes';
+
   /// Complaint updates / status timeline audit box storing [TimelineEventLocalModel].
   static const String complaintUpdates = 'complaint_updates';
 
@@ -29,6 +32,7 @@ class HiveBoxes {
   /// List of all canonical box names managed by CivicFix.
   static const List<String> allBoxes = [
     complaints,
+    complaintUpvotes,
     complaintUpdates,
     pendingSync,
     notifications,

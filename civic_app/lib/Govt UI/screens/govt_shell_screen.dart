@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../core/auth/auth_service_locator.dart';
+import '../../core/localization/app_localizations.dart';
 import '../models/govt_user_model.dart';
+import '../models/government_session.dart';
+import '../navigation/govt_navigation_config.dart';
 import '../services/govt_auth_service.dart';
 import '../theme/govt_theme_tokens.dart';
 import '../widgets/common/govt_app_bar.dart';
@@ -30,6 +33,7 @@ class _GovtShellScreenState extends State<GovtShellScreen> {
   late int _currentIndex;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   late final GovtAuthService _authService;
+  bool _isManuallyCollapsed = false;
 
   @override
   void initState() {
@@ -38,31 +42,44 @@ class _GovtShellScreenState extends State<GovtShellScreen> {
     _authService = widget.authService ?? AuthServiceLocator.govtAuth;
   }
 
-  String get _currentTitle {
+  void _toggleSidebarCollapse() {
+    setState(() {
+      _isManuallyCollapsed = !_isManuallyCollapsed;
+    });
+  }
+
+  String _getCurrentTitle(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     switch (_currentIndex) {
       case 0:
-        return 'Executive Dashboard';
+        return l10n?.govExecutiveDashboard ?? 'Executive Dashboard';
       case 1:
-        return 'Grievance Management';
+        return l10n?.govGrievanceManagement ?? 'Grievance Management';
       case 2:
-        return 'Live Hazard GIS Map';
+        return l10n?.govLiveHazardGisMap ?? 'Live Hazard GIS Map';
       case 3:
-        return 'Operational Analytics';
+        return l10n?.govOperationalAnalytics ?? 'Operational Analytics';
       case 4:
-        return 'Officer Profile & Settings';
+        return l10n?.govOfficerProfileSettings ?? 'Officer Profile & Settings';
       default:
-        return 'Government Portal';
+        return l10n?.govPortalTitle ?? 'Government Portal';
     }
   }
 
   void _onNavSelected(int index) {
-    setState(() {
-      _currentIndex = index;
-    });
     // Close drawer on small screens
     if (_scaffoldKey.currentState?.isDrawerOpen == true) {
       Navigator.of(context).pop();
     }
+    final user = _authService.currentUser;
+    final destination = GovtNavigationConfig.getItemsForUser(user)
+        .where((item) => item.index == index)
+        .firstOrNull;
+    if (destination == null) return;
+    final route = index == 0 && user != null
+        ? GovernmentSession.fromUser(user).landingRoute
+        : destination.routeName;
+    Navigator.of(context).pushReplacementNamed(route);
   }
 
   @override
@@ -74,6 +91,8 @@ class _GovtShellScreenState extends State<GovtShellScreen> {
         final isDesktop = screenWidth >= GovtThemeTokens.desktopBreakpoint;
         final isTablet = screenWidth >= GovtThemeTokens.tabletBreakpoint && !isDesktop;
         final isMobile = screenWidth < GovtThemeTokens.tabletBreakpoint;
+
+        final isSidebarCollapsed = isTablet || _isManuallyCollapsed;
 
         return Scaffold(
           key: _scaffoldKey,
@@ -90,13 +109,14 @@ class _GovtShellScreenState extends State<GovtShellScreen> {
               : null,
           body: Row(
             children: [
-              // Desktop: Full Sidebar
+              // Desktop: Expandable / Collapsible Sidebar
               if (isDesktop)
                 GovtSidebar(
                   selectedIndex: _currentIndex,
                   onDestinationSelected: _onNavSelected,
-                  isCollapsed: false,
+                  isCollapsed: isSidebarCollapsed,
                   user: user,
+                  onToggleCollapse: _toggleSidebarCollapse,
                 ),
 
               // Tablet: Collapsed Sidebar / Rail
@@ -106,6 +126,7 @@ class _GovtShellScreenState extends State<GovtShellScreen> {
                   onDestinationSelected: _onNavSelected,
                   isCollapsed: true,
                   user: user,
+                  onToggleCollapse: _toggleSidebarCollapse,
                 ),
 
               // Main Content Area
@@ -113,7 +134,7 @@ class _GovtShellScreenState extends State<GovtShellScreen> {
                 child: Column(
                   children: [
                     GovtAppBar(
-                      title: _currentTitle,
+                      title: _getCurrentTitle(context),
                       user: user,
                       showMenuButton: isMobile,
                       onMenuPressed: () {
@@ -121,9 +142,7 @@ class _GovtShellScreenState extends State<GovtShellScreen> {
                       },
                     ),
                     Expanded(
-                      child: IndexedStack(
-                        index: _currentIndex,
-                        children: [
+                      child: <Widget>[
                           GovtDashboardScreen(
                             onNavigateToComplaints: () => _onNavSelected(1),
                             onNavigateToMap: () => _onNavSelected(2),
@@ -132,9 +151,8 @@ class _GovtShellScreenState extends State<GovtShellScreen> {
                           const GovtComplaintListScreen(),
                           const GovtHazardMapScreen(),
                           const GovtAnalyticsScreen(),
-                          const GovtProfileScreen(),
-                        ],
-                      ),
+                          GovtProfileScreen(authService: _authService),
+                        ][_currentIndex],
                     ),
                   ],
                 ),

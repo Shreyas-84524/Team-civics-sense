@@ -15,6 +15,10 @@ class RewardFirestoreMapper {
       'nextMilestoneTarget': data.nextMilestoneTarget,
       'reportsSubmitted': data.reportsSubmitted,
       'reportsResolved': data.reportsResolved,
+      'reportsVerified': data.reportsVerified,
+      'communityUpvotes': data.communityUpvotes,
+      'supportedComplaints': data.supportedComplaints,
+      'recentActivity': data.recentActivity.map((e) => e.toJson()).toList(),
       'achievements': data.achievements.map(achievementToMap).toList(),
       'updatedAt': FieldValue.serverTimestamp(),
     };
@@ -25,6 +29,8 @@ class RewardFirestoreMapper {
     required String documentId,
     required Map<String, dynamic> data,
     List<CivicRewardItem> perks = const [],
+    bool isCached = false,
+    bool syncPending = false,
   }) {
     final rawAchievements = data['achievements'] as List<dynamic>? ?? [];
     final List<CivicAchievement> parsedAchievements = [];
@@ -49,6 +55,21 @@ class RewardFirestoreMapper {
           ? parsedAchievements
           : CivicAchievement.defaultAchievements(),
       perks: perks,
+      reportsVerified: (data['reportsVerified'] as num?)?.toInt() ?? 0,
+      communityUpvotes: (data['communityUpvotes'] as num?)?.toInt() ?? 0,
+      supportedComplaints: (data['supportedComplaints'] as num?)?.toInt() ?? 0,
+      isCached: isCached,
+      syncPending: syncPending,
+      recentActivity: (data['recentActivity'] as List? ?? []).whereType<Map>().map((e) => RewardEvent(
+        id: e['id'] as String? ?? '',
+        citizenId: e['citizenId'] as String? ?? documentId,
+        complaintId: e['complaintId'] as String? ?? '',
+        complaintTitle: e['complaintTitle'] as String? ?? 'Civic complaint',
+        rewardType: e['rewardType'] as String? ?? '',
+        description: e['description'] as String? ?? 'Civic contribution',
+        points: (e['points'] as num?)?.toInt() ?? 0,
+        createdAt: FirestoreMapperHelpers.timestampToDateTime(e['createdAt']),
+      )).toList(),
     );
   }
 
@@ -61,13 +82,15 @@ class RewardFirestoreMapper {
       'howToUnlock': achievement.howToUnlock,
       'isUnlocked': achievement.isUnlocked,
       'pointsRequired': achievement.pointsRequired,
+      'currentProgress': achievement.currentProgress,
+      'targetProgress': achievement.targetProgress,
       'unlockedAt': FirestoreMapperHelpers.dateTimeToTimestamp(achievement.unlockedAt),
     };
   }
 
   /// Converts a map into a [CivicAchievement].
   static CivicAchievement achievementFromMap(Map<String, dynamic> map) {
-    final id = map['id'] as String? ?? 'ach_1';
+    final id = map['id'] as String? ?? 'evidence_expert';
     final defaultAch = CivicAchievement.defaultAchievements().firstWhere(
       (a) => a.id == id,
       orElse: () => CivicAchievement(
@@ -80,12 +103,18 @@ class RewardFirestoreMapper {
       ),
     );
 
+    final rawProgress = (map['currentProgress'] ?? map['progress']) as num?;
+    final rawTarget = (map['targetProgress'] ?? map['target']) as num?;
+    final isUnlocked = (map['isUnlocked'] as bool?) ?? defaultAch.isUnlocked;
+
     return defaultAch.copyWith(
       title: map['title'] as String?,
       description: map['description'] as String?,
       howToUnlock: map['howToUnlock'] as String?,
-      isUnlocked: map['isUnlocked'] as bool?,
+      isUnlocked: isUnlocked,
       pointsRequired: map['pointsRequired'] as int?,
+      currentProgress: rawProgress?.toInt() ?? defaultAch.currentProgress,
+      targetProgress: rawTarget?.toInt() ?? defaultAch.targetProgress,
       unlockedAt: FirestoreMapperHelpers.timestampToDateTime(map['unlockedAt']),
     );
   }

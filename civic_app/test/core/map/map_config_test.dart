@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
+import 'package:civic_app/core/map/basemap_mode.dart';
 import 'package:civic_app/core/map/map_config.dart';
 import 'package:civic_app/core/map/map_constants.dart';
 
@@ -44,7 +45,25 @@ void main() {
         MapConfig.getStyleUrl(style: 'basic-v2'),
         equals('https://api.maptiler.com/maps/basic-v2/style.json?key=test_api_key_123456'),
       );
+      expect(
+        MapConfig.getStyleUrl(mode: BasemapMode.satellite),
+        equals('https://api.maptiler.com/maps/satellite/style.json?key=test_api_key_123456'),
+      );
+      expect(
+        MapConfig.getStyleUrl(mode: BasemapMode.hybrid),
+        equals('https://api.maptiler.com/maps/hybrid/style.json?key=test_api_key_123456'),
+      );
       expect(MapConfig.maskedKey, equals('tes...456'));
+    });
+
+    test('BasemapMode enum provides correct identifiers, labels and fallback resolution', () {
+      expect(BasemapMode.streets.styleId, equals('streets-v2'));
+      expect(BasemapMode.satellite.styleId, equals('satellite'));
+      expect(BasemapMode.hybrid.styleId, equals('hybrid'));
+
+      expect(BasemapMode.fromString('satellite'), equals(BasemapMode.satellite));
+      expect(BasemapMode.fromString('hybrid'), equals(BasemapMode.hybrid));
+      expect(BasemapMode.fromString('unknown_mode'), equals(BasemapMode.streets));
     });
 
     test('maskedKey masks secrets safely', () {

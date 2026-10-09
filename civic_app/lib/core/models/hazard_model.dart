@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
+import '../map/spatial_chunk.dart';
 import 'category_model.dart';
 import 'complaint_model.dart';
 
@@ -57,6 +58,13 @@ class HazardModel {
   final int upvotes;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final String? spatialChunkId;
+  final String? geohash;
+
+  String get computedSpatialChunkId =>
+      spatialChunkId ?? GeohashUtils.encode(latitude, longitude, precision: 5);
+
+  String get citizenPhaseLabel => status.label;
 
   const HazardModel({
     required this.id,
@@ -75,6 +83,8 @@ class HazardModel {
     this.upvotes = 0,
     required this.createdAt,
     required this.updatedAt,
+    this.spatialChunkId,
+    this.geohash,
   });
 
   /// Derives a HazardModel from an existing ComplaintModel
@@ -96,6 +106,8 @@ class HazardModel {
       upvotes: complaint.upvotes,
       createdAt: complaint.createdAt,
       updatedAt: complaint.updatedAt,
+      spatialChunkId: complaint.spatialChunkId,
+      geohash: complaint.geohash,
     );
   }
 
@@ -141,6 +153,8 @@ class HazardModel {
     int? upvotes,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? spatialChunkId,
+    String? geohash,
   }) {
     return HazardModel(
       id: id ?? this.id,
@@ -159,6 +173,8 @@ class HazardModel {
       upvotes: upvotes ?? this.upvotes,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      spatialChunkId: spatialChunkId ?? this.spatialChunkId,
+      geohash: geohash ?? this.geohash,
     );
   }
 }

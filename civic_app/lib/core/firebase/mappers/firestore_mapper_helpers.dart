@@ -152,6 +152,9 @@ class FirestoreMapperHelpers {
   static ComplaintStatus parseComplaintStatus(String? value) {
     if (value == null) return ComplaintStatus.reported;
     switch (value.toLowerCase()) {
+      case 'underverification':
+      case 'under_verification':
+        return ComplaintStatus.underVerification;
       case 'reported':
       case 'submitted':
         return ComplaintStatus.reported;
@@ -166,6 +169,8 @@ class FirestoreMapperHelpers {
         return ComplaintStatus.inProgress;
       case 'resolved':
         return ComplaintStatus.resolved;
+      case 'closed':
+        return ComplaintStatus.closed;
       case 'rejected':
         return ComplaintStatus.rejected;
       default:
@@ -234,4 +239,97 @@ class FirestoreMapperHelpers {
         return NotificationType.generalCivic;
     }
   }
+
+  // ===========================================================================
+  // EVIDENCE & PHOTO URLS
+  // ===========================================================================
+
+  /// Safely extracts all citizen evidence / image URLs from Firestore map,
+  /// supporting canonical and legacy field names (imageUrls, evidenceUrls,
+  /// evidencePaths, photoUrls, attachments, citizenEvidence, initialEvidence, beforeEvidence, evidence).
+  static List<String> parseImageUrls(Map<String, dynamic> data) {
+    final List<String> results = [];
+    final Set<String> seen = {};
+
+    void extractFrom(dynamic val) {
+      if (val == null) return;
+      if (val is String) {
+        final trimmed = val.trim();
+        if (trimmed.isNotEmpty && seen.add(trimmed)) {
+          results.add(trimmed);
+        }
+      } else if (val is List) {
+        for (final item in val) {
+          if (item is String) {
+            final trimmed = item.trim();
+            if (trimmed.isNotEmpty && seen.add(trimmed)) {
+              results.add(trimmed);
+            }
+          } else if (item is Map) {
+            final path = item['url'] ??
+                item['storagePath'] ??
+                item['path'] ??
+                item['downloadUrl'] ??
+                item['objectKey'];
+            if (path is String && path.trim().isNotEmpty) {
+              final trimmed = path.trim();
+              if (seen.add(trimmed)) {
+                results.add(trimmed);
+              }
+            }
+          }
+        }
+      } else if (val is Map) {
+        final path = val['url'] ??
+            val['storagePath'] ??
+            val['path'] ??
+            val['downloadUrl'] ??
+            val['objectKey'];
+        if (path is String && path.trim().isNotEmpty) {
+          final trimmed = path.trim();
+          if (seen.add(trimmed)) {
+            results.add(trimmed);
+          }
+        }
+      }
+    }
+
+    // Canonical first
+    extractFrom(data['imageUrls']);
+    // Supported legacy / alternative field names
+    extractFrom(data['evidenceUrls']);
+    extractFrom(data['evidencePaths']);
+    extractFrom(data['photoUrls']);
+    extractFrom(data['attachments']);
+    extractFrom(data['citizenEvidence']);
+    extractFrom(data['initialEvidence']);
+    extractFrom(data['beforeEvidence']);
+    extractFrom(data['evidence']);
+
+    return results;
+  }
+
+  /// Safely extracts Field Officer before-work inspection photo.
+  static String? parseBeforeWorkPhoto(Map<String, dynamic> data) {
+    final val = data['beforeWorkPhoto'] ?? data['beforePhoto'] ?? data['beforeWorkEvidence'];
+    if (val is String && val.trim().isNotEmpty) return val.trim();
+    return null;
+  }
+
+  /// Safely extracts Field Officer after-work resolution photo.
+  static String? parseAfterWorkPhoto(Map<String, dynamic> data) {
+    final val = data['afterWorkPhoto'] ?? data['afterPhoto'] ?? data['resolutionPhoto'] ?? data['resolutionEvidence'];
+    if (val is String && val.trim().isNotEmpty) return val.trim();
+    return null;
+  }
+
+  /// Safely extracts previous resolution evidence for rework audit.
+  static List<String> parsePreviousResolutionEvidence(Map<String, dynamic> data) {
+    final val = data['previousResolutionEvidence'] ?? data['archivedEvidence'] ?? data['reworkEvidence'];
+    if (val is List) {
+      return val.whereType<String>().map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    }
+    return const [];
+  }
 }
+

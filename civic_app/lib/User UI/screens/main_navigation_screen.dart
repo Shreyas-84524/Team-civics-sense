@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/localization/app_localizations.dart';
 import '../../core/repositories/notification_repository.dart';
 import '../../core/repositories/repository_locator.dart';
 import 'hazard_map_screen.dart';
@@ -80,20 +81,20 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               selectedFontSize: 12,
               unselectedFontSize: 12,
               items: [
-                const BottomNavigationBarItem(
-                  icon: Icon(Icons.home_outlined),
-                  activeIcon: Icon(Icons.home_rounded),
-                  label: 'Home',
+                BottomNavigationBarItem(
+                  icon: const Icon(Icons.home_outlined),
+                  activeIcon: const Icon(Icons.home_rounded),
+                  label: context.l10nOrNull?.navHome ?? 'Home',
                 ),
-                const BottomNavigationBarItem(
-                  icon: Icon(Icons.assignment_outlined),
-                  activeIcon: Icon(Icons.assignment_rounded),
-                  label: 'Complaints',
+                BottomNavigationBarItem(
+                  icon: const Icon(Icons.assignment_outlined),
+                  activeIcon: const Icon(Icons.assignment_rounded),
+                  label: context.l10nOrNull?.navComplaints ?? 'Complaints',
                 ),
-                const BottomNavigationBarItem(
-                  icon: Icon(Icons.map_outlined),
-                  activeIcon: Icon(Icons.map_rounded),
-                  label: 'Map',
+                BottomNavigationBarItem(
+                  icon: const Icon(Icons.map_outlined),
+                  activeIcon: const Icon(Icons.map_rounded),
+                  label: context.l10nOrNull?.navMap ?? 'Map',
                 ),
                 BottomNavigationBarItem(
                   icon: Badge(
@@ -108,12 +109,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                     backgroundColor: CivicFixColors.alertDark,
                     child: const Icon(Icons.notifications_rounded),
                   ),
-                  label: 'Notifications',
+                  label: context.l10nOrNull?.navNotifications ?? 'Notifications',
                 ),
-                const BottomNavigationBarItem(
-                  icon: Icon(Icons.person_outline_rounded),
-                  activeIcon: Icon(Icons.person_rounded),
-                  label: 'Profile',
+                BottomNavigationBarItem(
+                  icon: const Icon(Icons.person_outline_rounded),
+                  activeIcon: const Icon(Icons.person_rounded),
+                  label: context.l10nOrNull?.navProfile ?? 'Profile',
                 ),
               ],
             ),

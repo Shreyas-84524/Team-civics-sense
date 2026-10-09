@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import '../constants/app_colors.dart';
 import '../constants/app_radius.dart';
 import '../constants/app_spacing.dart';
 import '../constants/app_typography.dart';
+import '../localization/mappers/canonical_display_mappers.dart';
 import '../models/complaint_model.dart';
 
 /// Reusable priority badge displaying priority level with semantic icon,
@@ -19,13 +21,13 @@ class PriorityBadge extends StatelessWidget {
   Color get _backgroundColor {
     switch (priority) {
       case ComplaintPriority.low:
-        return const Color(0xFFEFF3F0);
+        return CivicFixColors.infoContainer;
       case ComplaintPriority.medium:
-        return const Color(0xFFE8F2F8);
+        return CivicFixColors.infoContainer;
       case ComplaintPriority.high:
-        return const Color(0xFFFEF8EC);
+        return CivicFixColors.warningContainer;
       case ComplaintPriority.emergency:
-        return const Color(0xFFFDE8E8);
+        return CivicFixColors.errorContainer;
     }
   }
 
@@ -42,22 +44,10 @@ class PriorityBadge extends StatelessWidget {
     }
   }
 
-  String get _displayLabel {
-    switch (priority) {
-      case ComplaintPriority.low:
-        return 'Low';
-      case ComplaintPriority.medium:
-        return 'Medium';
-      case ComplaintPriority.high:
-        return 'High';
-      case ComplaintPriority.emergency:
-        return 'Critical';
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final color = priority.color;
+    final displayLabel = localizedComplaintPriority(priority, context: context);
 
     return Container(
       padding: EdgeInsets.symmetric(
@@ -83,7 +73,7 @@ class PriorityBadge extends StatelessWidget {
           SizedBox(width: isCompact ? 3 : 5),
           Flexible(
             child: Text(
-              _displayLabel,
+              displayLabel,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: CivicFixTypography.statusBadge.copyWith(

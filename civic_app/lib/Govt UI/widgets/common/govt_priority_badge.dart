@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_spacing.dart';
+import '../../../core/localization/mappers/canonical_display_mappers.dart';
 import '../../../core/models/complaint_model.dart';
 import '../../theme/govt_theme_tokens.dart';
 import '../../theme/govt_typography.dart';
@@ -11,6 +12,7 @@ class GovtPriorityBadge extends StatelessWidget {
   final Color color;
   final Color backgroundColor;
   final bool isCompact;
+  final ComplaintPriority? priority;
 
   const GovtPriorityBadge({
     super.key,
@@ -19,6 +21,7 @@ class GovtPriorityBadge extends StatelessWidget {
     required this.color,
     required this.backgroundColor,
     this.isCompact = false,
+    this.priority,
   });
 
   /// Factory constructor from [ComplaintPriority] model enum.
@@ -31,6 +34,7 @@ class GovtPriorityBadge extends StatelessWidget {
           color: GovtThemeTokens.textSecondary,
           backgroundColor: const Color(0xFFEFF3F0),
           isCompact: isCompact,
+          priority: priority,
         );
       case ComplaintPriority.medium:
         return GovtPriorityBadge(
@@ -39,6 +43,7 @@ class GovtPriorityBadge extends StatelessWidget {
           color: GovtThemeTokens.info,
           backgroundColor: const Color(0xFFE8F2F8),
           isCompact: isCompact,
+          priority: priority,
         );
       case ComplaintPriority.high:
         return GovtPriorityBadge(
@@ -47,6 +52,7 @@ class GovtPriorityBadge extends StatelessWidget {
           color: const Color(0xFFD97706),
           backgroundColor: const Color(0xFFFEF8EC),
           isCompact: isCompact,
+          priority: priority,
         );
       case ComplaintPriority.emergency:
         return GovtPriorityBadge(
@@ -55,6 +61,7 @@ class GovtPriorityBadge extends StatelessWidget {
           color: GovtThemeTokens.critical,
           backgroundColor: const Color(0xFFFDE8E8),
           isCompact: isCompact,
+          priority: priority,
         );
     }
   }
@@ -81,6 +88,8 @@ class GovtPriorityBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final displayLabel = priority != null ? localizedComplaintPriority(priority!, context: context) : label;
+
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: isCompact ? CivicFixSpacing.sm : CivicFixSpacing.md,
@@ -104,7 +113,7 @@ class GovtPriorityBadge extends StatelessWidget {
           ),
           SizedBox(width: isCompact ? 3 : 5),
           Text(
-            label,
+            displayLabel,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: GovtTypography.caption.copyWith(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_spacing.dart';
 import '../../../../core/constants/app_typography.dart';
+import '../../../../core/localization/app_localizations.dart';
 import '../../theme/govt_theme_tokens.dart';
 import '../dashboard/dashboard_card.dart';
 
@@ -10,8 +11,10 @@ class GovtAboutWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
     return DashboardCard(
-      title: 'About CivicFix Municipal Portal',
+      title: l10n?.govAboutPortal ?? 'About CivicFix Municipal Portal',
       subtitle: 'Official municipal administration & grievance resolution framework',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -51,7 +54,7 @@ class GovtAboutWidget extends StatelessWidget {
                             borderRadius: BorderRadius.circular(GovtThemeTokens.radiusSm),
                           ),
                           child: Text(
-                            'v1.0.0-gov',
+                            l10n?.govVersionInfo ?? 'v1.0.0-gov',
                             style: CivicFixTypography.captionMedium.copyWith(
                               color: GovtThemeTokens.primary,
                               fontWeight: FontWeight.w700,

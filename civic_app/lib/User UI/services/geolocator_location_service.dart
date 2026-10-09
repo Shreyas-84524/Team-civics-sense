@@ -11,8 +11,8 @@ class GeolocatorLocationService implements LocationService {
 
   const GeolocatorLocationService({
     this.locationSettings = const LocationSettings(
-      accuracy: LocationAccuracy.high,
-      timeLimit: Duration(seconds: 15),
+      accuracy: LocationAccuracy.medium,
+      timeLimit: Duration(seconds: 10),
     ),
   });
 
@@ -85,13 +85,54 @@ class GeolocatorLocationService implements LocationService {
         address: 'GPS Location (${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)})',
       );
     } on TimeoutException {
-      debugPrint('[GeolocatorLocationService] GPS acquisition timed out.');
+      debugPrint('[GeolocatorLocationService] GPS acquisition timed out, checking last known position...');
+      try {
+        final lastPos = await Geolocator.getLastKnownPosition();
+        if (lastPos != null) {
+          return CivicLocation(
+            latitude: lastPos.latitude,
+            longitude: lastPos.longitude,
+            accuracyMeters: lastPos.accuracy,
+            timestamp: lastPos.timestamp,
+            source: LocationSource.gps,
+            address: 'GPS Location (${lastPos.latitude.toStringAsFixed(4)}, ${lastPos.longitude.toStringAsFixed(4)})',
+          );
+        }
+      } catch (e) {
+        debugPrint('[GeolocatorLocationService] Error fetching last known position: $e');
+      }
       throw TimeoutException('GPS acquisition timed out. Please retry or select location on map.');
     } on PlatformException catch (pe) {
-      debugPrint('[GeolocatorLocationService] PlatformException: ${pe.message}');
+      debugPrint('[GeolocatorLocationService] PlatformException: ${pe.message}, checking last known position...');
+      try {
+        final lastPos = await Geolocator.getLastKnownPosition();
+        if (lastPos != null) {
+          return CivicLocation(
+            latitude: lastPos.latitude,
+            longitude: lastPos.longitude,
+            accuracyMeters: lastPos.accuracy,
+            timestamp: lastPos.timestamp,
+            source: LocationSource.gps,
+            address: 'GPS Location (${lastPos.latitude.toStringAsFixed(4)}, ${lastPos.longitude.toStringAsFixed(4)})',
+          );
+        }
+      } catch (_) {}
       throw Exception('GPS error: ${pe.message ?? "Unknown platform error"}');
     } catch (e) {
-      debugPrint('[GeolocatorLocationService] Unexpected error: $e');
+      debugPrint('[GeolocatorLocationService] Unexpected error: $e, checking last known position...');
+      try {
+        final lastPos = await Geolocator.getLastKnownPosition();
+        if (lastPos != null) {
+          return CivicLocation(
+            latitude: lastPos.latitude,
+            longitude: lastPos.longitude,
+            accuracyMeters: lastPos.accuracy,
+            timestamp: lastPos.timestamp,
+            source: LocationSource.gps,
+            address: 'GPS Location (${lastPos.latitude.toStringAsFixed(4)}, ${lastPos.longitude.toStringAsFixed(4)})',
+          );
+        }
+      } catch (_) {}
       throw Exception('Unable to acquire GPS coordinates: $e');
     }
   }

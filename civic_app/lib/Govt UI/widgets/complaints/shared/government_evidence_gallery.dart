@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_spacing.dart';
 import '../../../../core/constants/app_typography.dart';
+import '../../../../core/widgets/supabase_evidence_image.dart';
 import '../../../theme/govt_theme_tokens.dart';
 
 /// Categorized Evidence Item Model for structured gallery display.
@@ -101,10 +102,10 @@ class GovernmentEvidenceGallery extends StatelessWidget {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                item.imageUrl,
+              child: SupabaseEvidenceImage(
+                imagePath: item.imageUrl,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Center(
+                errorBuilder: (context) => Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -259,10 +260,10 @@ class _FullscreenEvidenceDialogState extends State<_FullscreenEvidenceDialog> {
                 minScale: 0.8,
                 maxScale: 3.5,
                 child: Center(
-                  child: Image.network(
-                    item.imageUrl,
+                  child: SupabaseEvidenceImage(
+                    imagePath: item.imageUrl,
                     fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) => Column(
+                    errorBuilder: (context) => Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         const Icon(Icons.broken_image_outlined,
@@ -274,6 +275,9 @@ class _FullscreenEvidenceDialogState extends State<_FullscreenEvidenceDialog> {
                               .copyWith(color: Colors.white70),
                         ),
                       ],
+                    ),
+                    placeholderBuilder: (context) => const Center(
+                      child: CircularProgressIndicator(color: Colors.white),
                     ),
                   ),
                 ),

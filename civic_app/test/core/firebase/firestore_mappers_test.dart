@@ -149,6 +149,9 @@ void main() {
       );
 
       final map = ComplaintFirestoreMapper.toFirestore(complaint, isCreate: true);
+      expect(map.containsKey('departmentId'), isTrue,
+          reason: 'Firestore creation rules require the legacy assignment key');
+      expect(map['departmentId'], complaint.assignedDepartmentId);
       expect(map['citizenId'], equals('usr_001'));
       expect(map['ticketNumber'], equals('CF-2026-000024'));
       expect(map['status'], equals('inProgress'));

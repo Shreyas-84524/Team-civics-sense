@@ -10,7 +10,7 @@ import '../models/hazard_model.dart';
 import 'hazard_repository.dart';
 
 /// Hive-backed cache-aware repository for civic hazards and map data.
-class HiveHazardRepository implements HazardRepository {
+class HiveHazardRepository extends HazardRepository {
   final LocalStorageService _storage;
   final MockDataSource _dataSource;
   DateTime? _lastCachedAt;

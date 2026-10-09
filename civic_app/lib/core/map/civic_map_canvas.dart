@@ -1,9 +1,13 @@
+import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 import '../constants/app_colors.dart';
 import '../location/location_model.dart';
 import '../models/complaint_model.dart';
 import '../models/hazard_model.dart';
+import 'basemap_mode.dart';
 import 'geo_projection.dart';
 import 'map_config.dart';
 import 'map_constants.dart';
@@ -24,12 +28,14 @@ class CivicMapCanvas extends StatefulWidget {
   final double initialLatitude;
   final double initialLongitude;
   final double initialZoom;
+  final BasemapMode basemapMode;
   final TransformationController? transformationController;
   final SpatialDataService spatialDataService;
   final bool enableClustering;
   final bool showHeatmap;
   final bool showPointsLayer;
   final SpatialTimeFilter? timeFilter;
+  final ValueChanged<LatLngBounds>? onVisibleBoundsChanged;
 
   const CivicMapCanvas({
     super.key,
@@ -45,12 +51,14 @@ class CivicMapCanvas extends StatefulWidget {
     this.initialLatitude = MapConstants.mumbaiLatitude,
     this.initialLongitude = MapConstants.mumbaiLongitude,
     this.initialZoom = MapConstants.defaultInitialZoom,
+    this.basemapMode = BasemapMode.streets,
     this.transformationController,
     this.spatialDataService = const SpatialDataService(),
     this.enableClustering = true,
     this.showHeatmap = true,
     this.showPointsLayer = true,
     this.timeFilter,
+    this.onVisibleBoundsChanged,
   });
 
   @override
@@ -63,7 +71,10 @@ class CivicMapCanvasState extends State<CivicMapCanvas> {
   late double _currentLng;
   late double _currentZoom;
   bool _hasAddedSpatialSource = false;
+  int _tapGeneration = 0;
   bool _hasRegisteredLayers = false;
+  bool _hasAddedUserLocationSource = false;
+  bool _hasRegisteredUserLocationLayers = false;
 
   @override
   void initState() {
@@ -73,14 +84,35 @@ class CivicMapCanvasState extends State<CivicMapCanvas> {
     _currentZoom = widget.initialZoom;
 
     widget.transformationController?.addListener(_handleTransformChanged);
+
+    if (kDebugMode) {
+      if (MapConfig.isConfigured && MapConfig.getStyleUrl(mode: widget.basemapMode) != null) {
+        debugPrint('[CivicMapCanvas] MAP ENGINE = MAPLIBRE | mode = ${widget.basemapMode.label} | key = ${MapConfig.maskedKey}');
+      } else {
+        debugPrint('[CivicMapCanvas] MAP ENGINE = FALLBACK | key = ${MapConfig.maskedKey}');
+      }
+    }
   }
 
   @override
   void didUpdateWidget(covariant CivicMapCanvas oldWidget) {
     super.didUpdateWidget(oldWidget);
+    _tapGeneration++;
     if (oldWidget.transformationController != widget.transformationController) {
       oldWidget.transformationController?.removeListener(_handleTransformChanged);
       widget.transformationController?.addListener(_handleTransformChanged);
+    }
+    if (oldWidget.basemapMode != widget.basemapMode) {
+      if (kDebugMode) {
+        debugPrint('[CivicMapCanvas] Switching basemap mode to: ${widget.basemapMode.label} (${widget.basemapMode.styleId})');
+      }
+      _hasAddedSpatialSource = false;
+      _hasRegisteredLayers = false;
+      _hasAddedUserLocationSource = false;
+      _hasRegisteredUserLocationLayers = false;
+    }
+    if (oldWidget.userLocation != widget.userLocation) {
+      syncUserLocationGeoJsonSource();
     }
     if (oldWidget.showHeatmap != widget.showHeatmap ||
         oldWidget.enableClustering != widget.enableClustering ||
@@ -119,6 +151,7 @@ class CivicMapCanvasState extends State<CivicMapCanvas> {
     try {
       await _mapController!.removeLayer(MapConstants.heatmapLayerId);
     } catch (_) {}
+    await _removeUserLocationLayers();
     _hasRegisteredLayers = false;
   }
 
@@ -267,7 +300,7 @@ class CivicMapCanvasState extends State<CivicMapCanvas> {
             circleStrokeColor: '#FFFFFF',
           ),
           filter: ['has', 'point_count'],
-          maxzoom: 14.5,
+          maxzoom: 15.0,
         );
 
         // 3. Cluster Count Text Label Layer
@@ -280,7 +313,7 @@ class CivicMapCanvasState extends State<CivicMapCanvas> {
             textColor: '#FFFFFF',
           ),
           filter: ['has', 'point_count'],
-          maxzoom: 14.5,
+          maxzoom: 15.0,
         );
       }
 
@@ -312,7 +345,7 @@ class CivicMapCanvasState extends State<CivicMapCanvas> {
             '!',
             ['has', 'point_count'],
           ],
-          minzoom: 12.0,
+          minzoom: 10.0,
         );
       }
 
@@ -320,6 +353,119 @@ class CivicMapCanvasState extends State<CivicMapCanvas> {
     } catch (e) {
       debugPrint('[CivicMapCanvas] Layer registration note: $e');
     }
+  }
+
+  /// Generates a GeoJSON FeatureCollection representing the user's active GPS coordinate.
+  Map<String, dynamic> _buildUserLocationGeoJson(CivicLocation? loc) {
+    if (loc == null) {
+      return {
+        'type': 'FeatureCollection',
+        'features': <Map<String, dynamic>>[],
+      };
+    }
+    return {
+      'type': 'FeatureCollection',
+      'features': [
+        {
+          'type': 'Feature',
+          'geometry': {
+            'type': 'Point',
+            'coordinates': [loc.longitude, loc.latitude],
+          },
+          'properties': {
+            'accuracy': loc.accuracyMeters,
+            'ward': loc.ward ?? '',
+            'address': loc.address,
+          },
+        },
+      ],
+    };
+  }
+
+  /// Synchronizes the current user GPS location with MapLibre's native GeoJSON source.
+  Future<void> syncUserLocationGeoJsonSource() async {
+    if (_mapController == null) return;
+
+    final userGeoJson = _buildUserLocationGeoJson(widget.userLocation);
+
+    try {
+      if (_hasAddedUserLocationSource) {
+        try {
+          await _mapController!.setGeoJsonSource(MapConstants.userLocationSourceId, userGeoJson);
+        } catch (_) {
+          _hasAddedUserLocationSource = false;
+          _hasRegisteredUserLocationLayers = false;
+          await _mapController!.addSource(
+            MapConstants.userLocationSourceId,
+            GeojsonSourceProperties(data: userGeoJson),
+          );
+          _hasAddedUserLocationSource = true;
+          await _registerUserLocationLayers();
+        }
+      } else {
+        await _mapController!.addSource(
+          MapConstants.userLocationSourceId,
+          GeojsonSourceProperties(data: userGeoJson),
+        );
+        _hasAddedUserLocationSource = true;
+      }
+
+      if (_hasAddedUserLocationSource && !_hasRegisteredUserLocationLayers) {
+        await _registerUserLocationLayers();
+      }
+    } catch (e) {
+      debugPrint('[CivicMapCanvas] User location GeoJSON sync note: $e');
+    }
+  }
+
+  /// Registers GPU-accelerated circular halo and core dot layers for the user's GPS position.
+  Future<void> _registerUserLocationLayers() async {
+    if (_mapController == null || _hasRegisteredUserLocationLayers) return;
+
+    try {
+      // 1. User Location Accuracy Halo (outer soft blue circle)
+      await _mapController!.addCircleLayer(
+        MapConstants.userLocationSourceId,
+        MapConstants.userLocationHaloLayerId,
+        const CircleLayerProperties(
+          circleColor: '#0284C7',
+          circleRadius: 16.0,
+          circleOpacity: 0.22,
+          circleStrokeWidth: 1.0,
+          circleStrokeColor: '#38BDF8',
+          circleStrokeOpacity: 0.45,
+        ),
+      );
+
+      // 2. User Location Core Dot (white border + blue core)
+      await _mapController!.addCircleLayer(
+        MapConstants.userLocationSourceId,
+        MapConstants.userLocationDotLayerId,
+        const CircleLayerProperties(
+          circleColor: '#0284C7',
+          circleRadius: 6.0,
+          circleOpacity: 1.0,
+          circleStrokeWidth: 2.5,
+          circleStrokeColor: '#FFFFFF',
+        ),
+      );
+
+      _hasRegisteredUserLocationLayers = true;
+    } catch (e) {
+      debugPrint('[CivicMapCanvas] User location layer registration note: $e');
+    }
+  }
+
+  /// Removes existing user location layers safely from MapLibre.
+  Future<void> _removeUserLocationLayers() async {
+    if (_mapController == null) return;
+    try {
+      await _mapController!.removeLayer(MapConstants.userLocationDotLayerId);
+    } catch (_) {}
+    try {
+      await _mapController!.removeLayer(MapConstants.userLocationHaloLayerId);
+    } catch (_) {}
+    _hasRegisteredUserLocationLayers = false;
   }
 
   /// Returns the active GeoJSON FeatureCollection dictionary representing visible spatial features.
@@ -336,12 +482,12 @@ class CivicMapCanvasState extends State<CivicMapCanvas> {
   }
 
   void _handleTransformChanged() {
-    if (widget.transformationController == null) return;
+    if (widget.transformationController == null || MapConfig.isConfigured) return;
     final matrix = widget.transformationController!.value;
     final scale = matrix.getMaxScaleOnAxis();
     final translation = matrix.getTranslation();
 
-    // Calculate approximate zoom delta from transformation matrix scale
+    // Calculate approximate zoom delta from transformation matrix scale for fallback painter only
     final zoomDelta = (scale > 0) ? (scale - 1.0) * 1.5 : 0.0;
     final newZoom = (widget.initialZoom + zoomDelta).clamp(MapConstants.minZoom, MapConstants.maxZoom);
 
@@ -350,7 +496,6 @@ class CivicMapCanvasState extends State<CivicMapCanvas> {
     if (mounted) {
       setState(() {
         _currentZoom = newZoom;
-        // Shift center slightly with pan if matrix translation is active
         if (centerOffset.distance > 5) {
           _currentLng = widget.initialLongitude - (translation.x / (256.0 * (1 << newZoom.toInt()))) * 360.0;
         }
@@ -364,7 +509,7 @@ class CivicMapCanvasState extends State<CivicMapCanvas> {
     required double longitude,
     double? zoom,
   }) async {
-    final targetZoom = zoom ?? _currentZoom;
+    final targetZoom = (zoom ?? _currentZoom).clamp(MapConstants.minZoom, MapConstants.maxZoom);
     setState(() {
       _currentLat = latitude;
       _currentLng = longitude;
@@ -416,6 +561,21 @@ class CivicMapCanvasState extends State<CivicMapCanvas> {
     );
   }
 
+  /// Returns the currently visible geographical boundaries.
+  Future<LatLngBounds?> getVisibleBounds() async {
+    if (_mapController != null) {
+      try {
+        return await _mapController!.getVisibleRegion();
+      } catch (e) {
+        debugPrint('[CivicMapCanvas] getVisibleRegion query notice: $e');
+      }
+    }
+    return LatLngBounds(
+      southwest: LatLng(_currentLat - 0.08, _currentLng - 0.08),
+      northeast: LatLng(_currentLat + 0.08, _currentLng + 0.08),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -426,45 +586,48 @@ class CivicMapCanvasState extends State<CivicMapCanvas> {
         );
 
         final isConfigured = MapConfig.isConfigured;
-        final styleUrl = MapConfig.getStyleUrl();
+        final styleUrl = MapConfig.getStyleUrl(mode: widget.basemapMode);
 
-        return GestureDetector(
-          onTap: widget.onMapTap,
-          behavior: HitTestBehavior.translucent,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              // 1. Basemap Layer: Real MapLibreMap when configured and available
-              if (isConfigured && styleUrl != null)
-                _buildMapLibreView(styleUrl)
-              else
-                _buildFallbackBasemap(size),
+        final allMarkers = <HazardModel>[...widget.hazards];
+        if (widget.complaints != null) {
+          for (final complaint in widget.complaints!) {
+            final derived = HazardModel.fromComplaint(complaint);
+            if (!allMarkers.any((h) => h.id == derived.id || (derived.complaintId != null && h.complaintId == derived.complaintId))) {
+              allMarkers.add(derived);
+            }
+          }
+        }
 
-              // 2. User GPS Location Marker (if located)
-              if (widget.userLocation != null)
-                _buildUserLocationMarker(size, widget.userLocation!),
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            // 1. Basemap Layer: Real MapLibreMap when configured and available
+            if (isConfigured && styleUrl != null)
+              _buildMapLibreView(styleUrl, allMarkers)
+            else
+              _buildFallbackBasemap(size, allMarkers),
 
-              // 3. Geotagged Civic Hazard Markers
-              ...widget.hazards.map((hazard) {
-                return _buildHazardMarker(size, hazard);
-              }),
+            // 2. User GPS Location Marker (if located and on-screen)
+            if (widget.userLocation != null)
+              _buildUserLocationMarker(size, widget.userLocation!),
 
-              // 4. Missing API Key Developer Notification Banner (if not configured)
-              if (!isConfigured)
-                Positioned(
-                  top: 8,
-                  left: 16,
-                  right: 16,
-                  child: _buildDevNoticeBanner(),
-                ),
-            ],
-          ),
+            // 3. Geotagged Civic Hazard Markers:
+            // - In Fallback mode: Render all visible markers as Flutter widgets.
+            // - In MapLibre mode: MapLibre native GeoJSON layers render points & clusters;
+            //   we render the Flutter overlay marker ONLY for the currently selected/focused hazard.
+            if (!isConfigured || styleUrl == null)
+              ...allMarkers.map((hazard) {
+                return _buildHazardMarker(size, hazard, allMarkers);
+              })
+            else if (widget.selectedHazard != null)
+              _buildHazardMarker(size, widget.selectedHazard!, allMarkers),
+          ],
         );
       },
     );
   }
 
-  Widget _buildMapLibreView(String styleUrl) {
+  Widget _buildMapLibreView(String styleUrl, List<HazardModel> allMarkers) {
     return MapLibreMap(
       key: const ValueKey('civic_maplibre_basemap'),
       initialCameraPosition: CameraPosition(
@@ -472,34 +635,58 @@ class CivicMapCanvasState extends State<CivicMapCanvas> {
         zoom: _currentZoom,
       ),
       styleString: styleUrl,
+      // Interactive circle/symbol taps must also reach our query pipeline.
+      featureTapsTriggersMapClick: true,
       onMapCreated: (controller) {
         _mapController = controller;
         widget.onMapCreated?.call(controller);
       },
-      onStyleLoadedCallback: () {
+      onStyleLoadedCallback: () async {
         _hasAddedSpatialSource = false;
         _hasRegisteredLayers = false;
-        syncSpatialGeoJsonSource();
-      },
-      onCameraMove: (position) {
-        if (mounted) {
-          setState(() {
-            _currentLat = position.target.latitude;
-            _currentLng = position.target.longitude;
-            _currentZoom = position.zoom;
-          });
+        _hasAddedUserLocationSource = false;
+        _hasRegisteredUserLocationLayers = false;
+        await syncSpatialGeoJsonSource();
+        await syncUserLocationGeoJsonSource();
+        if (_mapController != null) {
+          try {
+            final bounds = await _mapController!.getVisibleRegion();
+            widget.onVisibleBoundsChanged?.call(bounds);
+          } catch (_) {}
         }
       },
-      onMapClick: (_, point) {
-        widget.onMapTap?.call();
+      onCameraMove: (position) {
+        _currentLat = position.target.latitude;
+        _currentLng = position.target.longitude;
+        _currentZoom = position.zoom;
+        if (kDebugMode) {
+          debugPrint('[CivicMapCanvas] CAMERA MOVED | zoom = ${position.zoom.toStringAsFixed(1)} | center changed = true');
+        }
+      },
+      onCameraIdle: () async {
+        if (mounted) {
+          setState(() {});
+        }
+        if (_mapController != null) {
+          try {
+            final bounds = await _mapController!.getVisibleRegion();
+            widget.onVisibleBoundsChanged?.call(bounds);
+          } catch (_) {}
+        }
+      },
+      onMapClick: (point, latLng) {
+        _handleMapClick(point, latLng, allMarkers);
       },
       trackCameraPosition: true,
       compassEnabled: false,
-      rotateGesturesEnabled: false,
+      rotateGesturesEnabled: true,
       scrollGesturesEnabled: true,
       zoomGesturesEnabled: true,
       tiltGesturesEnabled: false,
       myLocationEnabled: false,
+      gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
+        Factory<OneSequenceGestureRecognizer>(() => EagerGestureRecognizer()),
+      },
       minMaxZoomPreference: const MinMaxZoomPreference(
         MapConstants.minZoom,
         MapConstants.maxZoom,
@@ -507,62 +694,160 @@ class CivicMapCanvasState extends State<CivicMapCanvas> {
     );
   }
 
-  Widget _buildFallbackBasemap(Size size) {
-    return Container(
-      color: const Color(0xFFE8ECE9),
-      child: CustomPaint(
-        size: size,
-        painter: _MumbaiBasemapPainter(
-          hazards: widget.hazards,
-          centerLat: _currentLat,
-          centerLng: _currentLng,
+  Future<void> _handleMapClick(math.Point<double> point, LatLng latLng, List<HazardModel> allMarkers) async {
+    final generation = ++_tapGeneration;
+    if (kDebugMode) debugPrint('[CivicMapCanvas] tap=$point');
+    // 1. Cluster Interaction: If cluster is tapped at low/medium zoom, zoom in to expand (+2.0 zoom) without opening card
+    if (_mapController != null && widget.enableClustering) {
+      try {
+        final clusterFeatures = await _mapController!.queryRenderedFeatures(
+          math.Point<double>(point.x, point.y),
+          [MapConstants.clusterPointsLayerId, MapConstants.clusterCountLayerId],
+          null,
+        );
+        if (!mounted || generation != _tapGeneration) return;
+        if (kDebugMode) {
+          debugPrint('[CivicMapCanvas] layers=${[MapConstants.clusterPointsLayerId, MapConstants.clusterCountLayerId]} features=${clusterFeatures.length}');
+        }
+        if (clusterFeatures.isNotEmpty) {
+          widget.onMapTap?.call();
+          final nextZoom = (_currentZoom + 2.0).clamp(MapConstants.minZoom, MapConstants.maxZoom);
+          await _mapController!.animateCamera(
+            CameraUpdate.newLatLngZoom(latLng, nextZoom),
+          );
+          return;
+        }
+      } catch (error) {
+        if (kDebugMode) debugPrint('[CivicMapCanvas] cluster query failed: $error');
+        return; // Never resolve a cluster to an arbitrary nearby complaint.
+      }
+    }
+
+    // 2. Unclustered Point Feature Interaction via MapLibre queryRenderedFeatures
+    if (_mapController != null && widget.showPointsLayer) {
+      try {
+        final pointFeatures = await _mapController!.queryRenderedFeatures(
+          math.Point<double>(point.x, point.y),
+          [MapConstants.unclusteredPointsLayerId],
+          null,
+        );
+        if (!mounted || generation != _tapGeneration) return;
+        if (kDebugMode) {
+          debugPrint('[CivicMapCanvas] layers=${[MapConstants.unclusteredPointsLayerId]} features=${pointFeatures.length}');
+        }
+        if (pointFeatures.isNotEmpty) {
+          final rawFeature = pointFeatures.first;
+          String? featureId;
+          String? featureType;
+          if (rawFeature is Map) {
+            final props = rawFeature['properties'];
+            if (props is Map) {
+              featureId = props['id']?.toString();
+              featureType = props['type']?.toString();
+              if (kDebugMode) debugPrint('[CivicMapCanvas] properties=$props');
+            }
+            featureId ??= rawFeature['id']?.toString();
+          }
+
+          if (featureId != null) {
+            final byFeature = <String, HazardModel>{
+              for (final hazard in widget.hazards) 'hazard:${hazard.id}': hazard,
+              for (final complaint in widget.complaints ?? <ComplaintModel>[])
+                'complaint:${complaint.id}': HazardModel.fromComplaint(complaint),
+            };
+            final matched = byFeature['$featureType:$featureId'];
+            if (matched != null) {
+              if (kDebugMode) debugPrint('[CivicMapCanvas] complaintId=${matched.complaintId} selected=${matched.id}');
+              widget.onHazardSelected?.call(matched);
+              return;
+            }
+          }
+        }
+      } catch (e) {
+        if (kDebugMode) debugPrint('[CivicMapCanvas] queryRenderedFeatures unclustered point notice: $e');
+        return;
+      }
+    }
+
+    if (_mapController != null) {
+      widget.onMapTap?.call();
+      return; // Proximity selection is only for the offline painter.
+    }
+
+    // 3. Proximity Check Fallback (~40px effective touch tolerance)
+    if (allMarkers.isEmpty) {
+      widget.onMapTap?.call();
+      return;
+    }
+
+    const double touchTolerancePx = 40.0;
+    final double degreesPerPixel = 360.0 / (256.0 * math.pow(2.0, _currentZoom));
+    final double touchToleranceDegrees = touchTolerancePx * degreesPerPixel;
+
+    HazardModel? closest;
+    double minDistance = double.infinity;
+
+    for (final hazard in allMarkers) {
+      final dLat = hazard.latitude - latLng.latitude;
+      final dLng = hazard.longitude - latLng.longitude;
+      final dist = math.sqrt(dLat * dLat + dLng * dLng);
+
+      if (dist < minDistance && dist <= touchToleranceDegrees) {
+        minDistance = dist;
+        closest = hazard;
+      }
+    }
+
+    if (closest != null) {
+      widget.onHazardSelected?.call(closest);
+    } else {
+      widget.onMapTap?.call();
+    }
+  }
+
+  Widget _buildFallbackBasemap(Size size, [List<HazardModel>? markers]) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapUp: (details) {
+        final latLng = GeoProjection.screenOffsetToLatLng(
+          screenOffset: details.localPosition,
+          centerLatitude: _currentLat,
+          centerLongitude: _currentLng,
           zoom: _currentZoom,
-          showHeatmap: widget.showHeatmap,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDevNoticeBanner() {
-    return Semantics(
-      label: 'Map configuration notice',
+          screenSize: size,
+        );
+        _handleMapClick(
+          math.Point<double>(details.localPosition.dx, details.localPosition.dy),
+          latLng,
+          markers ?? widget.hazards,
+        );
+      },
+      onPanUpdate: (details) {
+        final double scale = 256.0 * math.pow(2.0, _currentZoom);
+        final double deltaLng = (details.delta.dx / scale) * 360.0;
+        final double deltaLat = (details.delta.dy / scale) * 180.0;
+        setState(() {
+          _currentLng = (_currentLng - deltaLng).clamp(-180.0, 180.0);
+          _currentLat = (_currentLat + deltaLat).clamp(-85.0, 85.0);
+        });
+      },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1E293B).withValues(alpha: 0.92),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFF38BDF8).withValues(alpha: 0.5)),
-          boxShadow: const [
-            BoxShadow(
-              color: Colors.black26,
-              blurRadius: 6,
-              offset: Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.info_outline_rounded, color: Color(0xFF38BDF8), size: 16),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'MapTiler vector basemap active (pass --dart-define=MAPTILER_API_KEY=key for live tiles)',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
+        color: const Color(0xFFE8ECE9),
+        child: CustomPaint(
+          size: size,
+          painter: _MumbaiBasemapPainter(
+            hazards: markers ?? widget.hazards,
+            centerLat: _currentLat,
+            centerLng: _currentLng,
+            zoom: _currentZoom,
+            showHeatmap: widget.showHeatmap,
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildHazardMarker(Size size, HazardModel hazard) {
+  Widget _buildHazardMarker(Size size, HazardModel hazard, [List<HazardModel>? markerList]) {
     final screenOffset = GeoProjection.latLngToScreenOffset(
       latitude: hazard.latitude,
       longitude: hazard.longitude,
@@ -572,26 +857,62 @@ class CivicMapCanvasState extends State<CivicMapCanvas> {
       screenSize: size,
     );
 
-    // Keep marker comfortably visible and safely away from top search bar and bottom-right floating controls
-    final clampedX = screenOffset.dx.clamp(120.0, (size.width - 160.0).clamp(120.0, double.infinity));
-    final clampedY = screenOffset.dy.clamp(100.0, (size.height - 180.0).clamp(100.0, double.infinity));
+    final isConfigured = MapConfig.isConfigured && MapConfig.getStyleUrl() != null;
+    final isOffscreen = screenOffset.dx < -30 ||
+        screenOffset.dx > size.width + 30 ||
+        screenOffset.dy < -30 ||
+        screenOffset.dy > size.height + 30;
 
-    final isOffscreen = (screenOffset.dx - clampedX).abs() > 1.0 || (screenOffset.dy - clampedY).abs() > 1.0;
-    final index = widget.hazards.indexOf(hazard);
-    final double spreadX;
-    final double spreadY;
-    if (isOffscreen && index >= 0) {
-      final col = index % 3;
-      final row = index ~/ 3;
-      spreadX = (col * 120.0) - 120.0;
-      spreadY = (row * 90.0) - 80.0;
-    } else {
-      spreadX = 0.0;
-      spreadY = 0.0;
+    // In MapLibre mode or default marker mode when offscreen: do not render offscreen markers
+    if (isConfigured || (isOffscreen && widget.markerBuilder == null)) {
+      if (isOffscreen) {
+        return const SizedBox.shrink();
+      }
+      final posX = screenOffset.dx - 18.0;
+      final posY = screenOffset.dy - 18.0;
+      final isSelected = widget.selectedHazard?.id == hazard.id;
+
+      if (widget.markerBuilder != null) {
+        return Positioned(
+          left: posX,
+          top: posY,
+          child: widget.markerBuilder!(
+            hazard,
+            isSelected,
+            () => widget.onHazardSelected?.call(hazard),
+          ),
+        );
+      }
+
+      return Positioned(
+        left: posX,
+        top: posY,
+        child: _DefaultHazardMarker(
+          hazard: hazard,
+          isSelected: isSelected,
+          onTap: () => widget.onHazardSelected?.call(hazard),
+        ),
+      );
     }
 
-    final posX = (clampedX + spreadX).clamp(60.0, (size.width - 120.0).clamp(60.0, double.infinity));
-    final posY = (clampedY + spreadY).clamp(80.0, (size.height - 160.0).clamp(80.0, double.infinity));
+    // In Fallback / Offline / Custom Marker mode:
+    final double posX;
+    final double posY;
+
+    if (!isOffscreen) {
+      posX = screenOffset.dx - 18.0;
+      posY = screenOffset.dy - 18.0;
+    } else {
+      // If custom marker builder is provided with out-of-bounds mock data in fallback canvas,
+      // place in safe interactive canvas area avoiding right/bottom floating action controls
+      final int index = markerList != null ? markerList.indexOf(hazard) : 0;
+      final safeWidth = math.max(100.0, size.width - 200.0);
+      final safeHeight = math.max(100.0, size.height - 220.0);
+      final staggeredX = 80.0 + ((index >= 0 ? index : 0) * 55.0) % safeWidth;
+      final staggeredY = 100.0 + (((index >= 0 ? index : 0) ~/ 3) * 55.0) % safeHeight;
+      posX = staggeredX;
+      posY = staggeredY;
+    }
 
     final isSelected = widget.selectedHazard?.id == hazard.id;
 
@@ -619,6 +940,17 @@ class CivicMapCanvasState extends State<CivicMapCanvas> {
   }
 
   Widget _buildUserLocationMarker(Size size, CivicLocation loc) {
+    final isConfigured = MapConfig.isConfigured && MapConfig.getStyleUrl() != null;
+
+    // In MapLibre mode without custom builder: MapLibre GPU layers render the visual dot.
+    // We provide accessibility semantics in the Flutter tree without a drifting overlay.
+    if (isConfigured && widget.userLocationBuilder == null) {
+      return Semantics(
+        label: 'Your Current GPS Location',
+        child: const SizedBox.shrink(),
+      );
+    }
+
     final screenOffset = GeoProjection.latLngToScreenOffset(
       latitude: loc.latitude,
       longitude: loc.longitude,
@@ -628,53 +960,64 @@ class CivicMapCanvasState extends State<CivicMapCanvas> {
       screenSize: size,
     );
 
-    final clampedX = screenOffset.dx.clamp(20.0, (size.width - 40.0).clamp(20.0, double.infinity));
-    final clampedY = screenOffset.dy.clamp(20.0, (size.height - 40.0).clamp(20.0, double.infinity));
+    final isOffscreen = screenOffset.dx < -40 ||
+        screenOffset.dx > size.width + 40 ||
+        screenOffset.dy < -40 ||
+        screenOffset.dy > size.height + 40;
+
+    if (isOffscreen) {
+      return const SizedBox.shrink();
+    }
+
+    final double posX = screenOffset.dx - 18.0;
+    final double posY = screenOffset.dy - 18.0;
 
     if (widget.userLocationBuilder != null) {
       return Positioned(
-        left: clampedX,
-        top: clampedY,
+        left: posX,
+        top: posY,
         child: widget.userLocationBuilder!(loc),
       );
     }
 
     return Positioned(
-      left: clampedX,
-      top: clampedY,
-      child: Semantics(
-        label: 'Your Current GPS Location',
-        child: SizedBox(
-          width: 36,
-          height: 36,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: CivicFixColors.info.withValues(alpha: 0.25),
+      left: posX,
+      top: posY,
+      child: IgnorePointer(
+        child: Semantics(
+          label: 'Your Current GPS Location',
+          child: SizedBox(
+            width: 36,
+            height: 36,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: CivicFixColors.info.withValues(alpha: 0.25),
+                  ),
                 ),
-              ),
-              Container(
-                width: 14,
-                height: 14,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: CivicFixColors.info,
-                  border: Border.all(color: Colors.white, width: 2.5),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Colors.black26,
-                      blurRadius: 4,
-                      offset: Offset(0, 1),
-                    ),
-                  ],
+                Container(
+                  width: 14,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: CivicFixColors.info,
+                    border: Border.all(color: Colors.white, width: 2.5),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Colors.black26,
+                        blurRadius: 4,
+                        offset: Offset(0, 1),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

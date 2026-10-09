@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../../core/auth/auth_service_locator.dart';
 import '../../../../core/constants/app_spacing.dart';
@@ -10,8 +11,6 @@ import '../../theme/govt_theme_tokens.dart';
 import '../../widgets/common/government_app_shell.dart';
 import '../../widgets/common/government_page_header.dart';
 import '../../widgets/common/govt_breadcrumbs.dart';
-import '../../widgets/common/govt_jurisdiction_badge.dart';
-import '../../widgets/common/govt_role_badge.dart';
 import '../auth/government_access_denied_screen.dart';
 import '../../widgets/dashboard/sections/department_lead/department_lead_assign_dialog.dart';
 import '../../widgets/dashboard/sections/department_lead/department_lead_awaiting_verification_section.dart';
@@ -21,6 +20,8 @@ import '../../widgets/dashboard/sections/department_lead/department_lead_complet
 import '../../widgets/dashboard/sections/department_lead/department_lead_crew_workload_section.dart';
 import '../../widgets/dashboard/sections/department_lead/department_lead_critical_complaints_section.dart';
 import '../../widgets/dashboard/sections/department_lead/department_lead_kpi_section.dart';
+import '../../widgets/dashboard/sections/department_lead/department_lead_manual_verification_dialog.dart';
+import '../../widgets/dashboard/sections/department_lead/department_lead_manual_verification_section.dart';
 import '../../widgets/dashboard/sections/department_lead/department_lead_map_section.dart';
 import '../../widgets/dashboard/sections/department_lead/department_lead_operations_funnel_section.dart';
 import '../../widgets/dashboard/sections/department_lead/department_lead_recent_activity_section.dart';
@@ -65,6 +66,7 @@ class _DepartmentOperationsScreenState
   // Section Keys for Quick Navigation Anchoring
   final GlobalKey _kpiKey = GlobalKey();
   final GlobalKey _funnelKey = GlobalKey();
+  final GlobalKey _manualVerificationKey = GlobalKey();
   final GlobalKey _unassignedKey = GlobalKey();
   final GlobalKey _complaintsKey = GlobalKey();
   final GlobalKey _crewKey = GlobalKey();
@@ -79,6 +81,8 @@ class _DepartmentOperationsScreenState
   DepartmentLeadDashboardData? _dashboardData;
   bool _isLoading = true;
   String? _errorMessage;
+  Timer? _searchDebounce;
+  int _loadGeneration = 0;
 
   // Unit-Level Filters (Ward and Dept are IMMUTABLE from session)
   ComplaintPriority? _selectedPriority;
@@ -97,6 +101,7 @@ class _DepartmentOperationsScreenState
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _scrollController.dispose();
     super.dispose();
   }
@@ -119,6 +124,7 @@ class _DepartmentOperationsScreenState
   }
 
   Future<void> _loadDashboard() async {
+    final generation = ++_loadGeneration;
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -138,14 +144,14 @@ class _DepartmentOperationsScreenState
         searchQuery: _searchQuery,
       );
 
-      if (mounted) {
+      if (mounted && generation == _loadGeneration) {
         setState(() {
           _dashboardData = data;
           _isLoading = false;
         });
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && generation == _loadGeneration) {
         setState(() {
           _errorMessage = e.toString();
           _isLoading = false;
@@ -176,10 +182,12 @@ class _DepartmentOperationsScreenState
 
   void _onSearchChanged(String query) {
     setState(() => _searchQuery = query);
-    _loadDashboard();
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 300), _loadDashboard);
   }
 
   void _onResetFilters() {
+    _searchDebounce?.cancel();
     setState(() {
       _selectedPriority = null;
       _selectedStatus = null;
@@ -313,6 +321,44 @@ class _DepartmentOperationsScreenState
     );
   }
 
+  void _openManualVerificationDialog(ComplaintModel complaint) {
+    final data = _dashboardData;
+    if (data == null) return;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => DepartmentLeadManualVerificationDialog(
+        complaint: complaint,
+        leadId: data.leadUser.employeeId,
+        allDepartments: data.allDepartments,
+        onSubmitDecision: ({
+          required belongsToCurrentDepartment,
+          targetDepartmentId,
+          required remarks,
+        }) async {
+          await _dashboardService.submitHumanVerificationDecision(
+            complaintId: complaint.id,
+            leadId: data.leadUser.employeeId,
+            belongsToCurrentDepartment: belongsToCurrentDepartment,
+            targetDepartmentId: targetDepartmentId,
+            remarks: remarks,
+          );
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(belongsToCurrentDepartment
+                    ? 'Complaint confirmed for ${data.department.displayName} and auto-routed to Junior Engineer.'
+                    : 'Complaint transferred to target department and auto-routed.'),
+                backgroundColor: const Color(0xFF10B981),
+              ),
+            );
+            _loadDashboard();
+          }
+        },
+      ),
+    );
+  }
+
   void _openComplaintDetails(ComplaintModel complaint) {
     showDialog(
       context: context,
@@ -338,7 +384,6 @@ class _DepartmentOperationsScreenState
     final deptName = _dashboardData?.department.displayName ?? 'Department Operations';
     final wardName = _dashboardData?.ward.wardName ?? '${_resolveWardId()} Ward';
     final wardCode = _dashboardData?.ward.wardCode ?? _resolveWardId();
-    final crewCount = _dashboardData?.crewMembers.length ?? 5;
 
     final headerTitle = '$deptName — $wardName';
     const headerSubtitle =
@@ -366,7 +411,7 @@ class _DepartmentOperationsScreenState
           Navigator.pushNamed(context, AppRoutes.governmentSettings);
         }
       },
-      body: _isLoading
+      body: _isLoading && _dashboardData == null
           ? const Center(
               child: CircularProgressIndicator(
                 valueColor:
@@ -410,53 +455,17 @@ class _DepartmentOperationsScreenState
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // Page Header with Dynamic Badges
+                      if (_isLoading) const LinearProgressIndicator(),
+                      // Page Header with Refresh Action
                       GovernmentPageHeader(
+                        primaryAction: OutlinedButton.icon(
+                          onPressed: _isLoading ? null : _loadDashboard,
+                          icon: const Icon(Icons.refresh_rounded),
+                          label: const Text('Refresh'),
+                        ),
                         title: headerTitle,
                         subtitle: headerSubtitle,
                         breadcrumbs: breadcrumbs,
-                        jurisdictionBadge: Wrap(
-                          spacing: 8,
-                          runSpacing: 4,
-                          children: [
-                            GovtJurisdictionBadge.ward(
-                              '$wardCode WARD',
-                              showIcon: true,
-                              withBrackets: true,
-                              uppercase: true,
-                            ),
-                            GovtJurisdictionBadge.department(
-                              deptName.toUpperCase(),
-                              showIcon: true,
-                              withBrackets: true,
-                              uppercase: true,
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: GovtThemeTokens.primaryDark
-                                    .withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(4),
-                                border: Border.all(
-                                  color: GovtThemeTokens.primary
-                                      .withValues(alpha: 0.3),
-                                ),
-                              ),
-                              child: Text(
-                                '[$crewCount CREW]',
-                                style: CivicFixTypography.captionMedium
-                                    .copyWith(
-                                  color: GovtThemeTokens.primaryDark,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 11,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        statusWidget:
-                            GovtRoleBadge(role: activeUser.govtRole),
                       ),
 
                       // Quick Jump Anchor Bar
@@ -464,7 +473,11 @@ class _DepartmentOperationsScreenState
 
                       // Dashboard Body Content
                       Padding(
-                        padding: const EdgeInsets.all(CivicFixSpacing.xl),
+                        padding: EdgeInsets.all(
+                          MediaQuery.sizeOf(context).width < 600
+                              ? CivicFixSpacing.md
+                              : CivicFixSpacing.xl,
+                        ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
@@ -495,6 +508,17 @@ class _DepartmentOperationsScreenState
                               key: _funnelKey,
                               child: DepartmentLeadOperationsFunnelSection(
                                 funnel: _dashboardData!.operationsFunnel,
+                              ),
+                            ),
+                            CivicFixSpacing.vSpaceXl,
+
+                            // AI Verification Fallback Review Section
+                            Container(
+                              key: _manualVerificationKey,
+                              child: DepartmentLeadManualVerificationSection(
+                                manualVerificationComplaints:
+                                    _dashboardData!.manualVerificationComplaints,
+                                onReviewComplaint: _openManualVerificationDialog,
                               ),
                             ),
                             CivicFixSpacing.vSpaceXl,
@@ -649,6 +673,7 @@ class _DepartmentOperationsScreenState
     final navItems = [
       _NavAnchor('Overview', _kpiKey, Icons.dashboard_outlined),
       _NavAnchor('Funnel', _funnelKey, Icons.alt_route_rounded),
+      _NavAnchor('AI Fallback', _manualVerificationKey, Icons.shield_outlined),
       _NavAnchor('Unassigned', _unassignedKey, Icons.assignment_late_outlined),
       _NavAnchor('Queue', _complaintsKey, Icons.table_chart_outlined),
       _NavAnchor('My Crew', _crewKey, Icons.people_outline_rounded),

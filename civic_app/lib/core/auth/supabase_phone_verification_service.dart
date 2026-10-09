@@ -119,33 +119,71 @@ class SupabasePhoneVerificationService implements PhoneVerificationService {
       if (response.statusCode >= 200 &&
           response.statusCode < 300 &&
           jsonBody['success'] == true) {
-        _lastSentTime = DateTime.now();
-        final resendAfter = (jsonBody['resend_after'] as num?)?.toInt() ?? _defaultCooldownSeconds;
+        _lastSentTime = DateTime.now().toUtc();
+        final resendAfter = (jsonBody['resend_after'] as num?)?.toInt() ??
+            (jsonBody['cooldown_seconds'] as num?)?.toInt() ??
+            (jsonBody['cooldownSeconds'] as num?)?.toInt() ??
+            _defaultCooldownSeconds;
         _cooldownDurationSeconds = resendAfter;
-        final reqId = jsonBody['request_id']?.toString() ?? '';
+
+        final expiresIn = (jsonBody['expires_in'] as num?)?.toInt() ??
+            (jsonBody['expiresIn'] as num?)?.toInt() ??
+            300;
+
+        final expiresAtRaw = jsonBody['expires_at']?.toString() ??
+            jsonBody['expiresAt']?.toString();
+        DateTime? parsedExpiresAt;
+        if (expiresAtRaw != null && expiresAtRaw.isNotEmpty) {
+          try {
+            parsedExpiresAt = DateTime.parse(expiresAtRaw).toUtc();
+          } catch (_) {}
+        }
+        parsedExpiresAt ??= DateTime.now().toUtc().add(Duration(seconds: expiresIn));
+
+        final reqId = jsonBody['request_id']?.toString() ??
+            jsonBody['requestId']?.toString() ??
+            jsonBody['challenge_id']?.toString() ??
+            (jsonBody['data'] is Map ? (jsonBody['data']['challenge_id']?.toString() ?? jsonBody['data']['request_id']?.toString()) : null) ??
+            '';
+
+        final maskedPhone = PhoneNormalizer.mask(normalizedPhone);
+        final shortReqId = reqId.length > 8 ? '${reqId.substring(0, 8)}...' : reqId;
+        debugPrint('[OTP_SEND] challenge=$shortReqId, phone=$maskedPhone, cooldown=${resendAfter}s, expires_in=${expiresIn}s');
 
         return PhoneVerificationResult.success(
           message: 'Verification code sent via SMS to ${PhoneNormalizer.toDisplay(phoneNumber)}.',
           reqId: reqId,
+          cooldownSeconds: resendAfter,
+          expiresInSeconds: expiresIn,
+          expiresAt: parsedExpiresAt,
         );
       } else {
-        final rawError = jsonBody['error']?.toString();
-        final rawMsg = jsonBody['message']?.toString();
-        final retryAfter = (jsonBody['retry_after'] as num?)?.toInt();
+        final rawError = jsonBody['error'] is Map
+            ? jsonBody['error']['code']?.toString()
+            : jsonBody['error']?.toString();
+        final rawMsg = jsonBody['error'] is Map
+            ? jsonBody['error']['message']?.toString()
+            : jsonBody['message']?.toString();
+        final retryAfter = (jsonBody['retry_after'] as num?)?.toInt() ??
+            (jsonBody['retryAfterSeconds'] as num?)?.toInt();
         if (retryAfter != null && retryAfter > 0) {
-          _lastSentTime = DateTime.now();
+          _lastSentTime = DateTime.now().toUtc();
           _cooldownDurationSeconds = retryAfter;
         }
 
         final mappedCode = _mapStatusCodeToError(response.statusCode, rawError);
         final friendlyMsg = _mapErrorMessage(mappedCode, rawMsg, jsonBody);
 
+        debugPrint('[OTP_SEND_FAILED] status=${response.statusCode}, code=$mappedCode, error=$rawError');
+
         return PhoneVerificationResult.failure(
           message: friendlyMsg,
           errorCode: mappedCode,
+          cooldownSeconds: retryAfter,
         );
       }
     } on TimeoutException {
+      debugPrint('[OTP_SEND_TIMEOUT] send-otp request timed out after 15s');
       return const PhoneVerificationResult.failure(
         message: 'Request timed out. Please check your connection and try again.',
         errorCode: 'NETWORK_TIMEOUT',
@@ -183,10 +221,12 @@ class SupabasePhoneVerificationService implements PhoneVerificationService {
       );
     }
     final normalizedPhone = PhoneNormalizer.toE164(phoneNumber);
+    final maskedPhone = PhoneNormalizer.mask(normalizedPhone);
 
     if (reqId.trim().isEmpty) {
+      debugPrint('[OTP_VERIFY_REJECTED] Empty challenge ID provided for $maskedPhone');
       return const PhoneVerificationResult.failure(
-        message: 'Session expired. Please request a new verification code.',
+        message: 'Invalid verification session. Please request a new code.',
         errorCode: 'INVALID_REQUEST_ID',
       );
     }
@@ -195,12 +235,16 @@ class SupabasePhoneVerificationService implements PhoneVerificationService {
     final idToken = await _getAuthToken();
 
     if (idToken == null || idToken.isEmpty) {
+      debugPrint('[OTP_VERIFY_UNAUTHORIZED] Missing Firebase ID token for $maskedPhone');
       return PhoneVerificationResult.failure(
         message: 'You must be signed in to verify your phone number.',
         errorCode: 'UNAUTHORIZED',
         reqId: reqId,
       );
     }
+
+    final shortReqId = reqId.length > 8 ? '${reqId.substring(0, 8)}...' : reqId;
+    debugPrint('[OTP_VERIFY] challenge=$shortReqId, phone=$maskedPhone, otp_len=${cleanOtp.length}');
 
     // Dispatch HTTP POST to verify-otp Edge Function
     try {
@@ -214,6 +258,7 @@ class SupabasePhoneVerificationService implements PhoneVerificationService {
             body: jsonEncode({
               'phone': normalizedPhone,
               'request_id': reqId.trim(),
+              'requestId': reqId.trim(),
               'otp': cleanOtp,
             }),
           )
@@ -226,7 +271,9 @@ class SupabasePhoneVerificationService implements PhoneVerificationService {
 
       if (response.statusCode >= 200 &&
           response.statusCode < 300 &&
-          jsonBody['success'] == true) {
+          (jsonBody['success'] == true || jsonBody['verified'] == true)) {
+        debugPrint('[OTP_VERIFY_SUCCESS] challenge=$shortReqId, phone=$maskedPhone');
+
         // Proactively refresh authenticated citizen profile so route guards and in-memory user sync immediately
         try {
           final auth = _authService ?? AuthServiceLocator.citizenAuth;
@@ -240,18 +287,30 @@ class SupabasePhoneVerificationService implements PhoneVerificationService {
           reqId: reqId,
         );
       } else {
-        final rawError = jsonBody['error']?.toString();
-        final rawMsg = jsonBody['message']?.toString();
+        final rawError = jsonBody['error'] is Map
+            ? jsonBody['error']['code']?.toString()
+            : jsonBody['error']?.toString();
+        final rawMsg = jsonBody['error'] is Map
+            ? jsonBody['error']['message']?.toString()
+            : jsonBody['message']?.toString();
         final mappedCode = _mapStatusCodeToError(response.statusCode, rawError);
         final friendlyMsg = _mapErrorMessage(mappedCode, rawMsg, jsonBody);
+
+        final remaining = (jsonBody['remaining_attempts'] as num?)?.toInt() ??
+            (jsonBody['remainingAttempts'] as num?)?.toInt() ??
+            (jsonBody['attempts_remaining'] as num?)?.toInt();
+
+        debugPrint('[OTP_VERIFY_FAILED] challenge=$shortReqId, status=${response.statusCode}, code=$mappedCode, remaining=$remaining');
 
         return PhoneVerificationResult.failure(
           message: friendlyMsg,
           errorCode: mappedCode,
           reqId: reqId,
+          remainingAttempts: remaining,
         );
       }
     } on TimeoutException {
+      debugPrint('[OTP_VERIFY_TIMEOUT] verify-otp request timed out after 15s');
       return PhoneVerificationResult.failure(
         message: 'Verification timed out. Please check your connection and try again.',
         errorCode: 'NETWORK_TIMEOUT',
@@ -277,6 +336,7 @@ class SupabasePhoneVerificationService implements PhoneVerificationService {
         message: 'Please wait $resendCooldownSeconds seconds before requesting another code.',
         errorCode: 'COOLDOWN_ACTIVE',
         reqId: reqId,
+        cooldownSeconds: resendCooldownSeconds,
       );
     }
 
@@ -296,66 +356,91 @@ class SupabasePhoneVerificationService implements PhoneVerificationService {
       case 404:
         return 'CHALLENGE_NOT_FOUND';
       case 409:
-        return 'PHONE_ALREADY_REGISTERED';
+        return 'PHONE_ALREADY_IN_USE';
+      case 410:
+        return 'OTP_EXPIRED';
       case 429:
-        return 'RATE_LIMIT_COOLDOWN';
+        return 'TOO_MANY_ATTEMPTS';
+      case 500:
+        return 'INTERNAL_ERROR';
       case 502:
       case 503:
-        return 'GATEWAY_DELIVERY_FAILED';
+      case 504:
+        return 'SERVICE_UNAVAILABLE';
       default:
         return 'INTERNAL_ERROR';
     }
   }
 
-  /// Maps 16 canonical backend error codes to clear, friendly citizen-facing text.
+  /// Maps canonical backend error codes to clear, friendly citizen-facing text.
   String _mapErrorMessage(String errorCode, String? rawMessage, Map<String, dynamic> jsonBody) {
     switch (errorCode) {
       case 'INVALID_PHONE_NUMBER':
+      case 'INVALID_PHONE':
         return 'Please enter a valid 10-digit Indian mobile number.';
 
       case 'INVALID_REQUEST_ID':
         return 'Invalid verification session. Please request a new code.';
 
       case 'INVALID_OTP':
-        final remaining = (jsonBody['remaining_attempts'] as num?)?.toInt();
+      case 'INVALID_OTP_FORMAT':
+        final remaining = (jsonBody['remaining_attempts'] as num?)?.toInt() ??
+            (jsonBody['remainingAttempts'] as num?)?.toInt() ??
+            (jsonBody['attempts_remaining'] as num?)?.toInt();
         if (remaining != null && remaining > 0) {
           return 'Incorrect verification code. $remaining attempt${remaining == 1 ? "" : "s"} remaining.';
         }
-        return 'Incorrect verification code. Please check and try again.';
+        return 'Incorrect verification code. Please check the code and try again.';
 
       case 'OTP_EXPIRED':
-        return 'The verification code has expired. Please tap Resend Code to request a new one.';
+      case 'CHALLENGE_EXPIRED':
+        return 'This verification code has expired. Please request a new code.';
 
       case 'OTP_ALREADY_USED':
+      case 'ALREADY_CONSUMED':
         return 'This verification code has already been used. Please request a new code.';
 
+      case 'TOO_MANY_ATTEMPTS':
       case 'MAX_ATTEMPTS_EXCEEDED':
         return 'Maximum verification attempts exceeded. Please request a new code.';
 
       case 'CHALLENGE_NOT_FOUND':
         return 'Verification session not found or expired. Please request a new code.';
 
-      case 'PHONE_ALREADY_REGISTERED':
-        return 'This phone number is already associated with another CivicFix account.';
+      case 'PHONE_MISMATCH':
+      case 'CHALLENGE_MISMATCH':
+        return 'Phone number does not match verification session. Please request a new code.';
 
+      case 'PHONE_ALREADY_IN_USE':
+      case 'PHONE_ALREADY_REGISTERED':
+      case 'PHONE_ALREADY_LINKED':
+        return 'This phone number is already linked to another CivicFix account.';
+
+      case 'RATE_LIMITED':
       case 'RATE_LIMIT_COOLDOWN':
-        final retryAfter = (jsonBody['retry_after'] as num?)?.toInt();
+      case 'COOLDOWN_ACTIVE':
+        final retryAfter = (jsonBody['retry_after'] as num?)?.toInt() ??
+            (jsonBody['retryAfterSeconds'] as num?)?.toInt();
         if (retryAfter != null && retryAfter > 0) {
           return 'Please wait $retryAfter seconds before requesting another code.';
         }
         return 'Please wait before requesting another verification code.';
 
       case 'RATE_LIMIT_HOURLY':
+      case 'HOURLY_LIMIT_EXCEEDED':
         return 'Hourly verification limit reached. Please try again later.';
 
       case 'RATE_LIMIT_DAILY':
+      case 'DAILY_LIMIT_EXCEEDED':
         return 'Daily verification limit reached. Please try again tomorrow.';
 
       case 'UNAUTHORIZED':
-        return 'Session expired or authentication failed. Please sign in again.';
+        return 'Your session has expired. Please sign in again.';
 
       case 'SMS_GATEWAY_NOT_CONFIGURED':
-        return 'SMS gateway service is temporarily unavailable. Please try again shortly.';
+      case 'SERVICE_UNAVAILABLE':
+      case 'BOOT_ERROR':
+        return 'Verification service is temporarily unavailable. Please try again shortly.';
 
       case 'GATEWAY_DELIVERY_FAILED':
         return 'Unable to dispatch SMS to your number at this time. Please try again in a moment.';
@@ -364,24 +449,46 @@ class SupabasePhoneVerificationService implements PhoneVerificationService {
         return 'Phone verified, but profile update failed. Please refresh or try again.';
 
       case 'INTERNAL_ERROR':
-        return 'A server error occurred. Please try again later.';
+        return 'Unable to complete phone verification right now. Please try again.';
 
       default:
-        return rawMessage ?? 'Verification operation failed. Please try again.';
+        return rawMessage ?? 'Unable to complete phone verification right now. Please try again.';
     }
   }
 
-  /// Handles network and connectivity exception messaging cleanly.
+  /// Handles network and connectivity exception messaging cleanly, distinguishing
+  /// genuine device offline / DNS issues from backend 5xx / boot / connection terminations.
   String _mapExceptionMessage(Object exception) {
     final str = exception.toString().toLowerCase();
-    if (str.contains('socket') ||
-        str.contains('connection') ||
-        str.contains('network') ||
-        str.contains('clientexception') ||
-        str.contains('failed host lookup') ||
-        str.contains('timeout')) {
-      return 'Network connection issue. Please check your internet connection and try again.';
+
+    // 1. Backend 5xx, worker boot failure, or server-side connection drops
+    if (str.contains('503') ||
+        str.contains('502') ||
+        str.contains('500') ||
+        str.contains('504') ||
+        str.contains('boot_error') ||
+        str.contains('connection closed') ||
+        str.contains('connection reset') ||
+        str.contains('connection refused') ||
+        str.contains('service unavailable')) {
+      return 'Verification service is temporarily unavailable. Please try again shortly.';
     }
-    return 'Unable to complete verification. Please try again.';
+
+    // 2. Genuine client-side offline / DNS failure
+    if (str.contains('failed host lookup') ||
+        str.contains('no address associated') ||
+        str.contains('network is unreachable') ||
+        str.contains('socketexception') ||
+        str.contains('no internet') ||
+        str.contains('network_error')) {
+      return 'No internet connection. Please check your connection and try again.';
+    }
+
+    // 3. Timeout
+    if (str.contains('timeout')) {
+      return 'Request timed out. Please check your connection and try again.';
+    }
+
+    return 'Unable to complete phone verification right now. Please try again.';
   }
 }

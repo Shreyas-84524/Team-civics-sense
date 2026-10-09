@@ -8,6 +8,7 @@ abstract class RewardsRepository {
   Future<CivicAchievement?> getAchievementById(String id);
   Future<List<CivicRewardItem>> getRewardsCatalog();
   Future<bool> redeemReward(String rewardId);
+  Future<List<RewardEvent>> getRewardEvents(String userId);
 }
 
 /// In-memory Mock implementation of RewardsRepository.
@@ -58,5 +59,10 @@ class MockRewardsRepository implements RewardsRepository {
       }
     } catch (_) {}
     return false;
+  }
+
+  @override
+  Future<List<RewardEvent>> getRewardEvents(String userId) async {
+    return const [];
   }
 }

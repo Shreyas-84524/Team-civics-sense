@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../../core/auth/auth_service_locator.dart';
 import '../../../core/constants/app_spacing.dart';
@@ -36,6 +37,7 @@ import '../../widgets/dashboard/sections/crew/crew_evidence_submission_dialog.da
 import '../../widgets/dashboard/sections/department_lead/department_lead_assign_dialog.dart';
 import '../../widgets/dashboard/sections/department_lead/department_lead_routing_dialog.dart';
 import '../../widgets/dashboard/sections/department_lead/department_lead_verification_dialog.dart';
+import '../../widgets/dashboard/sections/crew/crew_field_officer_assignment_dialog.dart';
 
 /// Consolidated, Standardized Government Complaint Detail Screen across all 6 roles.
 /// Route: `/government/complaints/:complaintId` and `/govt/complaint-details`.
@@ -224,7 +226,7 @@ class _GovtComplaintDetailsScreenState extends State<GovtComplaintDetailsScreen>
   List<GovernmentEvidenceItem> _buildEvidenceItems(ComplaintModel c) {
     final List<GovernmentEvidenceItem> items = [];
 
-    // Citizen Evidence
+    // 1. Citizen Report Evidence
     for (int i = 0; i < c.imageUrls.length; i++) {
       items.add(
         GovernmentEvidenceItem(
@@ -232,6 +234,44 @@ class _GovtComplaintDetailsScreenState extends State<GovtComplaintDetailsScreen>
           title: 'Citizen Report Evidence #${i + 1}',
           stage: 'citizen',
           timestamp: c.createdAt,
+        ),
+      );
+    }
+
+    // 2. Field Officer Before-Work Photo
+    if (c.beforeWorkPhoto != null && c.beforeWorkPhoto!.trim().isNotEmpty) {
+      items.add(
+        GovernmentEvidenceItem(
+          imageUrl: c.beforeWorkPhoto!.trim(),
+          title: 'Field Inspection (Before Work)',
+          stage: 'before',
+          timestamp: c.workStartedAt,
+          uploader: c.workStartedBy ?? c.assignedFieldOfficerNameSnapshot,
+        ),
+      );
+    }
+
+    // 3. Field Officer After-Work / Resolution Photo
+    if (c.afterWorkPhoto != null && c.afterWorkPhoto!.trim().isNotEmpty) {
+      items.add(
+        GovernmentEvidenceItem(
+          imageUrl: c.afterWorkPhoto!.trim(),
+          title: 'Resolution Evidence (After Work)',
+          stage: 'after',
+          timestamp: c.resolvedAt,
+          uploader: c.resolvedBy ?? c.assignedFieldOfficerNameSnapshot,
+        ),
+      );
+    }
+
+    // 4. Previous Resolution Evidence (from Rework Cycles)
+    for (int i = 0; i < c.previousResolutionEvidence.length; i++) {
+      items.add(
+        GovernmentEvidenceItem(
+          imageUrl: c.previousResolutionEvidence[i],
+          title: 'Previous Resolution Cycle #${i + 1}',
+          stage: 'resolution',
+          timestamp: c.previousResolvedAt,
         ),
       );
     }
@@ -561,6 +601,43 @@ class _GovtComplaintDetailsScreenState extends State<GovtComplaintDetailsScreen>
     }
   }
 
+  Future<void> _handleAssignFieldOfficer() async {
+    final c = _complaint;
+    final user = _currentUser;
+    if (c == null || user == null) return;
+    _routingService.registerComplaint(c);
+    if (kDebugMode) {
+      debugPrint(
+        '[GovtComplaintDetails] Opening execution officer assignment. '
+        'complaint.id: ${c.id}, serverId: ${c.serverId}, '
+        'ticketNumber: ${c.ticketNumber}, localId: ${c.localId}',
+      );
+    }
+    final officers = await _routingService.getEligibleFieldOfficers(
+      wardId: c.wardId ?? c.location.ward ?? user.wardId ?? '',
+      departmentId: c.assignedDepartmentId ?? c.category.id,
+      juniorEngineerId: user.employeeId,
+    );
+    if (!mounted) return;
+    final assigned = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => CrewFieldOfficerAssignmentDialog(
+        complaint: c,
+        officers: officers,
+        onAssign: (officerId, notes) async {
+          final updated = await _routingService.assignFieldOfficer(
+            complaintId: c.id,
+            juniorEngineerId: user.employeeId,
+            fieldOfficerId: officerId,
+            assignmentNotes: notes,
+          );
+          if (mounted) setState(() => _complaint = updated);
+        },
+      ),
+    );
+    if (assigned == true) await _loadFullDetails();
+  }
+
   Future<void> _handleRaiseWrongDepartment() async {
     if (_complaint == null || _currentUser == null) return;
     final leadService = GovernmentDepartmentLeadDashboardService(
@@ -704,6 +781,113 @@ class _GovtComplaintDetailsScreenState extends State<GovtComplaintDetailsScreen>
     }
   }
 
+  Future<void> _handleReturnForRework() async {
+    if (_complaint == null || _currentUser == null) return;
+
+    // If complaint is closed or resolved, trigger quality audit reopen dialog
+    if (_complaint!.status == ComplaintStatus.closed ||
+        _complaint!.status == ComplaintStatus.resolved) {
+      final reasonController = TextEditingController();
+      final formKey = GlobalKey<FormState>();
+
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          title: const Row(
+            children: [
+              Icon(Icons.replay_rounded, color: Color(0xFFEF4444)),
+              SizedBox(width: 8),
+              Text('Reopen Complaint'),
+            ],
+          ),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'As Ward Department Lead / Quality Authority, reopening this complaint will return it to the Junior Engineer and Ground Execution Officer for corrective rework. The original SLA and timeline history will be strictly preserved.',
+                  style: TextStyle(fontSize: 13, color: GovtThemeTokens.textSecondary),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: reasonController,
+                  maxLines: 3,
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Reopening Reason *',
+                    hintText: 'Enter reason for rework (e.g. Work quality defective, patch uncompacted)',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (val) {
+                    if (val == null || val.trim().isEmpty) {
+                      return 'Reopening reason is mandatory.';
+                    }
+                    return null;
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFEF4444),
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () {
+                if (formKey.currentState?.validate() == true) {
+                  Navigator.pop(ctx, true);
+                }
+              },
+              child: const Text('Reopen Complaint'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed == true && reasonController.text.trim().isNotEmpty) {
+        final leadService = GovernmentDepartmentLeadDashboardService(
+          complaintRepo: _repository,
+          hierarchyRepo: _hierarchyRepo,
+          routingService: _routingService,
+          auditService: _auditService,
+          authService: _authService,
+        );
+
+        try {
+          await leadService.reopenResolvedComplaint(
+            complaintId: _complaint!.id,
+            leadId: _currentUser!.employeeId,
+            reopenReason: reasonController.text.trim(),
+          );
+          await _loadFullDetails();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Complaint reopened for corrective rework.')),
+            );
+          }
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Error reopening complaint: $e')),
+            );
+          }
+        }
+      }
+      return;
+    }
+
+    // Otherwise fallback to verification dialog
+    await _handleVerifyCompletion();
+  }
+
   void _handleUpdateStatus() {
     if (_complaint == null) return;
     Navigator.pushNamed(
@@ -792,12 +976,14 @@ class _GovtComplaintDetailsScreenState extends State<GovtComplaintDetailsScreen>
             onSubmitCompletion: _handleSubmitCompletion,
             onAssignCrew: _handleAssignCrew,
             onReassignCrew: _handleAssignCrew,
+            onAssignFieldOfficer: _handleAssignFieldOfficer,
             onRaiseWrongDepartment: _handleRaiseWrongDepartment,
             onApproveRouting: _handleApproveRouting,
             onRejectRouting: _handleRejectRouting,
             onVerifyCompletion: _handleVerifyCompletion,
-            onReturnForRework: _handleVerifyCompletion,
+            onReturnForRework: _handleReturnForRework,
             onUpdateStatus: _handleUpdateStatus,
+            isReopen: c.status == ComplaintStatus.closed || c.status == ComplaintStatus.resolved,
           ),
           CivicFixSpacing.vSpaceLg,
 

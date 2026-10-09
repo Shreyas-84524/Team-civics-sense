@@ -11,8 +11,6 @@ import '../../widgets/common/government_app_shell.dart';
 import '../../widgets/common/government_filter_bar.dart';
 import '../../widgets/common/government_page_header.dart';
 import '../../widgets/common/govt_breadcrumbs.dart';
-import '../../widgets/common/govt_jurisdiction_badge.dart';
-import '../../widgets/common/govt_role_badge.dart';
 import '../auth/government_access_denied_screen.dart';
 import '../../widgets/dashboard/sections/city_attention_section.dart';
 import '../../widgets/dashboard/sections/city_complaint_map_section.dart';
@@ -118,15 +116,6 @@ class _CityCommandCenterScreenState extends State<CityCommandCenterScreen> {
     }
   }
 
-  void _onZoneFilterChanged(String? zone) {
-    setState(() {
-      _selectedZone = zone;
-      // Dependent Filter: Reset ward filter if selected ward is not in newly selected zone
-      _selectedWard = null;
-    });
-    _loadDashboard();
-  }
-
   void _onWardFilterChanged(String? ward) {
     setState(() {
       _selectedWard = ward;
@@ -196,11 +185,7 @@ class _CityCommandCenterScreenState extends State<CityCommandCenterScreen> {
       GovtBreadcrumbItem(label: 'City Command Center'),
     ];
 
-    // Filter available wards dynamically based on selected zone (Dependent Filtering)
     final allWards = _dashboardData?.wardMetrics.map((w) => w.ward).toList() ?? [];
-    final availableWards = (_selectedZone != null && _selectedZone != 'all')
-        ? allWards.where((w) => w.zoneId.toLowerCase() == _selectedZone!.toLowerCase()).toList()
-        : allWards;
 
     // Filter active alerts excluding dismissed ones
     final activeAlerts = _dashboardData?.alerts
@@ -208,7 +193,7 @@ class _CityCommandCenterScreenState extends State<CityCommandCenterScreen> {
             .toList() ??
         [];
 
-    final activeFilterCount = (_selectedZone != null && _selectedZone != 'all' ? 1 : 0) +
+    final activeFilterCount =
         (_selectedWard != null && _selectedWard != 'all' ? 1 : 0) +
         (_selectedDepartment != null && _selectedDepartment != 'all' ? 1 : 0) +
         (_selectedPriority != null ? 1 : 0) +
@@ -248,34 +233,10 @@ class _CityCommandCenterScreenState extends State<CityCommandCenterScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Page Header with Badges and Refresh Action
-              GovernmentPageHeader(
+              // Page Header
+              const GovernmentPageHeader(
                 title: 'City Command Center',
                 subtitle: 'Citywide operational overview across all CivicFix wards and municipal departments.',
-                breadcrumbs: breadcrumbs,
-                jurisdictionBadge: Wrap(
-                  spacing: 6,
-                  runSpacing: 4,
-                  children: [
-                    GovtJurisdictionBadge.role('CITYWIDE', isCompact: true),
-                    GovtJurisdictionBadge.ward('24 WARDS', isCompact: true),
-                    GovtJurisdictionBadge.department('18 DEPARTMENTS', isCompact: true),
-                  ],
-                ),
-                statusWidget: GovtRoleBadge(role: activeUser.govtRole),
-                primaryAction: ElevatedButton.icon(
-                  onPressed: _isLoading ? null : _loadDashboard,
-                  icon: _isLoading
-                      ? const Icon(Icons.hourglass_top_rounded, size: 16, color: Colors.white)
-                      : const Icon(Icons.refresh_rounded, size: 16),
-                  label: Text(_isLoading ? 'Refreshing...' : 'Refresh Feed'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: GovtThemeTokens.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    shape: RoundedRectangleBorder(borderRadius: GovtThemeTokens.buttonRadius),
-                  ),
-                ),
               ),
 
               Padding(
@@ -295,39 +256,17 @@ class _CityCommandCenterScreenState extends State<CityCommandCenterScreen> {
                         _loadDashboard();
                       },
                       dropdownFilters: [
-                        // 1. Zone Filter
-                        GovtDropdownFilterConfig<String>(
-                          label: 'Zone',
-                          selectedValue: _selectedZone,
-                          icon: Icons.domain_rounded,
-                          items: const [
-                            DropdownMenuItem(value: 'all', child: Text('All Zones (7)')),
-                            DropdownMenuItem(value: 'ZONE_1', child: Text('Zone 1 (City South)')),
-                            DropdownMenuItem(value: 'ZONE_2', child: Text('Zone 2 (City Central)')),
-                            DropdownMenuItem(value: 'ZONE_3', child: Text('Zone 3 (Western South)')),
-                            DropdownMenuItem(value: 'ZONE_4', child: Text('Zone 4 (Western North)')),
-                            DropdownMenuItem(value: 'ZONE_5', child: Text('Zone 5 (Eastern South)')),
-                            DropdownMenuItem(value: 'ZONE_6', child: Text('Zone 6 (Eastern North)')),
-                            DropdownMenuItem(value: 'ZONE_7', child: Text('Zone 7 (Northern)')),
-                          ],
-                          onChanged: _onZoneFilterChanged,
-                        ),
-
-                        // 2. Dependent Ward Filter
+                        // 1. Ward Filter
                         GovtDropdownFilterConfig<String>(
                           label: 'Ward',
                           selectedValue: _selectedWard,
                           icon: Icons.location_city_rounded,
                           items: [
-                            DropdownMenuItem(
+                            const DropdownMenuItem(
                               value: 'all',
-                              child: Text(
-                                _selectedZone != null && _selectedZone != 'all'
-                                    ? 'All Zone Wards (${availableWards.length})'
-                                    : 'All Wards (24)',
-                              ),
+                              child: Text('All Wards (24)'),
                             ),
-                            ...availableWards.map(
+                            ...allWards.map(
                               (w) => DropdownMenuItem(
                                 value: w.wardId,
                                 child: Text('Ward ${w.wardCode} (${w.wardName})'),
@@ -423,9 +362,9 @@ class _CityCommandCenterScreenState extends State<CityCommandCenterScreen> {
                       onOpenComplaintsTap: () => _navigateToComplaintsList(),
                       onCriticalComplaintsTap: () =>
                           _navigateToComplaintsList(priority: ComplaintPriority.emergency),
-                      onSlaBreachedTap: () {
+                      onTotalWardsTap: () {
                         _scrollController.animateTo(
-                          1400,
+                          1200,
                           duration: const Duration(milliseconds: 500),
                           curve: Curves.easeInOut,
                         );

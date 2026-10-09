@@ -1,37 +1,49 @@
 import 'package:flutter/material.dart';
-import '../constants/app_colors.dart';
-import '../constants/app_spacing.dart';
-import '../constants/app_typography.dart';
+import '../theme/civicfix_design_tokens.dart';
 
-/// Standardized loading state indicator.
+/// Standardized CivicFix loading state indicator.
+///
+/// Follows Design.md:
+/// - 2.5px circular progress indicator in institutional gold or slate
+/// - Inter typography for the status message
 class LoadingState extends StatelessWidget {
   final String? message;
+  final Color? color;
+  final double strokeWidth;
 
   const LoadingState({
     super.key,
     this.message,
+    this.color,
+    this.strokeWidth = 2.5,
   });
 
   @override
   Widget build(BuildContext context) {
+    final effectiveColor = color ?? CivicFixColors.primaryAccent;
+
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(CivicFixSpacing.xxl),
+        padding: const EdgeInsets.all(CivicFixSpacing.spaceLg),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            const CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(CivicFixColors.primary),
-              strokeWidth: 3,
+            SizedBox(
+              width: 32,
+              height: 32,
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(effectiveColor),
+                strokeWidth: strokeWidth,
+              ),
             ),
             if (message != null) ...[
-              CivicFixSpacing.vSpaceLg,
+              const SizedBox(height: CivicFixSpacing.spaceMd),
               Text(
                 message!,
                 textAlign: TextAlign.center,
-                style: CivicFixTypography.bodySmall.copyWith(
-                  color: CivicFixColors.secondaryText,
+                style: CivicFixTypographyTokens.bodySm.copyWith(
+                  color: CivicFixColors.textSecondary,
                 ),
               ),
             ],
@@ -41,3 +53,6 @@ class LoadingState extends StatelessWidget {
     );
   }
 }
+
+/// Standard alias conforming to the CivicFix naming convention.
+typedef CivicFixLoadingState = LoadingState;
