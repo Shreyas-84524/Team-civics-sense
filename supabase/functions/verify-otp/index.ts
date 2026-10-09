@@ -1,13 +1,9 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "jsr:@supabase/supabase-js@2";
-import {
-  normalizeIndianPhone,
-  hashOtp,
-  constantTimeCompare,
-} from "../_shared/otp-security.ts";
+import { normalizeIndianPhone } from "../_shared/otp-security.ts";
 import { verifyFirebaseIdToken } from "../_shared/firebase-auth.ts";
 import { claimPhoneAndVerifyCitizen } from "../_shared/firestore-client.ts";
 import { maskPhoneNumber } from "../_shared/sms-transport.ts";
+import { GlobalOtpClient } from "../_shared/global-otp-client.ts";
 
 const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -36,7 +32,7 @@ Deno.serve(async (req: Request) => {
     );
   }
 
-  // 3. Authenticate Firebase ID Token
+  // 3. Authenticate Citizen Firebase ID Token
   const authHeader = req.headers.get("authorization") || req.headers.get("Authorization");
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return new Response(
@@ -147,17 +143,17 @@ Deno.serve(async (req: Request) => {
     );
   }
 
-  // 5. Initialize Supabase Database Client (service_role)
-  const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    console.error("[verify-otp] Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.");
+  // 5. Initialize Global OTP Client
+  let globalOtpClient: GlobalOtpClient;
+  try {
+    globalOtpClient = new GlobalOtpClient();
+  } catch (configErr: any) {
+    console.error("[verify-otp] Configuration error:", configErr.message);
     return new Response(
       JSON.stringify({
         success: false,
         error: "INTERNAL_ERROR",
-        message: "Server database configuration is incomplete.",
+        message: "Verification service is temporarily unconfigured.",
       }),
       {
         status: 500,
@@ -166,160 +162,34 @@ Deno.serve(async (req: Request) => {
     );
   }
 
-  const supabase = createClient(supabaseUrl, serviceRoleKey);
-  const now = Date.now();
-
   try {
-    // 6. Fetch Challenge Record by request_id
-    const { data: record, error: fetchErr } = await supabase
-      .from("phone_verification_otps")
-      .select("*")
-      .eq("request_id", body.request_id.trim())
-      .maybeSingle();
+    // 6. Verify Challenge with Global OTP Backend
+    const cleanOtp = body.otp.trim();
+    const cleanRequestId = body.request_id.trim();
 
-    if (fetchErr) {
-      console.error("[verify-otp] Database error reading challenge:", fetchErr);
-      throw new Error("Failed to query verification challenge.");
-    }
+    const verifyResult = await globalOtpClient.verifyOtp(
+      normalizedPhone,
+      cleanRequestId,
+      cleanOtp
+    );
 
-    if (!record) {
+    if (!verifyResult.success || !verifyResult.verified) {
+      const statusCode = verifyResult.statusCode === 429 ? 429 : 400;
       return new Response(
         JSON.stringify({
           success: false,
-          error: "CHALLENGE_NOT_FOUND",
-          message: "No verification challenge found for the provided request ID.",
+          error: verifyResult.errorCode || "INVALID_OTP",
+          message: verifyResult.error || "Incorrect verification code.",
+          remaining_attempts: verifyResult.remainingAttempts,
         }),
         {
-          status: 404,
+          status: statusCode,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
     }
 
-    // 7. Validate Phone Number Match
-    if (record.phone !== normalizedPhone) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "CHALLENGE_MISMATCH",
-          message: "The provided phone number does not match this verification request.",
-        }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    // 8. Validate Challenge State: Already Consumed
-    if (record.consumed) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "OTP_ALREADY_USED",
-          message: "This verification code has already been used. Please request a new one.",
-        }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    // 9. Validate Challenge State: Expired
-    const expiresAtMs = new Date(record.expires_at).getTime();
-    if (expiresAtMs <= now) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "OTP_EXPIRED",
-          message: "This verification code has expired. Please request a new one.",
-        }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    // 10. Validate Challenge State: Max Attempts Reached
-    if (record.attempts >= record.max_attempts) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "MAX_ATTEMPTS_EXCEEDED",
-          message: "Maximum verification attempts exceeded. Please request a new code.",
-          remaining_attempts: 0,
-        }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    // 11. Cryptographic Hash Comparison
-    const candidateHash = await hashOtp(body.otp, record.salt, normalizedPhone);
-    const isMatch = constantTimeCompare(candidateHash, record.otp_hash);
-
-    if (!isMatch) {
-      const newAttempts = record.attempts + 1;
-      const remaining = Math.max(0, record.max_attempts - newAttempts);
-
-      const { error: updateAttemptsErr } = await supabase
-        .from("phone_verification_otps")
-        .update({ attempts: newAttempts })
-        .eq("id", record.id);
-
-      if (updateAttemptsErr) {
-        console.error("[verify-otp] Failed to increment attempts:", updateAttemptsErr);
-      }
-
-      if (newAttempts >= record.max_attempts) {
-        return new Response(
-          JSON.stringify({
-            success: false,
-            error: "MAX_ATTEMPTS_EXCEEDED",
-            message: "Incorrect verification code. Maximum attempts reached. Please request a new code.",
-            remaining_attempts: 0,
-          }),
-          {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
-        );
-      }
-
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "INVALID_OTP",
-          message: "Incorrect verification code.",
-          remaining_attempts: remaining,
-        }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    // 12. Correct OTP: Mark Challenge as Consumed
-    const consumedAt = new Date().toISOString();
-    const { error: consumeErr } = await supabase
-      .from("phone_verification_otps")
-      .update({
-        consumed: true,
-        consumed_at: consumedAt,
-      })
-      .eq("id", record.id);
-
-    if (consumeErr) {
-      console.error("[verify-otp] Failed to mark challenge as consumed:", consumeErr);
-      throw new Error("Failed to finalize OTP challenge state.");
-    }
-
-    // 13. Authoritative Firestore Identity Sync (1 Phone = 1 Citizen Account)
+    // 7. Authoritative Firestore Identity Sync (1 Phone = 1 Citizen Account)
     const claimResult = await claimPhoneAndVerifyCitizen(normalizedPhone, callerUid);
     if (!claimResult.success) {
       const statusCode = claimResult.statusCode || 500;
@@ -340,7 +210,7 @@ Deno.serve(async (req: Request) => {
       `[verify-otp] Successfully verified and linked ${maskPhoneNumber(normalizedPhone)} for UID ${callerUid}`
     );
 
-    // 14. Clean Production Response
+    // 8. Clean Citizen Response
     return new Response(
       JSON.stringify({
         success: true,

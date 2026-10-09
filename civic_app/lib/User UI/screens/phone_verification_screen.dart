@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../core/auth/auth_service.dart';
 import '../../core/auth/auth_service_locator.dart';
@@ -16,13 +17,18 @@ import '../widgets/auth_error_banner.dart';
 import '../widgets/auth_header.dart';
 import '../widgets/auth_text_field.dart';
 
+import '../../core/auth/phone_verification_session.dart';
+import '../../core/localization/app_localizations.dart';
+
 /// Screen guiding citizens through SMS OTP Phone Verification.
 ///
 /// Features:
 /// - Pre-populates phone number from registration if available
 /// - Validates Indian 10-digit mobile numbers (+91)
 /// - Dispatches OTP via [PhoneVerificationService]
-/// - Live countdown cooldown timer for OTP resends
+/// - Authoritative [PhoneVerificationSession] tracking with request generation race protection
+/// - Live countdown cooldown timer synchronized with wall-clock time and app lifecycle
+/// - Clears stale OTP input and timers upon resend or phone change
 /// - Verifies code and commits verified status to profile in [AuthService]
 /// - Routes to [AppRoutes.home] upon successful completion
 class PhoneVerificationScreen extends StatefulWidget {
@@ -41,7 +47,7 @@ class PhoneVerificationScreen extends StatefulWidget {
   State<PhoneVerificationScreen> createState() => _PhoneVerificationScreenState();
 }
 
-class _PhoneVerificationScreenState extends State<PhoneVerificationScreen> {
+class _PhoneVerificationScreenState extends State<PhoneVerificationScreen> with WidgetsBindingObserver {
   final _phoneFormKey = GlobalKey<FormState>();
   final _otpFormKey = GlobalKey<FormState>();
 
@@ -57,13 +63,16 @@ class _PhoneVerificationScreenState extends State<PhoneVerificationScreen> {
   String? _errorMessage;
   String? _successMessage;
   String? _activeReqId;
+  PhoneVerificationSession? _session;
 
+  int _otpRequestGeneration = 0;
   Timer? _cooldownTimer;
   int _secondsRemaining = 0;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _authService = widget.authService ?? AuthServiceLocator.citizenAuth;
     _verificationService = widget.verificationService ?? PhoneVerificationServiceLocator.instance;
 
@@ -78,22 +87,54 @@ class _PhoneVerificationScreenState extends State<PhoneVerificationScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _cooldownTimer?.cancel();
     _phoneController.dispose();
     _otpController.dispose();
     super.dispose();
   }
 
-  void _startCooldownTimer() {
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _syncCooldownTimer();
+    }
+  }
+
+  void _syncCooldownTimer() {
+    if (!mounted || !_isOtpSent) return;
+
+    if (_session != null) {
+      final remaining = _session!.secondsUntilResend;
+      setState(() {
+        _secondsRemaining = remaining;
+      });
+      if (remaining <= 0) {
+        _cooldownTimer?.cancel();
+      }
+    } else {
+      final remaining = _verificationService.resendCooldownSeconds;
+      setState(() {
+        _secondsRemaining = remaining;
+      });
+      if (remaining <= 0) {
+        _cooldownTimer?.cancel();
+      }
+    }
+  }
+
+  void _startCooldownTimer({int? durationSeconds}) {
     _cooldownTimer?.cancel();
-    _secondsRemaining = _verificationService.resendCooldownSeconds;
-    if (_secondsRemaining <= 0) _secondsRemaining = 30;
+    final duration = durationSeconds ??
+        (_session != null ? _session!.secondsUntilResend : _verificationService.resendCooldownSeconds);
+    _secondsRemaining = duration > 0 ? duration : 30;
 
     _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) {
         timer.cancel();
         return;
       }
+
       setState(() {
         if (_secondsRemaining > 1) {
           _secondsRemaining--;
@@ -106,6 +147,8 @@ class _PhoneVerificationScreenState extends State<PhoneVerificationScreen> {
   }
 
   Future<void> _handleSendOtp() async {
+    if (_isLoading) return;
+
     FocusScope.of(context).unfocus();
     setState(() {
       _errorMessage = null;
@@ -116,22 +159,49 @@ class _PhoneVerificationScreenState extends State<PhoneVerificationScreen> {
       return;
     }
 
+    final generation = ++_otpRequestGeneration;
     setState(() => _isLoading = true);
 
     final rawPhone = _phoneController.text.trim();
+    debugPrint('[PhoneVerificationScreen] Dispatching send-otp for gen=$generation, phone=${PhoneNormalizer.mask(rawPhone)}');
+
     final result = await _verificationService.sendOtp(rawPhone);
 
-    if (!mounted) return;
+    if (!mounted || generation != _otpRequestGeneration) {
+      debugPrint('[PhoneVerificationScreen] Discarding outdated send-otp response for gen=$generation (current gen=$_otpRequestGeneration)');
+      return;
+    }
 
     setState(() => _isLoading = false);
 
     if (result.isSuccess) {
+      final now = DateTime.now().toUtc();
+      final cooldownSec = result.cooldownSeconds ?? _verificationService.resendCooldownSeconds;
+      final effectiveCooldown = cooldownSec > 0 ? cooldownSec : 30;
+      final expiresIn = result.expiresInSeconds ?? 300;
+      final expiresAt = result.expiresAt ?? now.add(Duration(seconds: expiresIn));
+      final resendAt = now.add(Duration(seconds: effectiveCooldown));
+
+      final reqId = result.reqId ?? '';
+
+      _session = PhoneVerificationSession(
+        phoneNumber: PhoneNormalizer.toE164(rawPhone),
+        challengeId: reqId,
+        createdAt: now,
+        expiresAt: expiresAt,
+        resendAvailableAt: resendAt,
+        generation: generation,
+      );
+
+      _otpController.clear();
+
       setState(() {
         _isOtpSent = true;
-        _activeReqId = result.reqId;
+        _activeReqId = reqId;
         _successMessage = result.message ?? 'Verification code sent via SMS.';
       });
-      _startCooldownTimer();
+
+      _startCooldownTimer(durationSeconds: effectiveCooldown);
     } else {
       setState(() {
         _errorMessage = result.message ?? 'Failed to send verification code.';
@@ -140,6 +210,8 @@ class _PhoneVerificationScreenState extends State<PhoneVerificationScreen> {
   }
 
   Future<void> _handleVerifyOtp() async {
+    if (_isLoading || _isResending) return;
+
     FocusScope.of(context).unfocus();
     setState(() {
       _errorMessage = null;
@@ -150,9 +222,17 @@ class _PhoneVerificationScreenState extends State<PhoneVerificationScreen> {
       return;
     }
 
-    if (_activeReqId == null || _activeReqId!.isEmpty) {
+    final challengeId = _session?.challengeId ?? _activeReqId;
+    if (challengeId == null || challengeId.isEmpty) {
       setState(() {
-        _errorMessage = 'Session expired. Please request a new verification code.';
+        _errorMessage = 'Invalid verification session. Please request a new verification code.';
+      });
+      return;
+    }
+
+    if (_session != null && _session!.isExpired) {
+      setState(() {
+        _errorMessage = 'The verification code has expired. Please tap Resend Code to request a new one.';
       });
       return;
     }
@@ -161,14 +241,20 @@ class _PhoneVerificationScreenState extends State<PhoneVerificationScreen> {
 
     final phone = _phoneController.text.trim();
     final otp = _otpController.text.trim();
+    final currentGen = _otpRequestGeneration;
+
+    debugPrint('[PhoneVerificationScreen] Verifying OTP for gen=$currentGen, challenge=${challengeId.length > 8 ? "${challengeId.substring(0, 8)}..." : challengeId}');
 
     final result = await _verificationService.verifyOtp(
       phoneNumber: phone,
       otp: otp,
-      reqId: _activeReqId!,
+      reqId: challengeId,
     );
 
-    if (!mounted) return;
+    if (!mounted || currentGen != _otpRequestGeneration) {
+      debugPrint('[PhoneVerificationScreen] Discarding outdated verify response');
+      return;
+    }
 
     if (result.isSuccess) {
       // Mark phone verified on the citizen profile
@@ -182,7 +268,7 @@ class _PhoneVerificationScreenState extends State<PhoneVerificationScreen> {
       if (authResult.isSuccess) {
         setState(() {
           _isLoading = false;
-          _successMessage = 'Phone verified successfully! Redirecting...';
+          _successMessage = context.l10nOrNull?.phoneVerifiedSuccess ?? 'Phone verified successfully! Redirecting...';
         });
 
         await Future.delayed(const Duration(milliseconds: 600));
@@ -198,13 +284,13 @@ class _PhoneVerificationScreenState extends State<PhoneVerificationScreen> {
     } else {
       setState(() {
         _isLoading = false;
-        _errorMessage = result.message ?? 'Invalid verification code.';
+        _errorMessage = result.message ?? context.l10nOrNull?.invalidVerificationCode ?? 'Invalid verification code.';
       });
     }
   }
 
   Future<void> _handleResendOtp() async {
-    if (_secondsRemaining > 0 || _isResending) return;
+    if (_secondsRemaining > 0 || _isResending || _isLoading) return;
 
     FocusScope.of(context).unfocus();
     setState(() {
@@ -212,49 +298,83 @@ class _PhoneVerificationScreenState extends State<PhoneVerificationScreen> {
       _isResending = true;
     });
 
+    final generation = ++_otpRequestGeneration;
     final phone = _phoneController.text.trim();
+    final previousReqId = _session?.challengeId ?? _activeReqId ?? '';
+
+    debugPrint('[PhoneVerificationScreen] Resending OTP for gen=$generation, prevReq=${previousReqId.isNotEmpty ? "${previousReqId.substring(0, min(8, previousReqId.length))}..." : "none"}');
+
     final result = await _verificationService.resendOtp(
       phoneNumber: phone,
-      reqId: _activeReqId ?? '',
+      reqId: previousReqId,
     );
 
-    if (!mounted) return;
+    if (!mounted || generation != _otpRequestGeneration) {
+      debugPrint('[PhoneVerificationScreen] Discarding outdated resend response for gen=$generation');
+      return;
+    }
 
     setState(() => _isResending = false);
 
     if (result.isSuccess) {
+      final now = DateTime.now().toUtc();
+      final cooldownSec = result.cooldownSeconds ?? _verificationService.resendCooldownSeconds;
+      final effectiveCooldown = cooldownSec > 0 ? cooldownSec : 30;
+      final expiresIn = result.expiresInSeconds ?? 300;
+      final expiresAt = result.expiresAt ?? now.add(Duration(seconds: expiresIn));
+      final resendAt = now.add(Duration(seconds: effectiveCooldown));
+
+      final newReqId = (result.reqId != null && result.reqId!.isNotEmpty)
+          ? result.reqId!
+          : previousReqId;
+
+      _session = PhoneVerificationSession(
+        phoneNumber: PhoneNormalizer.toE164(phone),
+        challengeId: newReqId,
+        createdAt: now,
+        expiresAt: expiresAt,
+        resendAvailableAt: resendAt,
+        generation: generation,
+      );
+
+      // Clean stale OTP digits from the input field
+      _otpController.clear();
+
       setState(() {
-        _activeReqId = result.reqId ?? _activeReqId;
-        _successMessage = 'A new verification code has been dispatched.';
+        _activeReqId = newReqId;
+        _successMessage = context.l10nOrNull?.codeSentViaSms ?? 'A new verification code has been dispatched.';
       });
-      _startCooldownTimer();
+
+      _startCooldownTimer(durationSeconds: effectiveCooldown);
     } else {
       setState(() {
-        _errorMessage = result.message ?? 'Unable to resend verification code.';
+        _errorMessage = result.message ?? context.l10nOrNull?.unableToResendCode ?? 'Unable to resend verification code.';
       });
     }
   }
 
   void _handleChangePhone() {
+    _otpRequestGeneration++;
+    _cooldownTimer?.cancel();
     setState(() {
       _isOtpSent = false;
+      _isLoading = false;
+      _isResending = false;
       _errorMessage = null;
       _successMessage = null;
+      _activeReqId = null;
+      _session = null;
       _otpController.clear();
-      _cooldownTimer?.cancel();
       _secondsRemaining = 0;
     });
   }
 
   Future<void> _handleSignOut() async {
+    _cooldownTimer?.cancel();
     await _authService.logout();
     if (mounted) {
       Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (route) => false);
     }
-  }
-
-  void _handleSkip() {
-    Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (route) => false);
   }
 
   @override
@@ -283,13 +403,15 @@ class _PhoneVerificationScreenState extends State<PhoneVerificationScreen> {
               _handleSignOut();
             }
           },
-          tooltip: _isOtpSent ? 'Change number' : 'Back to login',
+          tooltip: _isOtpSent
+              ? (context.l10nOrNull?.changeNumber ?? 'Change number')
+              : (context.l10nOrNull?.backToLogin ?? 'Back to login'),
         ),
         actions: [
           TextButton(
             onPressed: _handleSignOut,
             child: Text(
-              'Sign Out',
+              context.l10nOrNull?.signOut ?? 'Sign Out',
               style: CivicFixTypography.bodySmallMedium.copyWith(
                 color: CivicFixColors.secondaryText,
               ),
@@ -308,9 +430,9 @@ class _PhoneVerificationScreenState extends State<PhoneVerificationScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const AuthHeader(
-                    title: 'Verify Your Phone',
-                    subtitle: 'To prevent duplicate civic complaints and protect community authenticity, verify your mobile number via SMS.',
+                  AuthHeader(
+                    title: context.l10nOrNull?.verifyYourPhone ?? 'Verify Your Phone',
+                    subtitle: context.l10nOrNull?.verifyPhoneSubtitle ?? 'To prevent duplicate civic complaints and protect community authenticity, verify your mobile number via SMS.',
                   ),
                   CivicFixSpacing.vSpaceXl,
 
@@ -356,8 +478,8 @@ class _PhoneVerificationScreenState extends State<PhoneVerificationScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           AuthTextField(
-                            label: 'Mobile Number',
-                            hintText: 'e.g. 9876543210',
+                            label: context.l10nOrNull?.mobileNumber ?? 'Mobile Number',
+                            hintText: context.l10nOrNull?.mobileNumberHint ?? 'e.g. 9876543210',
                             controller: _phoneController,
                             keyboardType: TextInputType.phone,
                             prefixIcon: Container(
@@ -379,16 +501,9 @@ class _PhoneVerificationScreenState extends State<PhoneVerificationScreen> {
                           CivicFixSpacing.vSpaceLg,
 
                           CivicFixButton(
-                            text: 'Send Verification Code',
+                            text: context.l10nOrNull?.sendVerificationCode ?? 'Send Verification Code',
                             onPressed: _handleSendOtp,
                             isLoading: _isLoading,
-                          ),
-                          CivicFixSpacing.vSpaceMd,
-                          Center(
-                            child: TextButton(
-                              onPressed: _handleSkip,
-                              child: const Text('Skip Verification & Continue'),
-                            ),
                           ),
                         ],
                       ),
@@ -420,7 +535,7 @@ class _PhoneVerificationScreenState extends State<PhoneVerificationScreen> {
                           ),
                           TextButton(
                             onPressed: _isLoading ? null : _handleChangePhone,
-                            child: const Text('Change'),
+                            child: Text(context.l10nOrNull?.changeAction ?? 'Change'),
                           ),
                         ],
                       ),
@@ -434,18 +549,18 @@ class _PhoneVerificationScreenState extends State<PhoneVerificationScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           AuthTextField(
-                            label: 'Verification Code',
-                            hintText: 'Enter 6-digit OTP (or use 123456)',
+                            label: context.l10nOrNull?.verificationCode ?? 'Verification Code',
+                            hintText: context.l10nOrNull?.verificationCodeHint ?? 'Enter 6-digit OTP',
                             controller: _otpController,
                             keyboardType: TextInputType.number,
                             maxLength: 6,
                             enabled: !_isLoading,
                             validator: (val) {
                               if (val == null || val.trim().isEmpty) {
-                                return 'Please enter the verification code.';
+                                return context.l10nOrNull?.pleaseEnterVerificationCode ?? 'Please enter the verification code.';
                               }
                               if (val.trim().length < 4) {
-                                return 'Verification code must be at least 4 digits.';
+                                return context.l10nOrNull?.verificationCodeMinLength ?? 'Verification code must be at least 4 digits.';
                               }
                               return null;
                             },
@@ -453,25 +568,18 @@ class _PhoneVerificationScreenState extends State<PhoneVerificationScreen> {
                           CivicFixSpacing.vSpaceLg,
 
                           CivicFixButton(
-                            text: 'Verify & Continue',
+                            text: context.l10nOrNull?.verifyAndContinue ?? 'Verify & Continue',
                             onPressed: _handleVerifyOtp,
                             isLoading: _isLoading,
                           ),
                           CivicFixSpacing.vSpaceMd,
 
-                          Center(
-                            child: TextButton(
-                              onPressed: _handleSkip,
-                              child: const Text('Skip Verification & Continue'),
-                            ),
-                          ),
-                          CivicFixSpacing.vSpaceSm,
-
                           // Resend OTP Action & Cooldown
                           Center(
                             child: _secondsRemaining > 0
                                 ? Text(
-                                    'Resend code in ${_secondsRemaining}s',
+                                    context.l10nOrNull?.resendCodeInSeconds(_secondsRemaining) ??
+                                        'Resend code in ${_secondsRemaining}s',
                                     style: CivicFixTypography.bodySmall.copyWith(
                                       color: CivicFixColors.secondaryText,
                                     ),
@@ -484,7 +592,7 @@ class _PhoneVerificationScreenState extends State<PhoneVerificationScreen> {
                                             height: 16,
                                             child: CircularProgressIndicator(strokeWidth: 2),
                                           )
-                                        : const Text('Resend Verification Code'),
+                                        : Text(context.l10nOrNull?.resendVerificationCode ?? 'Resend Verification Code'),
                                   ),
                           ),
                         ],

@@ -51,6 +51,13 @@ package-lock.json
 *.key
 service_account*.json
 firebase-service-account*.json
+*credentials*
+*.xlsx
+*provisioning*
+resources/Govt Data/private/
+**/firebase_auth_pre_reset_audit.json
+**/firebase_uid_mapping.json
+civic_app/.firebase/
 
 # Supabase CLI
 supabase/.temp/

@@ -1,7 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/services.dart';
 
 /// Centralized error handler that translates Firebase Authentication error codes
-/// into user-friendly and actionable feedback messages.
+/// and platform-level Google Sign-In errors into user-friendly and actionable feedback messages.
 class FirebaseAuthErrorHandler {
   FirebaseAuthErrorHandler._();
 
@@ -9,6 +10,30 @@ class FirebaseAuthErrorHandler {
   static String getMessage(dynamic error) {
     if (error is FirebaseAuthException) {
       return getMessageForCode(error.code);
+    }
+    if (error is PlatformException) {
+      final message = error.message ?? '';
+      final details = error.details?.toString() ?? '';
+      final combined = '$message $details ${error.code}'.toLowerCase();
+
+      if (combined.contains('12501') || combined.contains('canceled') || combined.contains('cancelled')) {
+        return 'Google Sign-In was cancelled.';
+      }
+      if (combined.contains('api_exception: 10') || combined.contains('developer_error') || combined.contains('code: 10')) {
+        return 'Google Sign-In configuration error: Please verify that the SHA-1 fingerprint and Google provider are enabled in Firebase Console.';
+      }
+      if (combined.contains('api_exception: 12500') || combined.contains('12500')) {
+        return 'Google Sign-In failed (Code 12500). Please ensure Google Sign-In and a project support email are enabled in Firebase Console.';
+      }
+      if (combined.contains('api_exception: 7') || combined.contains('network_error') || combined.contains('network')) {
+        return 'Google Sign-In network error: Unable to connect to Google Play Services. Please check your internet connection.';
+      }
+      if (error.code == 'sign_in_failed') {
+        return 'Google Sign-In could not be completed. Please check your Google account on this device and try again.';
+      }
+      if (error.message != null && error.message!.isNotEmpty) {
+        return error.message!;
+      }
     }
     if (error is Exception) {
       final msg = error.toString();

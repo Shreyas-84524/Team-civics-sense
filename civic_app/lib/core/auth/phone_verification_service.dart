@@ -5,11 +5,19 @@ class PhoneVerificationResult {
   final String? reqId;
   final String? accessToken;
   final String? errorCode;
+  final int? cooldownSeconds;
+  final int? expiresInSeconds;
+  final DateTime? expiresAt;
+  final int? remainingAttempts;
 
   const PhoneVerificationResult.success({
     this.message,
     this.reqId,
     this.accessToken,
+    this.cooldownSeconds,
+    this.expiresInSeconds,
+    this.expiresAt,
+    this.remainingAttempts,
   })  : isSuccess = true,
         errorCode = null;
 
@@ -17,12 +25,16 @@ class PhoneVerificationResult {
     required this.message,
     this.errorCode,
     this.reqId,
+    this.cooldownSeconds,
+    this.expiresInSeconds,
+    this.expiresAt,
+    this.remainingAttempts,
   })  : isSuccess = false,
         accessToken = null;
 
   @override
   String toString() =>
-      'PhoneVerificationResult(isSuccess: $isSuccess, message: $message, reqId: $reqId, errorCode: $errorCode)';
+      'PhoneVerificationResult(isSuccess: $isSuccess, message: $message, reqId: $reqId, errorCode: $errorCode, cooldown: $cooldownSeconds, expiresAt: $expiresAt, remainingAttempts: $remainingAttempts)';
 }
 
 /// Abstract contract for Citizen Phone Number Verification services.

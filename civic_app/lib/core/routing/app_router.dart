@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../User UI/models/complaint_draft.dart';
 import '../../User UI/screens/about_screen.dart';
 import '../../User UI/screens/assistant_screen.dart';
 import '../../User UI/screens/complaint_details_screen.dart';
@@ -15,6 +16,7 @@ import '../../User UI/screens/notifications_screen.dart';
 import '../../User UI/screens/privacy_settings_screen.dart';
 import '../../User UI/screens/profile_screen.dart';
 import '../../User UI/screens/phone_verification_screen.dart';
+import '../../User UI/screens/public_certificate_verification_screen.dart';
 import '../../User UI/screens/registration_screen.dart';
 import '../../User UI/screens/report_issue_screen.dart';
 import '../../User UI/screens/rewards_screen.dart';
@@ -60,6 +62,23 @@ class AppRouter {
       }
     }
 
+    // Dynamic Deep Link for Public Certificate Verification: /verify/:slug
+    if (routeName.startsWith('/verify/')) {
+      final segments = routeName.split('/');
+      final slug = segments.length >= 3 ? segments[2] : '';
+      return MaterialPageRoute(
+        builder: (_) => PublicCertificateVerificationScreen(verificationSlug: slug),
+        settings: settings,
+      );
+    }
+    if (routeName == AppRoutes.verify) {
+      final slug = settings.arguments is String ? settings.arguments as String : '';
+      return MaterialPageRoute(
+        builder: (_) => PublicCertificateVerificationScreen(verificationSlug: slug),
+        settings: settings,
+      );
+    }
+
     switch (settings.name) {
       case AppRoutes.splash:
         return MaterialPageRoute(builder: (_) => const SplashScreen());
@@ -87,7 +106,18 @@ class AppRouter {
         return _protectedCitizenRoute(MainNavigationScreen(initialIndex: initialIndex));
 
       case AppRoutes.reportIssue:
-        return _protectedCitizenRoute(const ReportIssueScreen());
+        final initialDraft = settings.arguments is ComplaintDraft
+            ? settings.arguments as ComplaintDraft
+            : (settings.arguments is ComplaintModel
+                ? ComplaintDraft(
+                    title: (settings.arguments as ComplaintModel).title,
+                    category: (settings.arguments as ComplaintModel).category,
+                    description: (settings.arguments as ComplaintModel).description,
+                    location: (settings.arguments as ComplaintModel).location,
+                    isHazard: (settings.arguments as ComplaintModel).isHazard,
+                  )
+                : null);
+        return _protectedCitizenRoute(ReportIssueScreen(initialDraft: initialDraft));
 
       case AppRoutes.selectLocation:
         final initialLoc = settings.arguments is CivicLocation ? settings.arguments as CivicLocation : null;
@@ -189,19 +219,26 @@ class AppRouter {
         return MaterialPageRoute(builder: (_) => const GovtForgotPasswordScreen());
 
       case AppRoutes.govtDashboard:
-        return _protectedGovtRoute(const GovtShellScreen(initialIndex: 0));
+        final user = AuthServiceLocator.govtAuth.currentUser;
+        final landingRoute = user == null
+            ? AppRoutes.governmentDashboard
+            : GovernmentSession.fromUser(user).landingRoute;
+        return _protectedGovtRoute(
+          _resolveLandingScreen(landingRoute),
+          settings: RouteSettings(name: landingRoute),
+        );
 
       case AppRoutes.govtComplaints:
-        return _protectedGovtRoute(const GovtShellScreen(initialIndex: 1));
+        return _protectedGovtRoute(const GovtShellScreen(initialIndex: 1), settings: settings);
 
       case AppRoutes.govtHazardMap:
-        return _protectedGovtRoute(const GovtShellScreen(initialIndex: 2));
+        return _protectedGovtRoute(const GovtShellScreen(initialIndex: 2), settings: settings);
 
       case AppRoutes.govtAnalytics:
-        return _protectedGovtRoute(const GovtShellScreen(initialIndex: 3));
+        return _protectedGovtRoute(const GovtShellScreen(initialIndex: 3), settings: settings);
 
       case AppRoutes.govtProfile:
-        return _protectedGovtRoute(const GovtShellScreen(initialIndex: 4));
+        return _protectedGovtRoute(const GovtShellScreen(initialIndex: 4), settings: settings);
 
       case AppRoutes.govtComplaintDetails:
         if (settings.arguments is ComplaintModel) {
@@ -352,7 +389,7 @@ class AppRouter {
     }
   }
 
-  /// Helper to enforce Citizen authentication on protected citizen routes.
+  /// Helper to enforce Citizen authentication and phone verification on protected citizen routes.
   static Route<dynamic> _protectedCitizenRoute(Widget authenticatedScreen) {
     final citizenAuth = AuthServiceLocator.citizenAuth;
     final isAuth = citizenAuth.isAuthenticated;
@@ -362,12 +399,30 @@ class AppRouter {
       return MaterialPageRoute(builder: (_) => const LoginScreen());
     }
 
+    if (!user.phoneVerified) {
+      return MaterialPageRoute(
+        builder: (_) => PhoneVerificationScreen(initialPhone: user.phone),
+      );
+    }
+
     return MaterialPageRoute(builder: (_) => authenticatedScreen);
   }
 
-  /// Helper to guard Phone Verification screen.
+  /// Helper to guard Phone Verification screen against unauthenticated or already-verified access.
   static Route<dynamic> _protectedVerifyPhoneRoute(Widget verificationScreen) {
-    return MaterialPageRoute(builder: (_) => const MainNavigationScreen(initialIndex: 0));
+    final citizenAuth = AuthServiceLocator.citizenAuth;
+    final isAuth = citizenAuth.isAuthenticated;
+    final user = citizenAuth.currentUser;
+
+    if (!isAuth || user == null) {
+      return MaterialPageRoute(builder: (_) => const LoginScreen());
+    }
+
+    if (user.phoneVerified) {
+      return MaterialPageRoute(builder: (_) => const MainNavigationScreen(initialIndex: 0));
+    }
+
+    return MaterialPageRoute(builder: (_) => verificationScreen);
   }
 
   /// Helper to enforce Government authentication, account validity, and role route permissions.

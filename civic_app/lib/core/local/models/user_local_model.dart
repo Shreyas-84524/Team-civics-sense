@@ -30,7 +30,7 @@ class UserLocalModel {
     this.languageCode = 'en',
     this.wardNumber = 'Ward 14 (Central)',
     this.role = 'citizen',
-    this.phoneVerified = true,
+    this.phoneVerified = false,
     this.phoneVerifiedAt,
   });
 
@@ -49,7 +49,7 @@ class UserLocalModel {
       languageCode: user.languageCode,
       wardNumber: user.wardNumber,
       role: user.role,
-      phoneVerified: true,
+      phoneVerified: user.phoneVerified,
       phoneVerifiedAt: user.phoneVerifiedAt,
     );
   }
@@ -69,7 +69,7 @@ class UserLocalModel {
       languageCode: languageCode,
       wardNumber: wardNumber,
       role: role,
-      phoneVerified: true,
+      phoneVerified: phoneVerified,
       phoneVerifiedAt: phoneVerifiedAt,
     );
   }

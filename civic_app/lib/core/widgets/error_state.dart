@@ -1,57 +1,77 @@
 import 'package:flutter/material.dart';
-import '../constants/app_colors.dart';
-import '../constants/app_spacing.dart';
-import '../constants/app_typography.dart';
+import '../theme/civicfix_design_tokens.dart';
 import 'civic_fix_button.dart';
 
-/// Clean error display state with retry mechanism.
+/// Clean institutional error state with retry mechanism.
+///
+/// Follows Design.md:
+/// - Error container icon backing with hairline border
+/// - Plus Jakarta Sans headline
+/// - Inter message body
+/// - Deep slate retry button
 class ErrorState extends StatelessWidget {
   final String title;
   final String message;
   final VoidCallback? onRetry;
+  final Widget? customAction;
 
   const ErrorState({
     super.key,
-    this.title = 'Something went wrong',
-    this.message = 'Unable to load civic information. Please check your connection and try again.',
+    this.title = 'Unable to Load Data',
+    this.message = 'A problem occurred while loading civic information. Please check your connection and try again.',
     this.onRetry,
+    this.customAction,
   });
 
   @override
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(CivicFixSpacing.xxl),
+        padding: const EdgeInsets.symmetric(
+          horizontal: CivicFixSpacing.spaceLg,
+          vertical: CivicFixSpacing.spaceXl,
+        ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: const EdgeInsets.all(CivicFixSpacing.xl),
+              padding: const EdgeInsets.all(CivicFixSpacing.spaceMd),
               decoration: BoxDecoration(
-                color: CivicFixColors.errorLight,
-                shape: BoxShape.circle,
+                color: CivicFixColors.errorContainer,
+                borderRadius: CivicFixRadius.cardRadius,
+                border: Border.all(
+                  color: CivicFixColors.error.withValues(alpha: 0.3),
+                  width: 1.0,
+                ),
               ),
               child: const Icon(
                 Icons.error_outline_rounded,
-                size: 44,
+                size: 36,
                 color: CivicFixColors.error,
               ),
             ),
-            CivicFixSpacing.vSpaceLg,
+            const SizedBox(height: CivicFixSpacing.spaceMd),
             Text(
               title,
               textAlign: TextAlign.center,
-              style: CivicFixTypography.h3,
+              style: CivicFixTypographyTokens.headlineSm.copyWith(
+                color: CivicFixColors.textPrimary,
+              ),
             ),
-            CivicFixSpacing.vSpaceSm,
+            const SizedBox(height: CivicFixSpacing.spaceXs + 2),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: CivicFixTypography.bodySmall,
+              style: CivicFixTypographyTokens.bodySm.copyWith(
+                color: CivicFixColors.textSecondary,
+              ),
             ),
-            if (onRetry != null) ...[
-              CivicFixSpacing.vSpaceXl,
+            if (customAction != null) ...[
+              const SizedBox(height: CivicFixSpacing.spaceLg),
+              customAction!,
+            ] else if (onRetry != null) ...[
+              const SizedBox(height: CivicFixSpacing.spaceLg),
               CivicFixButton(
                 text: 'Try Again',
                 onPressed: onRetry,
@@ -65,3 +85,6 @@ class ErrorState extends StatelessWidget {
     );
   }
 }
+
+/// Standard alias conforming to the CivicFix naming convention.
+typedef CivicFixErrorState = ErrorState;

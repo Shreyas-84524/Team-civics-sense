@@ -28,7 +28,7 @@ class UserModel {
     this.languageCode = 'en',
     this.wardNumber = 'Ward 14 (Central)',
     this.role = 'citizen',
-    this.phoneVerified = true,
+    this.phoneVerified = false,
     this.phoneVerifiedAt,
   });
 

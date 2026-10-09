@@ -1,16 +1,8 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "jsr:@supabase/supabase-js@2";
-import {
-  normalizeIndianPhone,
-  generateSecureOtp,
-  generateSecureSalt,
-  hashOtp,
-  OTP_LIFETIME_SECONDS,
-  RESEND_COOLDOWN_SECONDS,
-  HOURLY_RATE_LIMIT,
-} from "../_shared/otp-security.ts";
+import { normalizeIndianPhone } from "../_shared/otp-security.ts";
 import { verifyFirebaseIdToken } from "../_shared/firebase-auth.ts";
-import { getSmsTransport, maskPhoneNumber } from "../_shared/sms-transport.ts";
+import { maskPhoneNumber } from "../_shared/sms-transport.ts";
+import { GlobalOtpClient } from "../_shared/global-otp-client.ts";
 
 const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -39,7 +31,7 @@ Deno.serve(async (req: Request) => {
     );
   }
 
-  // 3. Authenticate Firebase ID Token
+  // 3. Authenticate Citizen Firebase ID Token
   const authHeader = req.headers.get("authorization") || req.headers.get("Authorization");
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return new Response(
@@ -122,17 +114,17 @@ Deno.serve(async (req: Request) => {
     );
   }
 
-  // 5. Initialize Supabase Database Client (service_role)
-  const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    console.error("[send-otp] Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.");
+  // 5. Initialize Global OTP Client
+  let globalOtpClient: GlobalOtpClient;
+  try {
+    globalOtpClient = new GlobalOtpClient();
+  } catch (configErr: any) {
+    console.error("[send-otp] Configuration error:", configErr.message);
     return new Response(
       JSON.stringify({
         success: false,
         error: "INTERNAL_ERROR",
-        message: "Server database configuration is incomplete.",
+        message: "SMS verification service is temporarily unconfigured.",
       }),
       {
         status: 500,
@@ -141,151 +133,46 @@ Deno.serve(async (req: Request) => {
     );
   }
 
-  const supabase = createClient(supabaseUrl, serviceRoleKey);
-  const now = Date.now();
-
   try {
-    // 6. Server-Authoritative Rate Limiting
-    // A. 30-Second Cooldown Check
-    const { data: latestRecord, error: latestErr } = await supabase
-      .from("phone_verification_otps")
-      .select("created_at")
-      .eq("phone", normalizedPhone)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (latestErr) {
-      console.error("[send-otp] Database error reading rate limit:", latestErr);
-      throw new Error("Failed to check rate limit cooldown.");
-    }
-
-    if (latestRecord && latestRecord.created_at) {
-      const elapsedMs = now - new Date(latestRecord.created_at).getTime();
-      const cooldownMs = RESEND_COOLDOWN_SECONDS * 1000;
-      if (elapsedMs < cooldownMs) {
-        const remainingSeconds = Math.ceil((cooldownMs - elapsedMs) / 1000);
-        return new Response(
-          JSON.stringify({
-            success: false,
-            error: "RATE_LIMITED",
-            message: `Please wait ${remainingSeconds} seconds before requesting another verification code.`,
-            resend_after: remainingSeconds,
-          }),
-          {
-            status: 429,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
-        );
+    // 6. Generate request idempotency key and dispatch to Global OTP backend
+    const idempotencyKey = crypto.randomUUID();
+    const result = await globalOtpClient.sendOtp(
+      normalizedPhone,
+      idempotencyKey,
+      {
+        citizen_uid: callerUid,
+        app: "CivicFix",
       }
-    }
+    );
 
-    // B. Hourly Dispatch Cap (Max 5 sends per hour per phone)
-    const oneHourAgo = new Date(now - 3600_000).toISOString();
-    const { count: hourlyCount, error: countErr } = await supabase
-      .from("phone_verification_otps")
-      .select("*", { count: "exact", head: true })
-      .eq("phone", normalizedPhone)
-      .gte("created_at", oneHourAgo);
-
-    if (countErr) {
-      console.error("[send-otp] Database error counting hourly requests:", countErr);
-      throw new Error("Failed to check hourly rate limit.");
-    }
-
-    if ((hourlyCount ?? 0) >= HOURLY_RATE_LIMIT) {
+    if (!result.success) {
+      const statusCode = result.statusCode || 500;
       return new Response(
         JSON.stringify({
           success: false,
-          error: "HOURLY_LIMIT_EXCEEDED",
-          message: "Too many verification requests for this phone number. Please try again in an hour.",
+          error: result.errorCode || "GATEWAY_DELIVERY_FAILED",
+          message: result.error || "Unable to send verification code at this time.",
+          resend_after: result.retryAfterSeconds,
+          retry_after: result.retryAfterSeconds,
         }),
         {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    // 7. Cryptographically Secure OTP Generation & Hashing
-    const otp = generateSecureOtp();
-    const salt = generateSecureSalt();
-    const otpHash = await hashOtp(otp, salt, normalizedPhone);
-    const requestId = crypto.randomUUID();
-    const expiresAt = new Date(now + OTP_LIFETIME_SECONDS * 1000).toISOString();
-
-    // 8. Store Challenge in Database
-    const { error: insertErr } = await supabase.from("phone_verification_otps").insert({
-      phone: normalizedPhone,
-      otp_hash: otpHash,
-      salt: salt,
-      request_id: requestId,
-      attempts: 0,
-      max_attempts: 3,
-      expires_at: expiresAt,
-      consumed: false,
-    });
-
-    if (insertErr) {
-      console.error("[send-otp] Failed to persist OTP challenge:", insertErr);
-      throw new Error("Failed to record verification challenge.");
-    }
-
-    // 9. Dispatch via SMS Transport Boundary
-    let smsTransport;
-    try {
-      smsTransport = getSmsTransport();
-    } catch (configErr: any) {
-      console.error("[send-otp] Transport configuration error:", configErr.message);
-      await supabase.from("phone_verification_otps").delete().eq("request_id", requestId);
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "SMS_GATEWAY_CONFIG_ERROR",
-          message: "SMS service configuration error.",
-        }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    const smsMessage = `Your CivicFix verification code is ${otp}. It expires in 5 minutes.`;
-    const transportResult = await smsTransport.sendSms(normalizedPhone, smsMessage, requestId);
-
-    if (!transportResult.success) {
-      console.error(
-        `[send-otp] SMS dispatch failed for ${maskPhoneNumber(normalizedPhone)} [ReqId: ${requestId}]: ${transportResult.errorCode || "DISPATCH_FAILED"}`
-      );
-
-      // Invalidate/prune the challenge so the citizen is not left with an undelivered active OTP or locked out by cooldown
-      await supabase.from("phone_verification_otps").delete().eq("request_id", requestId);
-
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: transportResult.errorCode || "SMS_GATEWAY_UNAVAILABLE",
-          message: transportResult.error || "SMS delivery service is currently unavailable. Please try again shortly.",
-        }),
-        {
-          status: 502,
+          status: statusCode,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
     }
 
     console.log(
-      `[send-otp] OTP challenge created and dispatched for UID ${callerUid} (${maskPhoneNumber(normalizedPhone)}) [ReqId: ${requestId}]`
+      `[send-otp] OTP challenge created via Global OTP for UID ${callerUid} (${maskPhoneNumber(normalizedPhone)}) [ReqId: ${result.requestId}]`
     );
 
-    // 10. Clean Production Response (OTP is NEVER returned in response)
+    // 7. Clean Citizen Response (OTP plaintext is NEVER returned)
     return new Response(
       JSON.stringify({
         success: true,
-        request_id: requestId,
-        expires_in: OTP_LIFETIME_SECONDS,
-        resend_after: RESEND_COOLDOWN_SECONDS,
+        request_id: result.requestId,
+        expires_in: result.expiresIn || 300,
+        resend_after: result.resendAfter || 30,
       }),
       {
         status: 200,

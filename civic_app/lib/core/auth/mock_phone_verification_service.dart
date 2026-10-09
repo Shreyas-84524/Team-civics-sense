@@ -96,6 +96,9 @@ class MockPhoneVerificationService implements PhoneVerificationService {
     return PhoneVerificationResult.success(
       message: 'OTP sent successfully to ${PhoneNormalizer.toDisplay(phoneNumber)}.',
       reqId: lastReqId,
+      cooldownSeconds: cooldownDurationSeconds,
+      expiresInSeconds: 300,
+      expiresAt: DateTime.now().toUtc().add(const Duration(seconds: 300)),
     );
   }
 
@@ -154,6 +157,7 @@ class MockPhoneVerificationService implements PhoneVerificationService {
         message: 'Please wait $resendCooldownSeconds seconds before requesting another code.',
         errorCode: 'COOLDOWN_ACTIVE',
         reqId: reqId,
+        cooldownSeconds: resendCooldownSeconds,
       );
     }
 
@@ -175,10 +179,14 @@ class MockPhoneVerificationService implements PhoneVerificationService {
 
     resendCount++;
     _lastSentTime = DateTime.now();
+    lastReqId = 'mock_req_resend_${DateTime.now().millisecondsSinceEpoch}';
 
     return PhoneVerificationResult.success(
       message: 'A new verification code has been sent.',
-      reqId: reqId,
+      reqId: lastReqId,
+      cooldownSeconds: cooldownDurationSeconds,
+      expiresInSeconds: 300,
+      expiresAt: DateTime.now().toUtc().add(const Duration(seconds: 300)),
     );
   }
 }

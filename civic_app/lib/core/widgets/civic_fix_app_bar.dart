@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
-import '../constants/app_colors.dart';
-import '../constants/app_spacing.dart';
-import '../constants/app_typography.dart';
+import '../theme/civicfix_design_tokens.dart';
 
 /// Standard AppBar for CivicFix screens.
+///
+/// Follows Design.md:
+/// - Porcelain white background
+/// - Deep slate title in Plus Jakarta Sans
+/// - Zero elevation by default, 1px bottom border
+/// - Subtle action icons
 class CivicFixAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
+  final Widget? titleWidget;
   final Widget? leading;
   final List<Widget>? actions;
   final bool automaticallyImplyLeading;
@@ -13,10 +18,12 @@ class CivicFixAppBar extends StatelessWidget implements PreferredSizeWidget {
   final Color? backgroundColor;
   final Color? foregroundColor;
   final bool centerTitle;
+  final double? elevation;
 
   const CivicFixAppBar({
     super.key,
     required this.title,
+    this.titleWidget,
     this.leading,
     this.actions,
     this.automaticallyImplyLeading = true,
@@ -24,31 +31,43 @@ class CivicFixAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.backgroundColor,
     this.foregroundColor,
     this.centerTitle = false,
+    this.elevation,
   });
 
   @override
   Widget build(BuildContext context) {
+    final effectiveFg = foregroundColor ?? CivicFixColors.textPrimary;
+    final effectiveBg = backgroundColor ?? CivicFixColors.surfaceRaised;
+
     return AppBar(
-      title: Text(
-        title,
-        style: CivicFixTypography.h3.copyWith(
-          color: foregroundColor ?? CivicFixColors.primaryText,
-        ),
-      ),
+      title: titleWidget ??
+          Text(
+            title,
+            style: CivicFixTypographyTokens.headlineSm.copyWith(
+              color: effectiveFg,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
       leading: leading,
       automaticallyImplyLeading: automaticallyImplyLeading,
       actions: actions != null
           ? [
               ...actions!,
-              CivicFixSpacing.hSpaceSm,
+              const SizedBox(width: CivicFixSpacing.spaceSm),
             ]
           : null,
-      backgroundColor: backgroundColor ?? CivicFixColors.surface,
-      foregroundColor: foregroundColor ?? CivicFixColors.primaryText,
-      elevation: 0,
-      scrolledUnderElevation: 1,
+      backgroundColor: effectiveBg,
+      foregroundColor: effectiveFg,
+      elevation: elevation ?? 0,
+      scrolledUnderElevation: 0,
       centerTitle: centerTitle,
       bottom: bottom,
+      shape: const Border(
+        bottom: BorderSide(
+          color: CivicFixColors.border,
+          width: 1.0,
+        ),
+      ),
     );
   }
 

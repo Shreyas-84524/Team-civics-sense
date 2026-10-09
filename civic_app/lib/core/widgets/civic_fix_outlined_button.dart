@@ -1,19 +1,26 @@
 import 'package:flutter/material.dart';
-import '../constants/app_colors.dart';
-import '../constants/app_radius.dart';
-import '../constants/app_spacing.dart';
-import '../constants/app_typography.dart';
+import '../theme/civicfix_design_tokens.dart';
 
-/// Outlined button for secondary actions.
+/// Outlined button for secondary actions adhering to "Civic Precision".
+///
+/// Features:
+/// - Porcelain white / transparent background
+/// - 1px hairline border in `#E2E8F0`
+/// - Deep slate typography in Plus Jakarta Sans
+/// - Compact 4px architectural radius
+/// - Zero hardcoded colors.
 class CivicFixOutlinedButton extends StatelessWidget {
   final String text;
   final VoidCallback? onPressed;
   final bool isLoading;
   final IconData? icon;
+  final Widget? customLeading;
   final Color? borderColor;
   final Color? textColor;
+  final Color? backgroundColor;
   final double? width;
   final double height;
+  final EdgeInsetsGeometry? padding;
 
   const CivicFixOutlinedButton({
     super.key,
@@ -21,16 +28,24 @@ class CivicFixOutlinedButton extends StatelessWidget {
     required this.onPressed,
     this.isLoading = false,
     this.icon,
+    this.customLeading,
     this.borderColor,
     this.textColor,
+    this.backgroundColor,
     this.width,
-    this.height = CivicFixSpacing.huge,
+    this.height = CivicFixSpacing.buttonHeight,
+    this.padding,
   });
 
   @override
   Widget build(BuildContext context) {
-    final fg = textColor ?? CivicFixColors.primary;
+    final fg = textColor ?? CivicFixColors.secondaryAuthority;
     final border = borderColor ?? CivicFixColors.border;
+    final bg = backgroundColor ?? CivicFixColors.surfaceRaised;
+    final btnPadding = padding ??
+        const EdgeInsets.symmetric(
+          horizontal: CivicFixSpacing.spaceLg,
+        );
 
     return SizedBox(
       width: width ?? double.infinity,
@@ -38,24 +53,24 @@ class CivicFixOutlinedButton extends StatelessWidget {
       child: OutlinedButton(
         onPressed: isLoading ? null : onPressed,
         style: OutlinedButton.styleFrom(
+          backgroundColor: bg,
           foregroundColor: fg,
+          disabledForegroundColor: CivicFixColors.textDisabled,
           side: BorderSide(
             color: border,
-            width: 1.5,
+            width: 1.0,
           ),
-          shape: RoundedRectangleBorder(
+          shape: const RoundedRectangleBorder(
             borderRadius: CivicFixRadius.buttonRadius,
           ),
-          padding: const EdgeInsets.symmetric(
-            horizontal: CivicFixSpacing.lg,
-          ),
+          padding: btnPadding,
         ),
         child: isLoading
             ? SizedBox(
-                width: 22,
-                height: 22,
+                width: 20,
+                height: 20,
                 child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
+                  strokeWidth: 2.2,
                   valueColor: AlwaysStoppedAnimation<Color>(fg),
                 ),
               )
@@ -63,13 +78,23 @@ class CivicFixOutlinedButton extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (icon != null) ...[
-                    Icon(icon, size: 20, color: fg),
+                  if (customLeading != null) ...[
+                    customLeading!,
+                    CivicFixSpacing.hSpaceSm,
+                  ] else if (icon != null) ...[
+                    Icon(icon, size: CivicFixSpacing.iconMd, color: fg),
                     CivicFixSpacing.hSpaceSm,
                   ],
-                  Text(
-                    text,
-                    style: CivicFixTypography.button.copyWith(color: fg),
+                  Flexible(
+                    child: Text(
+                      text,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: CivicFixTypographyTokens.titleMd.copyWith(
+                        color: fg,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ],
               ),

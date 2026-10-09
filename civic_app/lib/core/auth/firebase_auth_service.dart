@@ -37,8 +37,16 @@ class FirebaseAuthService implements AuthService {
     _initAuthStateListener();
   }
 
+  static const String defaultServerClientId =
+      '594524642298-sld4i45a2ule5bdvkqhqj56i2l9e2k48.apps.googleusercontent.com';
+
   FirebaseAuth get _authInstance => _auth ?? FirebaseAuth.instance;
-  GoogleSignIn get _googleSignInInstance => _googleSignIn ?? GoogleSignIn(scopes: ['email']);
+  GoogleSignIn get _googleSignInInstance =>
+      _googleSignIn ??
+      GoogleSignIn(
+        serverClientId: defaultServerClientId,
+        scopes: const ['email', 'profile'],
+      );
 
   void _initAuthStateListener() {
     try {
@@ -70,7 +78,7 @@ class FirebaseAuthService implements AuthService {
   @override
   String? get currentUid {
     try {
-      return _authInstance.currentUser?.uid;
+      return _authInstance.currentUser?.uid ?? _currentUser?.id;
     } catch (_) {
       return _currentUser?.id;
     }
@@ -95,10 +103,53 @@ class FirebaseAuthService implements AuthService {
   @override
   Future<bool> checkAuthState() async {
     try {
-      final firebaseUser = _authInstance.currentUser;
+      User? firebaseUser;
+      try {
+        firebaseUser = _authInstance.currentUser;
+        if (firebaseUser == null) {
+          // Check if local cache has an existing user session to calibrate wait duration
+          UserModel? cachedUser;
+          try {
+            final local = await _userRepository.getCurrentUser();
+            if (local.id.isNotEmpty) cachedUser = local;
+          } catch (_) {}
+
+          // If we had an active session, wait up to 2000ms for async token hydration (IndexedDB / SharedPreferences)
+          final waitDuration = cachedUser != null
+              ? const Duration(milliseconds: 2000)
+              : const Duration(milliseconds: 400);
+
+          firebaseUser = await _authInstance
+              .authStateChanges()
+              .firstWhere((user) => user != null)
+              .timeout(waitDuration);
+        }
+      } catch (authErr) {
+        debugPrint('[FirebaseAuthService] Notice: FirebaseAuth uninitialized, offline, or timed out ($authErr)');
+        try {
+          firebaseUser = _authInstance.currentUser;
+        } catch (_) {}
+      }
+
       if (firebaseUser == null) {
+        // Fallback: Check if Hive local cache has an active cached user session (offline resilience)
+        try {
+          final cachedUser = await _userRepository.getCurrentUser();
+          if (cachedUser.id.isNotEmpty) {
+            _currentUser = cachedUser;
+            return true;
+          }
+        } catch (_) {}
+
         _currentUser = null;
         return false;
+      }
+
+      // Proactively ensure ID token is fresh and not expired before performing Firestore writes
+      try {
+        await firebaseUser.getIdToken();
+      } catch (tokenErr) {
+        debugPrint('[FirebaseAuthService] Notice: ID token refresh deferred or offline ($tokenErr)');
       }
 
       await _restoreUserProfile(firebaseUser.uid);
@@ -197,6 +248,12 @@ class FirebaseAuthService implements AuthService {
 
       // 2. Obtain OAuth authentication tokens
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      if (googleAuth.idToken == null && googleAuth.accessToken == null) {
+        return const AuthResult.failure(
+          'Google authentication failed: unable to obtain security tokens. Please verify Google Play Services.',
+        );
+      }
+
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
@@ -478,8 +535,30 @@ class FirebaseAuthService implements AuthService {
         try {
           await NotificationServiceLocator.instance.registerDeviceToken(uid);
         } catch (_) {}
+        return;
       }
     } catch (_) {}
+
+    // Fallback if neither Firestore nor Hive has a profile yet, but Firebase Auth has authenticated user
+    final fbUser = _authInstance.currentUser;
+    if (fbUser != null && fbUser.uid == uid) {
+      final fallbackUser = UserModel(
+        id: uid,
+        fullName: fbUser.displayName ?? 'Civic Citizen',
+        email: fbUser.email ?? '',
+        phone: fbUser.phoneNumber ?? '',
+        role: 'citizen',
+        civicPoints: 20,
+        reportsSubmitted: 0,
+        reportsResolved: 0,
+        wardNumber: 'Ward 14 (Central)',
+        languageCode: 'en',
+      );
+      _currentUser = fallbackUser;
+      try {
+        await _userRepository.cacheUser(fallbackUser);
+      } catch (_) {}
+    }
   }
 
   /// Disposes internal listeners when tearing down service.

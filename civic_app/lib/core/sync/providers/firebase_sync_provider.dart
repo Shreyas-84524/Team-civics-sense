@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import '../../evidence/evidence_bytes.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../../ai/ai_authenticity_service.dart';
@@ -12,17 +13,17 @@ import '../../firebase/firebase_constants.dart';
 import '../../firebase/firestore/firebase_complaint_data_source.dart';
 import '../../firebase/storage/evidence_storage_models.dart';
 import '../../firebase/storage/evidence_storage_service.dart';
-import '../../firebase/storage/firebase_evidence_storage_service.dart';
 import '../../firebase/storage/storage_error_handler.dart';
 import '../../firebase/mappers/firestore_mapper_helpers.dart';
 import '../../location/location_model.dart';
 import '../../models/complaint_model.dart';
 import '../../services/supabase_notification_service.dart';
+import '../../storage/supabase_evidence_storage_service.dart';
 import '../models/sync_queue_item.dart';
 import 'sync_provider.dart';
 
 /// Production-ready, offline-tolerant synchronization provider connecting
-/// the CivicFix SyncManager engine directly to Cloud Firestore & Firebase Cloud Storage.
+/// the CivicFix SyncManager engine directly to Cloud Firestore & Supabase Storage.
 class FirebaseSyncProvider implements SyncProvider {
   final FirebaseComplaintDataSource _complaintDataSource;
   final EvidenceStorageService _evidenceStorageService;
@@ -36,11 +37,14 @@ class FirebaseSyncProvider implements SyncProvider {
     SupabaseNotificationService? notificationService,
     FirebaseFirestore? firestore,
     AiAuthenticityService? authenticityService,
-  })  : _complaintDataSource = complaintDataSource ?? FirebaseComplaintDataSource(),
-        _evidenceStorageService = evidenceStorageService ?? FirebaseEvidenceStorageService(),
-        _notificationService = notificationService ?? HttpSupabaseNotificationService(),
-        _firestore = firestore,
-        _authenticityService = authenticityService;
+  }) : _complaintDataSource =
+           complaintDataSource ?? FirebaseComplaintDataSource(),
+       _evidenceStorageService =
+           evidenceStorageService ?? SupabaseEvidenceStorageService.instance,
+       _notificationService =
+           notificationService ?? HttpSupabaseNotificationService(),
+       _firestore = firestore,
+       _authenticityService = authenticityService;
 
   FirebaseFirestore get _db => _firestore ?? FirebaseFirestore.instance;
 
@@ -100,9 +104,14 @@ class FirebaseSyncProvider implements SyncProvider {
     final localId = payload['localId'] as String? ?? complaintId;
 
     // 1. IDEMPOTENCY CHECK: Check if remote complaint already exists
-    final existingDoc = await _findExistingRemoteComplaint(complaintId, localId);
+    final existingDoc = await _findExistingRemoteComplaint(
+      complaintId,
+      localId,
+    );
     if (existingDoc != null) {
-      debugPrint('[FirebaseSyncProvider] Idempotent hit: Complaint $complaintId already exists on Firestore with serverId: ${existingDoc.id}');
+      debugPrint(
+        '[FirebaseSyncProvider] Idempotent hit: Complaint $complaintId already exists on Firestore with serverId: ${existingDoc.id}',
+      );
       return SyncResult.success(
         serverId: existingDoc.id,
         uploadedImageUrls: existingDoc.imageUrls,
@@ -115,7 +124,9 @@ class FirebaseSyncProvider implements SyncProvider {
     }
 
     // 2. Reconstruct ComplaintModel from queue payload
-    final rawImages = (payload['imageUrls'] as List<dynamic>? ?? const []).map((e) => e.toString()).toList();
+    final rawImages = (payload['imageUrls'] as List<dynamic>? ?? const [])
+        .map((e) => e.toString())
+        .toList();
     final List<String> remoteImageUrls = [];
     final List<String> failedImageUrls = [];
 
@@ -130,6 +141,8 @@ class FirebaseSyncProvider implements SyncProvider {
         try {
           final uploadUrl = await _uploadLocalMedia(
             complaintId: complaintId,
+            ticketNumber: payload['ticketNumber'] as String? ?? complaintId,
+            citizenId: payload['citizenId'] as String?,
             mediaRef: imgRef,
             index: i,
           );
@@ -139,7 +152,9 @@ class FirebaseSyncProvider implements SyncProvider {
             failedImageUrls.add(imgRef);
           }
         } catch (e) {
-          debugPrint('[FirebaseSyncProvider] Evidence upload error for $imgRef: $e');
+          debugPrint(
+            '[FirebaseSyncProvider] Evidence upload error for $imgRef: $e',
+          );
           failedImageUrls.add(imgRef);
         }
       }
@@ -172,7 +187,8 @@ class FirebaseSyncProvider implements SyncProvider {
 
     final complaintToCreate = ComplaintModel(
       id: complaintId,
-      citizenId: payload['citizenId'] as String? ??
+      citizenId:
+          payload['citizenId'] as String? ??
           AuthServiceLocator.citizenAuth.currentUid ??
           AuthServiceLocator.citizenAuth.currentUser?.id ??
           '',
@@ -180,7 +196,7 @@ class FirebaseSyncProvider implements SyncProvider {
       title: payload['title'] as String? ?? 'Untitled Grievance',
       description: payload['description'] as String? ?? '',
       category: category,
-      status: ComplaintStatus.reported,
+      status: ComplaintStatus.underVerification,
       priority: priority,
       location: location,
       imageUrls: remoteImageUrls,
@@ -191,10 +207,15 @@ class FirebaseSyncProvider implements SyncProvider {
       isHazard: payload['isHazard'] == true,
       syncStatus: SyncStatus.synced,
       localId: localId,
+      evidenceVerificationStatus: 'pending',
+      departmentVerificationStatus: 'pending',
+      verificationStage: 'evidence',
     );
 
     // 5. Create in Firestore
-    final created = await _complaintDataSource.createComplaint(complaintToCreate);
+    final created = await _complaintDataSource.createComplaint(
+      complaintToCreate,
+    );
 
     // 5b. Run AI Authenticity Verification on local evidence (isolated, never fails complaint)
     AiAuthenticityResult? authenticityResult;
@@ -207,10 +228,14 @@ class FirebaseSyncProvider implements SyncProvider {
       );
       if (res != null) {
         authenticityResult = res;
-        authenticityStatus = res.isSuccess ? AiAnalysisStatus.completed : AiAnalysisStatus.failed;
+        authenticityStatus = res.isSuccess
+            ? AiAnalysisStatus.completed
+            : AiAnalysisStatus.failed;
       }
     } catch (e) {
-      debugPrint('[FirebaseSyncProvider] Authenticity verification caught error: $e');
+      debugPrint(
+        '[FirebaseSyncProvider] Authenticity verification caught error: $e',
+      );
       authenticityStatus = AiAnalysisStatus.failed;
     }
 
@@ -220,11 +245,13 @@ class FirebaseSyncProvider implements SyncProvider {
         serverId: created.id,
         uploadedImageUrls: remoteImageUrls,
         failedImageUrls: failedImageUrls,
-        errorMessage: 'Complaint created on cloud (${created.id}), but ${failedImageUrls.length} photo(s) failed upload and will be retried.',
+        errorMessage:
+            'Complaint created on cloud (${created.id}), but ${failedImageUrls.length} photo(s) failed upload and will be retried.',
         responseData: {
           'serverId': created.id,
           'ticketNumber': created.ticketNumber,
-          if (authenticityResult != null) 'aiAuthenticity': authenticityResult.toMap(),
+          if (authenticityResult != null)
+            'aiAuthenticity': authenticityResult.toMap(),
           'aiAnalysisStatus': authenticityStatus.name,
         },
       );
@@ -236,7 +263,8 @@ class FirebaseSyncProvider implements SyncProvider {
       responseData: {
         'serverId': created.id,
         'ticketNumber': created.ticketNumber,
-        if (authenticityResult != null) 'aiAuthenticity': authenticityResult.toMap(),
+        if (authenticityResult != null)
+          'aiAuthenticity': authenticityResult.toMap(),
         'aiAnalysisStatus': authenticityStatus.name,
       },
     );
@@ -252,40 +280,56 @@ class FirebaseSyncProvider implements SyncProvider {
       final authService = _authenticityService ?? GeminiAiAuthenticityService();
 
       File? targetFile;
-      for (final ref in localMediaRefs) {
-        if (!ref.startsWith('http://') && !ref.startsWith('https://')) {
-          final f = File(ref);
-          if (await f.exists()) {
-            targetFile = f;
-            break;
+      if (!kIsWeb) {
+        for (final ref in localMediaRefs) {
+          if (!ref.startsWith('http://') && !ref.startsWith('https://')) {
+            final f = File(ref);
+            if (await f.exists()) {
+              targetFile = f;
+              break;
+            }
           }
         }
       }
 
       if (targetFile == null) {
-        debugPrint('[CivicFix Sync] No local evidence file found for authenticity check on $complaintId');
+        debugPrint(
+          '[CivicFix Sync] No local evidence file found for authenticity check on $complaintId',
+        );
         return null;
       }
 
-      debugPrint('[CivicFix AI] Authenticity analysis started for complaint $complaintId ($serverId)');
+      debugPrint(
+        '[CivicFix AI] Authenticity analysis started for complaint $complaintId ($serverId)',
+      );
       final result = await authService.analyzeAuthenticityFile(targetFile);
 
-      final status = result.isSuccess ? AiAnalysisStatus.completed : AiAnalysisStatus.failed;
+      final status = result.isSuccess
+          ? AiAnalysisStatus.completed
+          : AiAnalysisStatus.failed;
 
       // Update Firestore document with authenticity assessment
-      await _db.collection(FirestoreCollections.complaints).doc(serverId).update({
-        'aiAuthenticity': result.toMap(),
-        'aiAnalysisStatus': status.name,
-      });
+      await _db
+          .collection(FirestoreCollections.complaints)
+          .doc(serverId)
+          .update({
+            'aiAuthenticity': result.toMap(),
+            'aiAnalysisStatus': status.name,
+          });
 
-      debugPrint('[CivicFix Sync] AI authenticity result persisted to Firestore for $serverId: ${result.status.rawValue}');
+      debugPrint(
+        '[CivicFix Sync] AI authenticity result persisted to Firestore for $serverId: ${result.status.rawValue}',
+      );
       return result;
     } catch (e) {
-      debugPrint('[CivicFix Sync] AI authenticity verification failed (complaint remains synced): $e');
+      debugPrint(
+        '[CivicFix Sync] AI authenticity verification failed (complaint remains synced): $e',
+      );
       try {
-        await _db.collection(FirestoreCollections.complaints).doc(serverId).update({
-          'aiAnalysisStatus': AiAnalysisStatus.failed.name,
-        });
+        await _db
+            .collection(FirestoreCollections.complaints)
+            .doc(serverId)
+            .update({'aiAnalysisStatus': AiAnalysisStatus.failed.name});
       } catch (_) {}
       return null;
     }
@@ -298,7 +342,9 @@ class FirebaseSyncProvider implements SyncProvider {
   Future<SyncResult> _handleUploadEvidence(SyncQueueItem item) async {
     final complaintId = item.payload['complaintId'] as String? ?? item.entityId;
     final serverId = item.payload['serverId'] as String? ?? complaintId;
-    final rawImages = (item.payload['imageUrls'] as List<dynamic>? ?? const []).map((e) => e.toString()).toList();
+    final rawImages = (item.payload['imageUrls'] as List<dynamic>? ?? const [])
+        .map((e) => e.toString())
+        .toList();
 
     if (rawImages.isEmpty) {
       return SyncResult.success(serverId: serverId);
@@ -315,6 +361,9 @@ class FirebaseSyncProvider implements SyncProvider {
         try {
           final downloadUrl = await _uploadLocalMedia(
             complaintId: complaintId,
+            ticketNumber:
+                item.payload['ticketNumber'] as String? ?? complaintId,
+            citizenId: item.payload['citizenId'] as String?,
             mediaRef: imgRef,
             index: i,
           );
@@ -332,13 +381,20 @@ class FirebaseSyncProvider implements SyncProvider {
     // If new images were successfully uploaded, merge and update Firestore complaint
     if (newlyUploaded.isNotEmpty) {
       try {
-        final existingComplaint = await _complaintDataSource.getComplaintById(serverId);
+        final existingComplaint = await _complaintDataSource.getComplaintById(
+          serverId,
+        );
         final currentImages = existingComplaint?.imageUrls ?? const [];
         final merged = {...currentImages, ...newlyUploaded}.toList();
 
-        await _complaintDataSource.updateCitizenComplaint(serverId, imageUrls: merged);
+        await _complaintDataSource.updateCitizenComplaint(
+          serverId,
+          imageUrls: merged,
+        );
       } catch (e) {
-        debugPrint('[FirebaseSyncProvider] Warning: Failed to update Firestore with new evidence URLs: $e');
+        debugPrint(
+          '[FirebaseSyncProvider] Warning: Failed to update Firestore with new evidence URLs: $e',
+        );
       }
     }
 
@@ -406,22 +462,32 @@ class FirebaseSyncProvider implements SyncProvider {
                 eventId: item.id, // Idempotency key from sync queue item ID
               )
               .catchError((e) {
-                debugPrint('[FirebaseSyncProvider] Notification non-fatal error on sync: $e');
-                return NotificationDispatchResult.failure(message: e.toString());
+                debugPrint(
+                  '[FirebaseSyncProvider] Notification non-fatal error on sync: $e',
+                );
+                return NotificationDispatchResult.failure(
+                  message: e.toString(),
+                );
               }),
         );
       }
 
       return SyncResult.success(
         serverId: targetId,
-        responseData: {'updated': true, 'complaintId': targetId, 'status': newStatus},
+        responseData: {
+          'updated': true,
+          'complaintId': targetId,
+          'status': newStatus,
+        },
       );
     }
 
     final String? title = payload['title'] as String?;
     final String? description = payload['description'] as String?;
     final rawImages = payload['imageUrls'] as List<dynamic>?;
-    final List<String>? imageUrls = rawImages?.map((e) => e.toString()).toList();
+    final List<String>? imageUrls = rawImages
+        ?.map((e) => e.toString())
+        .toList();
 
     CivicLocation? location;
     if (payload['latitude'] != null && payload['longitude'] != null) {
@@ -458,12 +524,20 @@ class FirebaseSyncProvider implements SyncProvider {
   // ===========================================================================
 
   Future<SyncResult> _handleUpvoteComplaint(SyncQueueItem item) async {
-    final complaintId = item.entityId;
-    await _complaintDataSource.upvoteComplaint(complaintId);
+    final complaintId = item.payload['complaintId'] as String? ?? item.entityId;
+    final userId = item.payload['userId'] as String? ?? '';
+    final result = await _complaintDataSource.upvoteComplaint(
+      complaintId,
+      userId: userId,
+    );
 
     return SyncResult.success(
       serverId: complaintId,
-      responseData: {'upvoted': true, 'complaintId': complaintId},
+      responseData: {
+        'upvoted': result.added,
+        'upvotes': result.upvotes,
+        'complaintId': complaintId,
+      },
     );
   }
 
@@ -484,7 +558,10 @@ class FirebaseSyncProvider implements SyncProvider {
   // ===========================================================================
 
   /// Finds an existing Firestore complaint document by documentId or localId.
-  Future<ComplaintModel?> _findExistingRemoteComplaint(String complaintId, String localId) async {
+  Future<ComplaintModel?> _findExistingRemoteComplaint(
+    String complaintId,
+    String localId,
+  ) async {
     try {
       // 1. Direct lookup by complaintId
       final byId = await _complaintDataSource.getComplaintById(complaintId);
@@ -509,14 +586,16 @@ class FirebaseSyncProvider implements SyncProvider {
     return null;
   }
 
-  /// Uploads local media bytes or file to Firebase Cloud Storage.
+  /// Uploads local media bytes or file to Supabase Cloud Storage.
   Future<String?> _uploadLocalMedia({
     required String complaintId,
+    String? ticketNumber,
+    String? citizenId,
     required String mediaRef,
     required int index,
   }) async {
-    Uint8List? bytes;
-    String fileName = 'evidence_${index}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+    Uint8List? bytes = evidenceDataBytes(mediaRef);
+    String fileName = 'evidence_${index + 1}.jpg';
 
     if (mediaRef.startsWith('mock://') || mediaRef.startsWith('memory://')) {
       // Synthetic mock media payload for test runners
@@ -525,28 +604,37 @@ class FirebaseSyncProvider implements SyncProvider {
       dummy[1] = 0xD8;
       dummy[2] = 0xFF;
       bytes = Uint8List.fromList(dummy);
-      fileName = 'photo_$index.jpg';
+      fileName = 'photo_${index + 1}.jpg';
     } else {
-      final file = File(mediaRef);
-      if (await file.exists()) {
-        bytes = await file.readAsBytes();
-        fileName = file.uri.pathSegments.isNotEmpty ? file.uri.pathSegments.last : fileName;
+      if (!kIsWeb && bytes == null) {
+        final file = File(mediaRef);
+        if (await file.exists()) {
+          bytes = await file.readAsBytes();
+          fileName = file.uri.pathSegments.isNotEmpty
+              ? file.uri.pathSegments.last
+              : fileName;
+        }
       }
     }
 
     if (bytes == null || bytes.isEmpty) {
-      debugPrint('[FirebaseSyncProvider] Media file $mediaRef not accessible locally.');
+      debugPrint(
+        '[FirebaseSyncProvider] Media file $mediaRef not accessible locally.',
+      );
       return null;
     }
 
-    final deterministicFileName = 'evidence_${complaintId}_$index.jpg';
+    final effectiveTicket = ticketNumber ?? complaintId;
+    final deterministicFileName = evidenceFileName(bytes, index + 1);
     final uploadResult = await _evidenceStorageService.uploadComplaintEvidence(
       complaintId: complaintId,
+      ticketNumber: effectiveTicket,
+      evidenceIndex: index + 1,
       fileName: deterministicFileName,
       fileBytes: bytes,
       metadata: EvidenceMetadata(
         complaintId: complaintId,
-        uploaderId: 'user_citizen',
+        uploaderId: citizenId ?? 'user_citizen',
       ),
     );
 

@@ -54,14 +54,14 @@ class UserFirestoreMapper {
       email: data['email'] as String? ?? '',
       phone: data['phone'] as String? ?? '',
       avatarUrl: data['avatarUrl'] as String?,
-      civicPoints: data['civicPoints'] as int? ?? 0,
-      reportsSubmitted: data['reportsSubmitted'] as int? ?? 0,
-      reportsResolved: data['reportsResolved'] as int? ?? 0,
+      civicPoints: (data['civicPoints'] as num?)?.toInt() ?? 0,
+      reportsSubmitted: (data['reportsSubmitted'] as num?)?.toInt() ?? 0,
+      reportsResolved: (data['reportsResolved'] as num?)?.toInt() ?? 0,
       badges: List<String>.from(data['badges'] as List<dynamic>? ?? const []),
       languageCode: data['languageCode'] as String? ?? 'en',
       wardNumber: data['wardNumber'] as String? ?? 'Ward 14 (Central)',
       role: data['role'] as String? ?? 'citizen',
-      phoneVerified: true,
+      phoneVerified: data['phoneVerified'] as bool? ?? false,
       phoneVerifiedAt: phoneVerifiedAt,
     );
   }

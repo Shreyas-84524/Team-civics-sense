@@ -9,7 +9,7 @@
 
 import { maskPhoneNumber } from "./sms-transport.ts";
 
-interface ServiceAccountConfig {
+export interface ServiceAccountConfig {
   project_id: string;
   client_email: string;
   private_key: string;
@@ -30,7 +30,7 @@ function base64UrlEncode(input: string | Uint8Array): string {
   return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-function pemToPkcs8Binary(pem: string): Uint8Array {
+function pemToPkcs8Binary(pem: string) {
   const cleanPem = pem
     .replace(/-----BEGIN[ A-Z0-9_-]+-----/g, "")
     .replace(/-----END[ A-Z0-9_-]+-----/g, "")
@@ -45,7 +45,7 @@ function pemToPkcs8Binary(pem: string): Uint8Array {
 
 let cachedAccessToken: { token: string; expiresAt: number } | null = null;
 
-async function getGoogleOAuthToken(serviceAccount: ServiceAccountConfig): Promise<string> {
+export async function getGoogleOAuthToken(serviceAccount: ServiceAccountConfig): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   if (cachedAccessToken && cachedAccessToken.expiresAt > now + 60) {
     return cachedAccessToken.token;
@@ -99,8 +99,10 @@ async function getGoogleOAuthToken(serviceAccount: ServiceAccountConfig): Promis
   return token;
 }
 
-function getServiceAccountConfig(): ServiceAccountConfig | null {
-  const rawSecret = Deno.env.get("FIREBASE_SERVICE_ACCOUNT_KEY");
+export function getServiceAccountConfig(): ServiceAccountConfig | null {
+  const rawSecret = typeof Deno !== "undefined"
+    ? Deno.env.get("FIREBASE_SERVICE_ACCOUNT_KEY")
+    : (typeof process !== "undefined" ? process.env?.FIREBASE_SERVICE_ACCOUNT_KEY : undefined);
   if (!rawSecret || rawSecret.trim() === "") {
     return null;
   }

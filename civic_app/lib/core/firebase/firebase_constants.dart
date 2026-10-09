@@ -24,6 +24,9 @@ class FirestoreCollections {
   /// Gamification rewards and perks catalog collection.
   static const String rewards = 'rewards';
 
+  /// Canonical reward evaluation events and point audit history.
+  static const String rewardEvents = 'reward_events';
+
   /// Municipal departments collection.
   static const String departments = 'departments';
 

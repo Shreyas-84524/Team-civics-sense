@@ -3,6 +3,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_radius.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/constants/app_typography.dart';
+import '../../core/localization/app_localizations.dart';
 import '../../core/models/user_model.dart';
 import '../../core/repositories/repository_locator.dart';
 import '../../core/repositories/user_repository.dart';
@@ -64,13 +65,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   String? _validateName(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'Please enter your full name.';
+      return context.l10nOrNull?.pleaseEnterName ?? 'Please enter your full name.';
     }
     if (value.trim().length < 2) {
-      return 'Name must be at least 2 characters long.';
+      return context.l10nOrNull?.nameTooShort ?? 'Name must be at least 2 characters long.';
     }
     if (value.trim().length > 50) {
-      return 'Name cannot exceed 50 characters.';
+      return context.l10nOrNull?.nameTooLong ?? 'Name cannot exceed 50 characters.';
     }
     return null;
   }
@@ -81,7 +82,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
     final digits = value.replaceAll(RegExp(r'\D'), '');
     if (digits.length < 10) {
-      return 'Please enter a valid 10-digit phone number.';
+      return context.l10nOrNull?.phoneInvalid ?? 'Please enter a valid 10-digit phone number.';
     }
     return null;
   }
@@ -101,10 +102,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Profile updated.'),
+          SnackBar(
+            content: Text(context.l10nOrNull?.profileUpdatedSuccess ?? 'Profile updated.'),
             behavior: SnackBarBehavior.floating,
-            duration: Duration(seconds: 2),
+            duration: const Duration(seconds: 2),
           ),
         );
         Navigator.pop(context, true);
@@ -113,8 +114,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to update profile. Please try again.'),
+          SnackBar(
+            content: Text(context.l10nOrNull?.profileUpdateFailed ?? 'Failed to update profile. Please try again.'),
             backgroundColor: CivicFixColors.error,
           ),
         );
@@ -124,10 +125,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10nOrNull;
     return Scaffold(
       backgroundColor: CivicFixColors.background,
-      appBar: const CivicFixAppBar(
-        title: 'Edit Profile',
+      appBar: CivicFixAppBar(
+        title: l10n?.editProfile ?? 'Edit Profile',
       ),
       body: SafeArea(
         child: ResponsiveContainer(
@@ -195,12 +197,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         ),
                         CivicFixSpacing.vSpaceXl,
 
-                        const SectionHeader(title: 'Personal Information'),
+                        SectionHeader(title: l10n?.personalInformation ?? 'Personal Information'),
                         CivicFixSpacing.vSpaceSm,
 
                         // Full Name Input
                         Text(
-                          'Full Name *',
+                          '${l10n?.fullName ?? "Full Name"} *',
                           style: CivicFixTypography.captionMedium.copyWith(
                             fontWeight: FontWeight.w700,
                             color: CivicFixColors.primaryText,
@@ -210,7 +212,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         TextFormField(
                           controller: _nameController,
                           decoration: InputDecoration(
-                            hintText: 'Enter your full name',
+                            hintText: l10n?.enterFullName ?? 'Enter your full name',
                             prefixIcon: const Icon(Icons.person_outline_rounded),
                             border: OutlineInputBorder(
                               borderRadius: CivicFixRadius.inputRadius,
@@ -224,7 +226,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
                         // Email (Read-only)
                         Text(
-                          'Email Address',
+                          l10n?.email ?? 'Email Address',
                           style: CivicFixTypography.captionMedium.copyWith(
                             fontWeight: FontWeight.w700,
                             color: CivicFixColors.secondaryText,
@@ -243,7 +245,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               borderRadius: CivicFixRadius.inputRadius,
                               borderSide: const BorderSide(color: CivicFixColors.border),
                             ),
-                            helperText: 'Email cannot be changed for citizen account.',
+                            helperText: l10n?.emailCannotBeChanged ?? 'Email cannot be changed for citizen account.',
                             helperStyle: CivicFixTypography.caption.copyWith(
                               color: CivicFixColors.disabledText,
                             ),
@@ -253,7 +255,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
                         // Phone Input
                         Text(
-                          'Phone Number',
+                          l10n?.mobileNumber ?? 'Phone Number',
                           style: CivicFixTypography.captionMedium.copyWith(
                             fontWeight: FontWeight.w700,
                             color: CivicFixColors.primaryText,
@@ -270,7 +272,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               borderRadius: CivicFixRadius.inputRadius,
                               borderSide: const BorderSide(color: CivicFixColors.border),
                             ),
-                            helperText: 'Used for SMS updates on urgent neighborhood alerts.',
+                            helperText: l10n?.phoneHelperText ?? 'Used for SMS updates on urgent neighborhood alerts.',
                           ),
                           validator: _validatePhone,
                         ),
@@ -278,7 +280,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
                         // Preferred Language Selection
                         Text(
-                          'Preferred Language',
+                          l10n?.preferredLanguage ?? 'Preferred Language',
                           style: CivicFixTypography.captionMedium.copyWith(
                             fontWeight: FontWeight.w700,
                             color: CivicFixColors.primaryText,
@@ -333,7 +335,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Registered Citizen Account',
+                                      l10n?.registeredCitizenAccount ?? 'Registered Citizen Account',
                                       style: CivicFixTypography.bodySmallMedium.copyWith(
                                         fontWeight: FontWeight.w700,
                                         color: CivicFixColors.primaryText,
@@ -341,7 +343,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                     ),
                                     CivicFixSpacing.vSpaceXs,
                                     Text(
-                                      '${_currentUser!.wardNumber} • Role: Citizen',
+                                      '${_currentUser!.wardNumber} • ${l10n?.citizen ?? "Citizen"}',
                                       style: CivicFixTypography.caption.copyWith(
                                         color: CivicFixColors.secondaryText,
                                       ),
@@ -356,7 +358,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
                         // Save Changes Button
                         CivicFixButton(
-                          text: 'Save Changes',
+                          text: l10n?.saveChanges ?? 'Save Changes',
                           isLoading: _isLoading,
                           onPressed: _saveProfile,
                         ),

@@ -1,0 +1,3442 @@
+{
+  "@@locale": "en",
+  "appTitle": "CivicFix",
+  "@appTitle": {
+    "description": "Application title"
+  },
+  "appName": "CivicFix",
+  "@appName": {
+    "description": "Application name"
+  },
+  "commonRetry": "Retry",
+  "@commonRetry": {
+    "description": "Common retry action label"
+  },
+  "commonCancel": "Cancel",
+  "@commonCancel": {
+    "description": "Common cancel action label"
+  },
+  "appTagline": "Citizen Issue Reporting & Governance",
+  "@appTagline": {
+    "description": "Application tagline"
+  },
+  "ok": "OK",
+  "@ok": {
+    "description": "Standard OK button text"
+  },
+  "cancel": "Cancel",
+  "@cancel": {
+    "description": "Standard Cancel button text"
+  },
+  "save": "Save",
+  "@save": {
+    "description": "Standard Save button text"
+  },
+  "submit": "Submit",
+  "@submit": {
+    "description": "Standard Submit button text"
+  },
+  "close": "Close",
+  "@close": {
+    "description": "Standard Close button text"
+  },
+  "retry": "Retry",
+  "@retry": {
+    "description": "Standard Retry button text"
+  },
+  "back": "Back",
+  "@back": {
+    "description": "Standard Back button text"
+  },
+  "confirm": "Confirm",
+  "@confirm": {
+    "description": "Standard Confirm button text"
+  },
+  "delete": "Delete",
+  "@delete": {
+    "description": "Standard Delete button text"
+  },
+  "edit": "Edit",
+  "@edit": {
+    "description": "Standard Edit button text"
+  },
+  "search": "Search",
+  "@search": {
+    "description": "Standard Search button text"
+  },
+  "filter": "Filter",
+  "@filter": {
+    "description": "Standard Filter button text"
+  },
+  "refresh": "Refresh",
+  "@refresh": {
+    "description": "Standard Refresh button text"
+  },
+  "loading": "Loading...",
+  "@loading": {
+    "description": "Standard loading indicator text"
+  },
+  "error": "Error",
+  "@error": {
+    "description": "Standard error title text"
+  },
+  "success": "Success",
+  "@success": {
+    "description": "Standard success title text"
+  },
+  "warning": "Warning",
+  "@warning": {
+    "description": "Standard warning title text"
+  },
+  "yes": "Yes",
+  "@yes": {
+    "description": "Standard Yes option text"
+  },
+  "no": "No",
+  "@no": {
+    "description": "Standard No option text"
+  },
+  "home": "Home",
+  "@home": {
+    "description": "Home bottom navigation bar label"
+  },
+  "complaints": "Complaints",
+  "@complaints": {
+    "description": "Complaints navigation label"
+  },
+  "reportIssue": "Report Issue",
+  "@reportIssue": {
+    "description": "Report Issue navigation and button label"
+  },
+  "profile": "Profile",
+  "@profile": {
+    "description": "Profile navigation label"
+  },
+  "settings": "Settings",
+  "@settings": {
+    "description": "Settings navigation label"
+  },
+  "notifications": "Notifications",
+  "@notifications": {
+    "description": "Notifications navigation label"
+  },
+  "dashboard": "Dashboard",
+  "@dashboard": {
+    "description": "Dashboard navigation label"
+  },
+  "map": "Map",
+  "@map": {
+    "description": "Map view label"
+  },
+  "navMap": "Map",
+  "@navMap": {
+    "description": "Hazard map tab label in citizen navigation"
+  },
+  "language": "Language",
+  "@language": {
+    "description": "Language label"
+  },
+  "selectLanguage": "Select Language",
+  "@selectLanguage": {
+    "description": "Select language prompt"
+  },
+  "languageEnglish": "English",
+  "@languageEnglish": {
+    "description": "English language name"
+  },
+  "languageHindi": "Hindi",
+  "@languageHindi": {
+    "description": "Hindi language name"
+  },
+  "languageMarathi": "Marathi",
+  "@languageMarathi": {
+    "description": "Marathi language name"
+  },
+  "complaint": "Complaint",
+  "@complaint": {
+    "description": "Canonical municipal complaint label"
+  },
+  "juniorEngineer": "Junior Engineer",
+  "@juniorEngineer": {
+    "description": "Canonical municipal Junior Engineer role"
+  },
+  "fieldOfficer": "Field Officer",
+  "@fieldOfficer": {
+    "description": "Canonical municipal Field Officer role"
+  },
+  "ward": "Ward",
+  "@ward": {
+    "description": "Canonical municipal ward label"
+  },
+  "department": "Department",
+  "@department": {
+    "description": "Canonical municipal department label"
+  },
+  "statusUnderVerification": "Under Verification",
+  "@statusUnderVerification": {
+    "description": "Under verification complaint status"
+  },
+  "statusReported": "Reported",
+  "@statusReported": {
+    "description": "Reported complaint status"
+  },
+  "statusAssigned": "Assigned",
+  "@statusAssigned": {
+    "description": "Assigned complaint status"
+  },
+  "statusInProgress": "In Progress",
+  "@statusInProgress": {
+    "description": "In Progress complaint status"
+  },
+  "statusResolved": "Resolved",
+  "@statusResolved": {
+    "description": "Resolved complaint status"
+  },
+  "statusClosed": "Closed",
+  "@statusClosed": {
+    "description": "Closed complaint status"
+  },
+  "statusReopened": "Reopened",
+  "@statusReopened": {
+    "description": "Reopened complaint status"
+  },
+  "trackComplaint": "Track Complaint",
+  "@trackComplaint": {
+    "description": "Track complaint button label"
+  },
+  "viewAll": "View All",
+  "@viewAll": {
+    "description": "View all items link"
+  },
+  "submitReport": "Submit Report",
+  "@submitReport": {
+    "description": "Submit report button label"
+  },
+  "continueText": "Continue",
+  "@continueText": {
+    "description": "Continue action button label"
+  },
+  "backToHome": "Back to Home",
+  "@backToHome": {
+    "description": "Button to return to home dashboard"
+  },
+  "saveChanges": "Save Changes",
+  "@saveChanges": {
+    "description": "Save changes button label"
+  },
+  "assistantHelp": "Ask Civic Assistant",
+  "@assistantHelp": {
+    "description": "Ask assistant action label"
+  },
+  "myComplaintsTitle": "My Complaints",
+  "@myComplaintsTitle": {
+    "description": "App bar title for citizen complaints list"
+  },
+  "recentIssues": "Recent Civic Reports",
+  "@recentIssues": {
+    "description": "Recent civic reports section title"
+  },
+  "nearbyHazards": "Nearby Hazards",
+  "@nearbyHazards": {
+    "description": "Nearby hazards section title"
+  },
+  "quickActions": "Quick Actions",
+  "@quickActions": {
+    "description": "Section header for quick actions on dashboard"
+  },
+  "rewardsTitle": "Civic Rewards",
+  "@rewardsTitle": {
+    "description": "Civic rewards section title"
+  },
+  "assistantTitle": "Civic AI Assistant",
+  "@assistantTitle": {
+    "description": "Civic AI assistant section title"
+  },
+  "settingsTitle": "Settings & Preferences",
+  "@settingsTitle": {
+    "description": "Settings and preferences section title"
+  },
+  "noInternetConnection": "No internet connection",
+  "@noInternetConnection": {
+    "description": "No internet connection message"
+  },
+  "somethingWentWrong": "Something went wrong",
+  "@somethingWentWrong": {
+    "description": "Generic error title"
+  },
+  "operationSuccess": "Operation completed successfully",
+  "@operationSuccess": {
+    "description": "Generic success message"
+  },
+  "welcomeUser": "Welcome, {userName}",
+  "@welcomeUser": {
+    "description": "Welcome message with user name",
+    "placeholders": {
+      "userName": {
+        "type": "String",
+        "example": "Citizen"
+      }
+    }
+  },
+  "complaintCount": "{count, plural, =0{No complaints} =1{1 complaint} other{{count} complaints}}",
+  "@complaintCount": {
+    "description": "Pluralized count of complaints",
+    "placeholders": {
+      "count": {
+        "type": "num",
+        "format": "compact"
+      }
+    }
+  },
+  "welcomeBack": "Welcome back",
+  "@welcomeBack": {
+    "description": "Title on citizen login screen"
+  },
+  "signInSubtitle": "Sign in to report civic issues, track community fixes, and participate in your ward.",
+  "@signInSubtitle": {
+    "description": "Subtitle on citizen login screen"
+  },
+  "email": "Email",
+  "@email": {
+    "description": "Email input field label"
+  },
+  "emailHint": "e.g. name@example.com",
+  "@emailHint": {
+    "description": "Email field hint text"
+  },
+  "password": "Password",
+  "@password": {
+    "description": "Password input field label"
+  },
+  "passwordHint": "Enter your password",
+  "@passwordHint": {
+    "description": "Password field hint text"
+  },
+  "forgotPassword": "Forgot Password?",
+  "@forgotPassword": {
+    "description": "Forgot password action button"
+  },
+  "login": "Login",
+  "@login": {
+    "description": "Login button text"
+  },
+  "orDivider": "OR",
+  "@orDivider": {
+    "description": "Divider text separating options"
+  },
+  "continueWithGoogle": "Continue with Google",
+  "@continueWithGoogle": {
+    "description": "Google Sign-In button text"
+  },
+  "dontHaveAccount": "Don''t have an account?",
+  "@dontHaveAccount": {
+    "description": "Prompt on login screen for users without account"
+  },
+  "createAccount": "Create an account",
+  "@createAccount": {
+    "description": "Action link to registration screen"
+  },
+  "govtOfficerLogin": "Government Officer Login",
+  "@govtOfficerLogin": {
+    "description": "Switch button to government officer portal"
+  },
+  "pleaseEnterEmail": "Please enter your email.",
+  "@pleaseEnterEmail": {
+    "description": "Validation error for empty email"
+  },
+  "pleaseEnterValidEmail": "Please enter a valid email address.",
+  "@pleaseEnterValidEmail": {
+    "description": "Validation error for invalid email format"
+  },
+  "pleaseEnterPassword": "Please enter your password.",
+  "@pleaseEnterPassword": {
+    "description": "Validation error for empty password"
+  },
+  "incorrectEmailOrPassword": "Incorrect email or password.",
+  "@incorrectEmailOrPassword": {
+    "description": "Error message for invalid credentials"
+  },
+  "googleSignInFailed": "Google Sign-In failed. Please try again.",
+  "@googleSignInFailed": {
+    "description": "Error message when Google authentication fails"
+  },
+  "verifyYourPhone": "Verify Your Phone",
+  "@verifyYourPhone": {
+    "description": "Title of phone verification screen"
+  },
+  "verifyPhoneSubtitle": "To prevent duplicate civic complaints and protect community authenticity, verify your mobile number via SMS.",
+  "@verifyPhoneSubtitle": {
+    "description": "Subtitle of phone verification screen"
+  },
+  "mobileNumber": "Mobile Number",
+  "@mobileNumber": {
+    "description": "Label for mobile number field"
+  },
+  "mobileNumberHint": "e.g. 9876543210",
+  "@mobileNumberHint": {
+    "description": "Hint for mobile number field"
+  },
+  "sendVerificationCode": "Send Verification Code",
+  "@sendVerificationCode": {
+    "description": "Button to trigger SMS OTP"
+  },
+  "verificationCode": "Verification Code",
+  "@verificationCode": {
+    "description": "Label for OTP input field"
+  },
+  "enterOtpHint": "Enter 6-digit OTP",
+  "@enterOtpHint": {
+    "description": "OTP field hint text"
+  },
+  "verifyAndContinue": "Verify & Continue",
+  "@verifyAndContinue": {
+    "description": "Button to verify phone code and proceed"
+  },
+  "changeNumber": "Change number",
+  "@changeNumber": {
+    "description": "Tooltip to change mobile number"
+  },
+  "resendCodeIn": "Resend code in {seconds}s",
+  "@resendCodeIn": {
+    "description": "Resend countdown cooldown label",
+    "placeholders": {
+      "seconds": {
+        "type": "int",
+        "example": "30"
+      }
+    }
+  },
+  "resendVerificationCode": "Resend Verification Code",
+  "@resendVerificationCode": {
+    "description": "Resend OTP action button"
+  },
+  "phoneVerifiedSuccess": "Phone verified successfully! Redirecting...",
+  "@phoneVerifiedSuccess": {
+    "description": "Success banner after phone verification"
+  },
+  "codeExpired": "The verification code has expired. Please tap Resend Code to request a new one.",
+  "@codeExpired": {
+    "description": "Error message when OTP expires"
+  },
+  "invalidVerificationCode": "Invalid verification code.",
+  "@invalidVerificationCode": {
+    "description": "Error message for invalid OTP"
+  },
+  "codeSentViaSms": "Verification code sent via SMS.",
+  "@codeSentViaSms": {
+    "description": "Success message when OTP is dispatched"
+  },
+  "failedToSendCode": "Failed to send verification code.",
+  "@failedToSendCode": {
+    "description": "Error message when sending OTP fails"
+  },
+  "signOut": "Sign Out",
+  "@signOut": {
+    "description": "Sign out action text"
+  },
+  "createCivicFixAccount": "Create your CivicFix account",
+  "@createCivicFixAccount": {
+    "description": "Registration screen title"
+  },
+  "civicParticipationStarts": "Your civic participation starts here.",
+  "@civicParticipationStarts": {
+    "description": "Registration screen subtitle"
+  },
+  "fullName": "Full Name",
+  "@fullName": {
+    "description": "Full name input field label"
+  },
+  "fullNameHint": "Enter your full name",
+  "@fullNameHint": {
+    "description": "Full name hint text"
+  },
+  "phoneOptional": "Phone Number (Optional)",
+  "@phoneOptional": {
+    "description": "Optional phone field label"
+  },
+  "confirmPassword": "Confirm Password",
+  "@confirmPassword": {
+    "description": "Confirm password field label"
+  },
+  "confirmPasswordHint": "Re-enter your password",
+  "@confirmPasswordHint": {
+    "description": "Confirm password hint text"
+  },
+  "preferredLanguage": "Preferred Language",
+  "@preferredLanguage": {
+    "description": "Preferred language dropdown label"
+  },
+  "alreadyHaveAccount": "Already have an account?",
+  "@alreadyHaveAccount": {
+    "description": "Registration screen link to login prompt"
+  },
+  "passwordsDoNotMatch": "Passwords do not match.",
+  "@passwordsDoNotMatch": {
+    "description": "Validation error when passwords do not match"
+  },
+  "passwordMinLength": "Password must be at least 8 characters.",
+  "@passwordMinLength": {
+    "description": "Validation error for short password"
+  },
+  "nameMinLength": "Name must be at least 2 characters.",
+  "@nameMinLength": {
+    "description": "Validation error for short name"
+  },
+  "resetYourPassword": "Reset your password",
+  "@resetYourPassword": {
+    "description": "Forgot password screen title"
+  },
+  "resetPasswordSubtitle": "Enter the email associated with your account to receive password reset instructions.",
+  "@resetPasswordSubtitle": {
+    "description": "Forgot password screen subtitle"
+  },
+  "sendResetLink": "Send Reset Link",
+  "@sendResetLink": {
+    "description": "Button to request password reset email"
+  },
+  "backToLogin": "Back to login",
+  "@backToLogin": {
+    "description": "Tooltip to go back to login screen"
+  },
+  "resetLinkSent": "Password reset instructions have been sent.",
+  "@resetLinkSent": {
+    "description": "Success banner when reset email is sent"
+  },
+  "loadingCivicDashboard": "Loading civic dashboard...",
+  "@loadingCivicDashboard": {
+    "description": "Loading indicator text on home screen"
+  },
+  "viewAllComplaints": "View all complaints →",
+  "@viewAllComplaints": {
+    "description": "Link text to see all complaints"
+  },
+  "viewHazardMap": "View hazard map →",
+  "@viewHazardMap": {
+    "description": "Action button to view hazard map"
+  },
+  "yourCivicProgress": "Your Civic Progress",
+  "@yourCivicProgress": {
+    "description": "Section header for civic progress"
+  },
+  "noComplaintsYet": "No complaints yet",
+  "@noComplaintsYet": {
+    "description": "Empty state title when citizen has no complaints"
+  },
+  "reportIssueToGetStarted": "Report a civic issue to get started.",
+  "@reportIssueToGetStarted": {
+    "description": "Empty state subtitle prompting issue reporting"
+  },
+  "noImmediateHazards": "No immediate hazards reported in your immediate vicinity.",
+  "@noImmediateHazards": {
+    "description": "Empty state card for nearby hazards"
+  },
+  "assistantSubtitle": "Get help with CivicFix",
+  "@assistantSubtitle": {
+    "description": "AI Assistant feature subtitle"
+  },
+  "rewardsSubtitle": "View your civic progress",
+  "@rewardsSubtitle": {
+    "description": "Rewards quick action card subtitle"
+  },
+  "reportCivicIssueAction": "Report a civic issue",
+  "@reportCivicIssueAction": {
+    "description": "Accessibility label for report issue CTA"
+  },
+  "recentCivicReports": "Recent Complaints",
+  "@recentCivicReports": {
+    "description": "Section title for recent complaints"
+  },
+  "nearbyCivicIssues": "Nearby Civic Issues",
+  "@nearbyCivicIssues": {
+    "description": "Section header for nearby issues"
+  },
+  "issueInformation": "Issue Information",
+  "@issueInformation": {
+    "description": "Heading for issue details section"
+  },
+  "issueInfoSubtitle": "Help us understand the problem so it can reach the right team.",
+  "@issueInfoSubtitle": {
+    "description": "Step 1 subtitle in report issue"
+  },
+  "issueTitle": "Issue Title",
+  "@issueTitle": {
+    "description": "Title input field label in report issue"
+  },
+  "issueTitleHint": "e.g. Broken street light near the park",
+  "@issueTitleHint": {
+    "description": "Hint text for issue title field"
+  },
+  "selectCategoryError": "Please select an issue category.",
+  "@selectCategoryError": {
+    "description": "Validation error when category not selected"
+  },
+  "describeTheIssue": "Describe the issue",
+  "@describeTheIssue": {
+    "description": "Label for description field in report issue"
+  },
+  "describeIssueHint": "Tell us what happened and where you noticed the problem.",
+  "@describeIssueHint": {
+    "description": "Hint text for description textarea"
+  },
+  "describeIssueHelp": "Include useful details such as what is damaged, how long it has been happening, or how it affects the area.",
+  "@describeIssueHelp": {
+    "description": "Help text below description field"
+  },
+  "immediateSafetyHazard": "Immediate Safety Hazard",
+  "@immediateSafetyHazard": {
+    "description": "Hazard toggle switch label"
+  },
+  "safetyHazardSubtitle": "Check if this issue poses an immediate risk to citizens or traffic",
+  "@safetyHazardSubtitle": {
+    "description": "Hazard toggle switch explanation"
+  },
+  "addEvidence": "Add Evidence",
+  "@addEvidence": {
+    "description": "Step 2 title in report issue"
+  },
+  "addEvidenceSubtitle": "A photo can help the responsible team understand the issue.",
+  "@addEvidenceSubtitle": {
+    "description": "Step 2 subtitle in report issue"
+  },
+  "whereIsTheIssue": "Where is the issue?",
+  "@whereIsTheIssue": {
+    "description": "Title for location selection step"
+  },
+  "whereIsIssueSubtitle": "Add the location so the responsible team can find it.",
+  "@whereIsIssueSubtitle": {
+    "description": "Step 3 subtitle in report issue"
+  },
+  "selectLocationError": "Please select or detect the issue location.",
+  "@selectLocationError": {
+    "description": "Error message when location is missing"
+  },
+  "reviewYourIssue": "Review your issue",
+  "@reviewYourIssue": {
+    "description": "Title on report review screen"
+  },
+  "reviewIssueSubtitle": "Please verify all information before submitting to your ward.",
+  "@reviewIssueSubtitle": {
+    "description": "Step 4 subtitle in report issue"
+  },
+  "nextAddEvidence": "Next: Add Evidence",
+  "@nextAddEvidence": {
+    "description": "Button to advance to step 2"
+  },
+  "nextLocation": "Next: Location",
+  "@nextLocation": {
+    "description": "Button to advance to step 3"
+  },
+  "skipAndContinue": "Skip & Continue",
+  "@skipAndContinue": {
+    "description": "Action button when skipping optional photo evidence"
+  },
+  "nextReview": "Next: Review",
+  "@nextReview": {
+    "description": "Button to advance to review step"
+  },
+  "discardReportTitle": "Discard this report?",
+  "@discardReportTitle": {
+    "description": "Confirmation title when exiting active draft"
+  },
+  "discardReportMessage": "Your entered information will be lost.",
+  "@discardReportMessage": {
+    "description": "Confirmation body when exiting active draft"
+  },
+  "keepEditing": "Keep Editing",
+  "@keepEditing": {
+    "description": "Button to cancel draft discard"
+  },
+  "discard": "Discard",
+  "@discard": {
+    "description": "Button to confirm draft discard"
+  },
+  "stepInformation": "Information",
+  "@stepInformation": {
+    "description": "Step 1 label in issue report flow"
+  },
+  "stepEvidence": "Evidence",
+  "@stepEvidence": {
+    "description": "Step 2 label in issue report flow"
+  },
+  "stepLocation": "Location",
+  "@stepLocation": {
+    "description": "Step 3 label in issue report flow"
+  },
+  "stepReview": "Review",
+  "@stepReview": {
+    "description": "Step 4 label in issue report flow"
+  },
+  "complaintSavedOffline": "Complaint Saved Offline",
+  "@complaintSavedOffline": {
+    "description": "Title when complaint saved offline"
+  },
+  "issueReportedSuccess": "Issue Reported",
+  "@issueReportedSuccess": {
+    "description": "Title on submission screen when online"
+  },
+  "offlineSubmissionNote": "Complaint saved. It will be submitted when you''re back online.",
+  "@offlineSubmissionNote": {
+    "description": "Note on offline submission screen"
+  },
+  "onlineSubmissionNote": "Your issue has been submitted successfully.",
+  "@onlineSubmissionNote": {
+    "description": "Note on online submission screen"
+  },
+  "localReference": "Local Reference",
+  "@localReference": {
+    "description": "Label for offline ticket reference"
+  },
+  "complaintId": "Complaint ID",
+  "@complaintId": {
+    "description": "Label for complaint ID"
+  },
+  "status": "Status",
+  "@status": {
+    "description": "Label for status"
+  },
+  "pendingSync": "Pending Sync",
+  "@pendingSync": {
+    "description": "Badge label for offline pending synchronization"
+  },
+  "syncing": "Syncing...",
+  "@syncing": {
+    "description": "Offline syncing in progress badge"
+  },
+  "syncFailed": "Sync Failed",
+  "@syncFailed": {
+    "description": "Sync failed status"
+  },
+  "civicReward": "Civic Reward",
+  "@civicReward": {
+    "description": "Label for reward points earned"
+  },
+  "pointsReward": "+{count} Points",
+  "@pointsReward": {
+    "description": "Points earned display",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "20"
+      }
+    }
+  },
+  "viewComplaint": "View Complaint",
+  "@viewComplaint": {
+    "description": "Button to navigate to complaint details"
+  },
+  "trackFromMyComplaints": "You can track the progress of this issue from My Complaints.",
+  "@trackFromMyComplaints": {
+    "description": "Help text on complaint submitted screen"
+  },
+  "offlineStoredSecurely": "Your complaint is securely stored on this device and will sync once internet is connected.",
+  "@offlineStoredSecurely": {
+    "description": "Help text for offline complaint submission"
+  },
+  "confirmLocation": "Confirm Location",
+  "@confirmLocation": {
+    "description": "Title of select location map screen"
+  },
+  "confirmThisLocation": "Confirm This Location",
+  "@confirmThisLocation": {
+    "description": "Confirmation button for picked location"
+  },
+  "selectedLocation": "Selected Location",
+  "@selectedLocation": {
+    "description": "Title for selected location card"
+  },
+  "tapMapToPositionPin": "Tap map to position pin",
+  "@tapMapToPositionPin": {
+    "description": "Instruction on interactive map picker"
+  },
+  "searchLocationHint": "Search street, area or landmark...",
+  "@searchLocationHint": {
+    "description": "Search bar hint on location map screen"
+  },
+  "couldNotAcquireGps": "Could not acquire GPS position. Please adjust pin manually.",
+  "@couldNotAcquireGps": {
+    "description": "Error when GPS position cannot be acquired"
+  },
+  "trackCivicIssuesSubtitle": "Track the civic issues you''ve reported.",
+  "@trackCivicIssuesSubtitle": {
+    "description": "Subtitle on my complaints screen"
+  },
+  "searchComplaintsHint": "Search complaints...",
+  "@searchComplaintsHint": {
+    "description": "Search field hint text on my complaints screen"
+  },
+  "all": "All",
+  "@all": {
+    "description": "All option chip"
+  },
+  "allStatuses": "All Statuses",
+  "@allStatuses": {
+    "description": "All statuses chip label"
+  },
+  "allCategories": "All Categories",
+  "@allCategories": {
+    "description": "All categories chip label"
+  },
+  "complaintsFound": "{count, plural, =0{0 complaints found} =1{1 complaint found} other{{count} complaints found}}",
+  "@complaintsFound": {
+    "description": "Summary count of complaints found",
+    "placeholders": {
+      "count": {
+        "type": "num",
+        "format": "compact"
+      }
+    }
+  },
+  "clearAll": "Clear all",
+  "@clearAll": {
+    "description": "Clear all search/filters text"
+  },
+  "clearFilters": "Clear Filters",
+  "@clearFilters": {
+    "description": "Button to reset search and filter criteria"
+  },
+  "noComplaintsFound": "No complaints found",
+  "@noComplaintsFound": {
+    "description": "Empty state title when search or filter returns no results"
+  },
+  "tryDifferentSearch": "Try a different search or filter.",
+  "@tryDifferentSearch": {
+    "description": "Empty state description when search yields no complaints"
+  },
+  "filterAndSort": "Filter & Sort",
+  "@filterAndSort": {
+    "description": "Filter bottom sheet title"
+  },
+  "complaintStatus": "Complaint Status",
+  "@complaintStatus": {
+    "description": "Complaint status filter section title"
+  },
+  "issueCategory": "Issue Category",
+  "@issueCategory": {
+    "description": "Issue category filter section title"
+  },
+  "sortBy": "Sort By",
+  "@sortBy": {
+    "description": "Sort section title in filter sheet"
+  },
+  "applyFilters": "Apply Filters",
+  "@applyFilters": {
+    "description": "Apply filters button in bottom sheet"
+  },
+  "recentlyUpdated": "Recently Updated",
+  "@recentlyUpdated": {
+    "description": "Sort option: recently updated"
+  },
+  "newestFirst": "Newest First",
+  "@newestFirst": {
+    "description": "Sort option: newest first"
+  },
+  "oldestFirst": "Oldest First",
+  "@oldestFirst": {
+    "description": "Sort option: oldest first"
+  },
+  "support": "Support",
+  "@support": {
+    "description": "Upvote button label when count is 0"
+  },
+  "supportsCount": "{count} supports",
+  "@supportsCount": {
+    "description": "Upvote count label",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "5"
+      }
+    }
+  },
+  "supportedComplaint": "Supported complaint!",
+  "@supportedComplaint": {
+    "description": "Snackbar when user supports a complaint"
+  },
+  "alreadySupported": "You already supported this complaint.",
+  "@alreadySupported": {
+    "description": "Snackbar when user already supported complaint"
+  },
+  "safetyHazard": "Safety Hazard",
+  "@safetyHazard": {
+    "description": "Safety hazard pill label on complaint card"
+  },
+  "updatedTime": "Updated {time}",
+  "@updatedTime": {
+    "description": "Updated relative time label",
+    "placeholders": {
+      "time": {
+        "type": "String",
+        "example": "5m ago"
+      }
+    }
+  },
+  "reportedTime": "Reported {time}",
+  "@reportedTime": {
+    "description": "Reported relative time label",
+    "placeholders": {
+      "time": {
+        "type": "String",
+        "example": "5m ago"
+      }
+    }
+  },
+  "copiedTicketId": "Complaint ID {ticket} copied.",
+  "@copiedTicketId": {
+    "description": "Snackbar when ticket number is copied",
+    "placeholders": {
+      "ticket": {
+        "type": "String",
+        "example": "CF-123"
+      }
+    }
+  },
+  "complaintDetails": "Complaint Details",
+  "@complaintDetails": {
+    "description": "App bar title on complaint details screen"
+  },
+  "assignedMunicipalTeam": "Assigned Municipal Team",
+  "@assignedMunicipalTeam": {
+    "description": "Card title for assigned officers"
+  },
+  "responsibleOfficersSubtitle": "Responsible officers managing and executing your grievance",
+  "@responsibleOfficersSubtitle": {
+    "description": "Subtitle for assigned officers card"
+  },
+  "supervisingJuniorEngineer": "Supervising Junior Engineer",
+  "@supervisingJuniorEngineer": {
+    "description": "Role title for junior engineer supervisor"
+  },
+  "supervising": "Supervising",
+  "@supervising": {
+    "description": "Badge label for active supervising engineer"
+  },
+  "autoRoutingToWard": "Auto-Routing to Ward Engineer...",
+  "@autoRoutingToWard": {
+    "description": "Temporary state while auto-routing JE"
+  },
+  "fieldExecutionOfficer": "Field Execution Officer",
+  "@fieldExecutionOfficer": {
+    "description": "Role title for field officer"
+  },
+  "pendingFieldAllocation": "Pending Field Allocation",
+  "@pendingFieldAllocation": {
+    "description": "Badge when field officer not yet assigned"
+  },
+  "temporarilyOnHold": "Temporarily On Hold",
+  "@temporarilyOnHold": {
+    "description": "Badge status when ground work is paused"
+  },
+  "workCompleted": "Work Completed",
+  "@workCompleted": {
+    "description": "Badge status when repair is finished"
+  },
+  "workInProgress": "Work In Progress",
+  "@workInProgress": {
+    "description": "Badge when field officer is actively working"
+  },
+  "assignedForFieldWork": "Assigned for Field Work",
+  "@assignedForFieldWork": {
+    "description": "Badge when field officer is allocated"
+  },
+  "awaitingFieldOfficerAssignment": "Awaiting field officer assignment by the Supervising Junior Engineer.",
+  "@awaitingFieldOfficerAssignment": {
+    "description": "Note when field officer is pending"
+  },
+  "groundObstacle": "Ground obstacle: {reason}",
+  "@groundObstacle": {
+    "description": "Note displaying obstacle reason",
+    "placeholders": {
+      "reason": {
+        "type": "String",
+        "example": "Road work blocked"
+      }
+    }
+  },
+  "groundWorkPaused": "Ground work is temporarily paused due to site constraints.",
+  "@groundWorkPaused": {
+    "description": "Fallback obstacle message"
+  },
+  "groundRepairExecuted": "Ground repair executed and verified successfully.",
+  "@groundRepairExecuted": {
+    "description": "Completion message in officer card"
+  },
+  "reopenedForQualityRework": "Reopened for Quality Rework",
+  "@reopenedForQualityRework": {
+    "description": "Header on supervisory rework card"
+  },
+  "supervisoryReviewAction": "Supervisory Quality Review Action",
+  "@supervisoryReviewAction": {
+    "description": "Rework banner subtitle"
+  },
+  "reworkRequired": "Rework Required",
+  "@reworkRequired": {
+    "description": "Badge label on rework status card"
+  },
+  "reworkCycle": "Rework Cycle #{count}",
+  "@reworkCycle": {
+    "description": "Cycle count tag on rework banner",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "2"
+      }
+    }
+  },
+  "reasonForReopening": "Reason for Reopening",
+  "@reasonForReopening": {
+    "description": "Title of reason section in rework card"
+  },
+  "slaPreservedNote": "Original SLA preserved from submission. Priority ground execution underway.",
+  "@slaPreservedNote": {
+    "description": "Note on SLA preservation during rework"
+  },
+  "resolutionAndVerification": "Resolution & Work Verification",
+  "@resolutionAndVerification": {
+    "description": "Card title for before/after comparison"
+  },
+  "groundInspectionEvidence": "Ground inspection & completion evidence",
+  "@groundInspectionEvidence": {
+    "description": "Subtitle for before/after comparison"
+  },
+  "reportedIssueBefore": "Reported Issue (Before)",
+  "@reportedIssueBefore": {
+    "description": "Tile label for before photo"
+  },
+  "resolvedConditionAfter": "Resolved Condition (After)",
+  "@resolvedConditionAfter": {
+    "description": "Tile label for after photo"
+  },
+  "officerResolutionRemarks": "Officer Resolution Remarks",
+  "@officerResolutionRemarks": {
+    "description": "Label for officer remarks"
+  },
+  "executedByOfficer": "Executed by {officer}",
+  "@executedByOfficer": {
+    "description": "Resolution card footer with officer name",
+    "placeholders": {
+      "officer": {
+        "type": "String",
+        "example": "John Doe"
+      }
+    }
+  },
+  "resolvedOnDate": "Resolved on {date}",
+  "@resolvedOnDate": {
+    "description": "Resolved date text",
+    "placeholders": {
+      "date": {
+        "type": "String",
+        "example": "Oct 1, 2026"
+      }
+    }
+  },
+  "issueResolvedBanner": "✓ Issue Resolved",
+  "@issueResolvedBanner": {
+    "description": "Resolved banner header"
+  },
+  "issueResolvedSubtitle": "This complaint has been marked as resolved.",
+  "@issueResolvedSubtitle": {
+    "description": "Resolved banner subtitle"
+  },
+  "currentPhase": "Current Phase",
+  "@currentPhase": {
+    "description": "Current phase label"
+  },
+  "progress": "Progress",
+  "@progress": {
+    "description": "Progress label"
+  },
+  "updates": "Updates",
+  "@updates": {
+    "description": "Timeline section header"
+  },
+  "noUpdatesYet": "No updates yet.",
+  "@noUpdatesYet": {
+    "description": "Empty timeline message"
+  },
+  "reportedOn": "Reported on {date}",
+  "@reportedOn": {
+    "description": "Reported date text in details footer",
+    "placeholders": {
+      "date": {
+        "type": "String",
+        "example": "Oct 1, 2026"
+      }
+    }
+  },
+  "viewLocation": "View Location",
+  "@viewLocation": {
+    "description": "Button to view location on map"
+  },
+  "evidencePhotos": "Photo Evidence ({count})",
+  "@evidencePhotos": {
+    "description": "Header for photo evidence in review and details",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "noPhotosAttached": "No photos attached (Optional)",
+  "@noPhotosAttached": {
+    "description": "Label when no photos are attached to report"
+  },
+  "photoPreview": "Photo Preview ({current} of {total})",
+  "@photoPreview": {
+    "description": "Photo preview dialog header",
+    "placeholders": {
+      "current": {
+        "type": "int",
+        "example": "1"
+      },
+      "total": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "closePreview": "Close Preview",
+  "@closePreview": {
+    "description": "Tooltip to close preview dialog"
+  },
+  "routedToDepartment": "This issue will be routed to {department}.",
+  "@routedToDepartment": {
+    "description": "Department routing note in review card",
+    "placeholders": {
+      "department": {
+        "type": "String",
+        "example": "Roads & Traffic"
+      }
+    }
+  },
+  "markAllAsRead": "Mark all as read",
+  "@markAllAsRead": {
+    "description": "Action button on notifications screen"
+  },
+  "allNotificationsMarkedRead": "All notifications marked as read.",
+  "@allNotificationsMarkedRead": {
+    "description": "Snackbar when all notifications marked read"
+  },
+  "unread": "Unread",
+  "@unread": {
+    "description": "Filter chip: unread"
+  },
+  "read": "Read",
+  "@read": {
+    "description": "Filter chip: read"
+  },
+  "noUnreadNotifications": "No unread notifications",
+  "@noUnreadNotifications": {
+    "description": "Empty state title for unread filter"
+  },
+  "noUnreadNotificationsDesc": "You have read all updates on your complaints and ward notices.",
+  "@noUnreadNotificationsDesc": {
+    "description": "Empty state description when no unread notifications"
+  },
+  "noNotificationsYet": "No notifications yet.",
+  "@noNotificationsYet": {
+    "description": "Empty state title when no notifications exist"
+  },
+  "noNotificationsYetDesc": "When there is an update to one of your complaints, it will appear here.",
+  "@noNotificationsYetDesc": {
+    "description": "Empty state description when zero notifications"
+  },
+  "citizenProfile": "Citizen Profile",
+  "@citizenProfile": {
+    "description": "Screen title for citizen profile"
+  },
+  "editProfile": "Edit Profile",
+  "@editProfile": {
+    "description": "Edit profile screen title and action"
+  },
+  "civicContribution": "Civic Contribution",
+  "@civicContribution": {
+    "description": "Contribution stats card title"
+  },
+  "viewAchievements": "View Achievements",
+  "@viewAchievements": {
+    "description": "Action button in contribution stats"
+  },
+  "reports": "Reports",
+  "@reports": {
+    "description": "Reports metric title in contribution card"
+  },
+  "resolved": "Resolved",
+  "@resolved": {
+    "description": "Resolved metric title in contribution card"
+  },
+  "civicPoints": "Civic Points",
+  "@civicPoints": {
+    "description": "Civic points metric title in contribution card"
+  },
+  "civicEngagement": "Civic Engagement",
+  "@civicEngagement": {
+    "description": "Profile section title for civic engagement"
+  },
+  "civicRewardsAndAchievements": "Civic Rewards & Achievements",
+  "@civicRewardsAndAchievements": {
+    "description": "Profile menu item for rewards"
+  },
+  "civicAssistant": "Civic Assistant",
+  "@civicAssistant": {
+    "description": "Profile menu item for assistant"
+  },
+  "assistantSubtitleLong": "FAQ, complaint rules & category help",
+  "@assistantSubtitleLong": {
+    "description": "Assistant menu tile subtitle"
+  },
+  "settingsAndPrivacy": "Settings & Privacy",
+  "@settingsAndPrivacy": {
+    "description": "Profile section title for settings"
+  },
+  "notificationPreferences": "Notification Preferences",
+  "@notificationPreferences": {
+    "description": "Menu title for notification settings"
+  },
+  "notificationPreferencesSubtitle": "Status alerts, hazard warnings & sound",
+  "@notificationPreferencesSubtitle": {
+    "description": "Notification preferences subtitle"
+  },
+  "privacyAndSafety": "Privacy & Safety",
+  "@privacyAndSafety": {
+    "description": "Menu title for privacy settings"
+  },
+  "privacyAndSafetySubtitle": "Confidentiality and public map policy",
+  "@privacyAndSafetySubtitle": {
+    "description": "Privacy preferences subtitle"
+  },
+  "aboutCivicFix": "About CivicFix",
+  "@aboutCivicFix": {
+    "description": "Menu title for about screen"
+  },
+  "aboutCivicFixSubtitle": "Mission, governance model, and technology",
+  "@aboutCivicFixSubtitle": {
+    "description": "About screen menu subtitle"
+  },
+  "logout": "Log Out",
+  "@logout": {
+    "description": "Log out button text"
+  },
+  "logoutConfirmTitle": "Log out?",
+  "@logoutConfirmTitle": {
+    "description": "Logout dialog title"
+  },
+  "logoutConfirmMessage": "Are you sure you want to log out?",
+  "@logoutConfirmMessage": {
+    "description": "Logout dialog content"
+  },
+  "profileUpdatedSuccess": "Profile updated successfully.",
+  "@profileUpdatedSuccess": {
+    "description": "Snackbar when profile is updated"
+  },
+  "profileUpdateFailed": "Couldn''t update profile. Please try again.",
+  "@profileUpdateFailed": {
+    "description": "Snackbar when profile update fails"
+  },
+  "viewDetails": "View Details",
+  "@viewDetails": {
+    "description": "View details button"
+  },
+  "closeComplaintCard": "Close complaint card",
+  "@closeComplaintCard": {
+    "description": "Tooltip to close floating map card"
+  },
+  "searchHazardsHint": "Search hazards or complaints...",
+  "@searchHazardsHint": {
+    "description": "Search hint on hazard map screen"
+  },
+  "unableToOpenComplaint": "Unable to open this complaint.",
+  "@unableToOpenComplaint": {
+    "description": "Unauthorized complaint title"
+  },
+  "complaintBelongsToOther": "This report belongs to a different citizen account.",
+  "@complaintBelongsToOther": {
+    "description": "Unauthorized complaint description"
+  },
+  "backToMyComplaints": "Back to My Complaints",
+  "@backToMyComplaints": {
+    "description": "Button to navigate back to my complaints"
+  },
+  "complaintNotFound": "Complaint not found.",
+  "@complaintNotFound": {
+    "description": "Not found complaint title"
+  },
+  "complaintNotFoundDesc": "This complaint may no longer be available.",
+  "@complaintNotFoundDesc": {
+    "description": "Not found complaint description"
+  },
+  "couldNotLoadComplaint": "Couldn''t load this complaint.",
+  "@couldNotLoadComplaint": {
+    "description": "Error title when complaint load fails"
+  },
+  "couldNotLoadNotifications": "Couldn''t load notifications.",
+  "@couldNotLoadNotifications": {
+    "description": "Error title when notifications load fails"
+  },
+  "checkConnectionAndRetry": "Please check your connection and try again.",
+  "@checkConnectionAndRetry": {
+    "description": "Error message prompting retry"
+  },
+  "pleaseEnterName": "Please enter your name.",
+  "@pleaseEnterName": {
+    "description": "Validation error for empty name"
+  },
+  "pleaseEnterValidPhone": "Please enter a valid phone number (at least 10 digits).",
+  "@pleaseEnterValidPhone": {
+    "description": "Validation error for invalid phone"
+  },
+  "passwordMinCharsHint": "Minimum 8 characters",
+  "@passwordMinCharsHint": {
+    "description": "Hint text for minimum password length"
+  },
+  "pleaseConfirmPassword": "Please confirm your password.",
+  "@pleaseConfirmPassword": {
+    "description": "Validation error for empty confirm password"
+  },
+  "accountCreatedSuccess": "Account created successfully.",
+  "@accountCreatedSuccess": {
+    "description": "Success banner when account registration completes"
+  },
+  "registrationFailed": "Registration failed. Please try again.",
+  "@registrationFailed": {
+    "description": "Error message when registration fails"
+  },
+  "createAccountBtn": "Create Account",
+  "@createAccountBtn": {
+    "description": "Button text to submit registration"
+  },
+  "changeAction": "Change",
+  "@changeAction": {
+    "description": "Action button to change phone number"
+  },
+  "verificationCodeHint": "Enter 6-digit OTP",
+  "@verificationCodeHint": {
+    "description": "Hint text for OTP field"
+  },
+  "pleaseEnterVerificationCode": "Please enter the verification code.",
+  "@pleaseEnterVerificationCode": {
+    "description": "Validation error for empty OTP"
+  },
+  "verificationCodeMinLength": "Verification code must be at least 4 digits.",
+  "@verificationCodeMinLength": {
+    "description": "Validation error for short OTP"
+  },
+  "unableToResendCode": "Unable to resend verification code.",
+  "@unableToResendCode": {
+    "description": "Error message when resending OTP fails"
+  },
+  "enterRegisteredEmail": "Enter your registered email",
+  "@enterRegisteredEmail": {
+    "description": "Hint text on forgot password screen"
+  },
+  "passwordResetSent": "Password reset instructions have been sent.",
+  "@passwordResetSent": {
+    "description": "Success message when reset link dispatched"
+  },
+  "unableToProcessReset": "Unable to process reset request.",
+  "@unableToProcessReset": {
+    "description": "Error message when reset request fails"
+  },
+  "navHome": "Home",
+  "@navHome": {
+    "description": "Home tab label in citizen navigation"
+  },
+  "navComplaints": "Complaints",
+  "@navComplaints": {
+    "description": "Complaints tab label in citizen navigation"
+  },
+  "navNotifications": "Notifications",
+  "@navNotifications": {
+    "description": "Notifications tab label in citizen navigation"
+  },
+  "navProfile": "Profile",
+  "@navProfile": {
+    "description": "Profile tab label in citizen navigation"
+  },
+  "loadingDashboard": "Loading civic dashboard...",
+  "@loadingDashboard": {
+    "description": "Loading indicator text on home screen"
+  },
+  "unableToLoadUpdates": "Unable to load civic updates. Please try again.",
+  "@unableToLoadUpdates": {
+    "description": "Error description when dashboard data load fails"
+  },
+  "assistant": "Assistant",
+  "@assistant": {
+    "description": "AI Assistant feature title"
+  },
+  "reportToGetStarted": "Report a civic issue to get started.",
+  "@reportToGetStarted": {
+    "description": "Empty state prompt to report first issue"
+  },
+  "noNearbyHazards": "No immediate hazards reported in your immediate vicinity.",
+  "@noNearbyHazards": {
+    "description": "Empty state card for nearby hazards"
+  },
+  "issueInformationTitle": "Issue Information",
+  "@issueInformationTitle": {
+    "description": "Step 1 title in report issue flow"
+  },
+  "issueInformationSubtitle": "Help us understand the problem so it can reach the right team.",
+  "@issueInformationSubtitle": {
+    "description": "Step 1 subtitle in report issue flow"
+  },
+  "issueTitleLabel": "Issue Title",
+  "@issueTitleLabel": {
+    "description": "Label for issue title field"
+  },
+  "pleaseEnterIssueTitle": "Please enter a title for the issue.",
+  "@pleaseEnterIssueTitle": {
+    "description": "Validation error for empty title"
+  },
+  "issueTitleMinLength": "Title must be at least 5 characters.",
+  "@issueTitleMinLength": {
+    "description": "Validation error for short issue title"
+  },
+  "pleaseSelectCategory": "Please select an issue category.",
+  "@pleaseSelectCategory": {
+    "description": "Validation error for unselected category"
+  },
+  "pleaseDescribeIssue": "Please describe the issue.",
+  "@pleaseDescribeIssue": {
+    "description": "Validation error for empty description"
+  },
+  "describeIssueMinLength": "Description must be at least 10 characters.",
+  "@describeIssueMinLength": {
+    "description": "Validation error for short description"
+  },
+  "describeIssueHelper": "Include useful details such as what is damaged, how long it has been happening, or how it affects the area.",
+  "@describeIssueHelper": {
+    "description": "Helper guidance under description field"
+  },
+  "addLocationSubtitle": "Add the location so the responsible team can find it.",
+  "@addLocationSubtitle": {
+    "description": "Subtitle for location selection step"
+  },
+  "submitIssue": "Submit Issue",
+  "@submitIssue": {
+    "description": "Primary button to submit civic complaint"
+  },
+  "supervisingStatus": "Supervising",
+  "@supervisingStatus": {
+    "description": "Badge indicating junior engineer supervision"
+  },
+  "routingStatus": "Routing...",
+  "@routingStatus": {
+    "description": "Badge indicating auto routing to ward engineer"
+  },
+  "awaitingFieldAllocationNote": "Awaiting field officer assignment by the Supervising Junior Engineer.",
+  "@awaitingFieldAllocationNote": {
+    "description": "Status explanation when field officer not yet assigned"
+  },
+  "groundRepairVerified": "Ground repair executed and verified successfully.",
+  "@groundRepairVerified": {
+    "description": "Explanation when repair is verified"
+  },
+  "executionUnderway": "Execution currently underway on site.",
+  "@executionUnderway": {
+    "description": "Explanation when field work is running"
+  },
+  "fieldOfficerAllocatedNote": "Field officer allocated. Ground operations scheduled.",
+  "@fieldOfficerAllocatedNote": {
+    "description": "Explanation when field officer has been assigned"
+  },
+  "originalSlaPreserved": "Original SLA preserved from submission. Priority ground execution underway.",
+  "@originalSlaPreserved": {
+    "description": "Note clarifying SLA preservation upon rework"
+  },
+  "resolutionAndWorkVerification": "Resolution & Work Verification",
+  "@resolutionAndWorkVerification": {
+    "description": "Header on resolution evidence card"
+  },
+  "issueReportedTitle": "Issue Reported",
+  "@issueReportedTitle": {
+    "description": "Title when complaint submitted online"
+  },
+  "issueSubmittedSuccess": "Your issue has been submitted successfully.",
+  "@issueSubmittedSuccess": {
+    "description": "Subtitle on complaint submission screen"
+  },
+  "plusTwentyPoints": "+20 Points",
+  "@plusTwentyPoints": {
+    "description": "Points awarded badge"
+  },
+  "storedLocallyNote": "Your complaint is securely stored on this device and will sync once internet is connected.",
+  "@storedLocallyNote": {
+    "description": "Note for offline submission"
+  },
+  "trackFromMyComplaintsNote": "You can track the progress of this issue from My Complaints.",
+  "@trackFromMyComplaintsNote": {
+    "description": "Note for tracking complaint progress"
+  },
+  "noComplaintsFoundDesc": "Try a different search or filter.",
+  "@noComplaintsFoundDesc": {
+    "description": "Empty state description for filtered complaints"
+  },
+  "noComplaintsReportedYet": "No complaints reported yet",
+  "@noComplaintsReportedYet": {
+    "description": "Empty state title when citizen has no complaints on record"
+  },
+  "supportedComplaintSuccess": "Supported complaint!",
+  "@supportedComplaintSuccess": {
+    "description": "Snackbar confirmation when citizen upvotes a complaint"
+  },
+  "alreadySupportedComplaint": "You already supported this complaint.",
+  "@alreadySupportedComplaint": {
+    "description": "Snackbar notification if complaint already upvoted"
+  },
+  "statusVerified": "Verified",
+  "@statusVerified": {
+    "description": "Status badge for verified complaint"
+  },
+  "statusRejected": "Rejected",
+  "@statusRejected": {
+    "description": "Status badge for rejected complaint"
+  },
+  "loadingComplaints": "Loading your complaints...",
+  "@loadingComplaints": {
+    "description": "Loading state for complaints list"
+  },
+  "failedToLoadComplaints": "Couldn''t load your complaints.",
+  "@failedToLoadComplaints": {
+    "description": "Error message when complaints fail to load"
+  },
+  "reportCivicIssueTrackProgress": "Report a civic issue and track its progress here.",
+  "@reportCivicIssueTrackProgress": {
+    "description": "Empty state description for complaints list"
+  },
+  "reportAnIssue": "Report an Issue",
+  "@reportAnIssue": {
+    "description": "Action button to report an issue"
+  },
+  "trackCivicIssuesReported": "Track the civic issues you''ve reported.",
+  "@trackCivicIssuesReported": {
+    "description": "Header subtitle for complaints list"
+  },
+  "clearSearch": "Clear search",
+  "@clearSearch": {
+    "description": "Tooltip for clear search button"
+  },
+  "complaintIdCopied": "Complaint ID {ticketNumber} copied.",
+  "@complaintIdCopied": {
+    "description": "Snackbar message when complaint ticket number is copied",
+    "placeholders": {
+      "ticketNumber": {
+        "type": "String"
+      }
+    }
+  },
+  "locationSelected": "Location selected",
+  "@locationSelected": {
+    "description": "Placeholder when location is selected"
+  },
+  "supports": "supports",
+  "@supports": {
+    "description": "Count label for supports"
+  },
+  "closeFilters": "Close Filters",
+  "@closeFilters": {
+    "description": "Tooltip to close filters"
+  },
+  "noComplaintSpecified": "No complaint specified.",
+  "@noComplaintSpecified": {
+    "description": "Error state when no complaint was passed"
+  },
+  "waitingForConnection": "Waiting for connection",
+  "@waitingForConnection": {
+    "description": "Banner title for pending sync"
+  },
+  "complaintStoredSecurelyOffline": "Your complaint is stored securely on this device and will be submitted once internet is available.",
+  "@complaintStoredSecurelyOffline": {
+    "description": "Banner description for pending sync"
+  },
+  "synchronizingWithCloud": "Synchronizing with Cloud",
+  "@synchronizingWithCloud": {
+    "description": "Banner title for syncing state"
+  },
+  "uploadingComplaintData": "Uploading complaint data and evidence to the municipal network...",
+  "@uploadingComplaintData": {
+    "description": "Banner description for syncing state"
+  },
+  "synchronizationFailed": "Synchronization Failed",
+  "@synchronizationFailed": {
+    "description": "Banner title for failed sync"
+  },
+  "failedToSyncWithCloud": "Failed to synchronize this report with the cloud backend. Check connection and retry.",
+  "@failedToSyncWithCloud": {
+    "description": "Banner description for failed sync"
+  },
+  "retrySync": "Retry Sync",
+  "@retrySync": {
+    "description": "Button to retry syncing complaint"
+  },
+  "complaintMarkedResolved": "This complaint has been marked as resolved.",
+  "@complaintMarkedResolved": {
+    "description": "Banner description for resolved complaint"
+  },
+  "reportedOnDate": "Reported on {date}",
+  "@reportedOnDate": {
+    "description": "Reported timestamp line",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "lastUpdatedTime": "Last updated {time}",
+  "@lastUpdatedTime": {
+    "description": "Last updated timestamp line",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "wardLabel": "Ward",
+  "@wardLabel": {
+    "description": "Ward municipal designation"
+  },
+  "central": "Central",
+  "@central": {
+    "description": "Default central ward label"
+  },
+  "groundWorkTemporarilyPaused": "Ground work is temporarily paused due to site constraints.",
+  "@groundWorkTemporarilyPaused": {
+    "description": "Note for paused ground execution"
+  },
+  "commencedTime": "Commenced {time}.",
+  "@commencedTime": {
+    "description": "Commenced relative time statement",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "executionUnderwayOnSite": "Execution currently underway on site.",
+  "@executionUnderwayOnSite": {
+    "description": "Execution underway notice"
+  },
+  "pendingAllocation": "Pending Allocation",
+  "@pendingAllocation": {
+    "description": "Placeholder officer name for pending allocation"
+  },
+  "defaultReopenReason": "Work quality did not meet municipal standards upon audit review. Reassigned for corrective action.",
+  "@defaultReopenReason": {
+    "description": "Default reason for reopening complaint for rework"
+  },
+  "deptLeadQualityAudit": "Department Lead Quality Audit",
+  "@deptLeadQualityAudit": {
+    "description": "Default department reviewer identity"
+  },
+  "reviewedBy": "Reviewed by",
+  "@reviewedBy": {
+    "description": "Reviewed by label"
+  },
+  "slaPreservedPriorityExecution": "Original SLA preserved from submission. Priority ground execution underway.",
+  "@slaPreservedPriorityExecution": {
+    "description": "SLA guarantee note for rework"
+  },
+  "hidePreviousResolutionRecord": "Hide Previous Resolution Record",
+  "@hidePreviousResolutionRecord": {
+    "description": "Collapse previous resolution history"
+  },
+  "viewPreviousResolutionRecord": "View Previous Resolution Record",
+  "@viewPreviousResolutionRecord": {
+    "description": "Expand previous resolution history"
+  },
+  "photos": "photos",
+  "@photos": {
+    "description": "Count noun for photos"
+  },
+  "priorResolutionTimestamp": "Prior resolution timestamp",
+  "@priorResolutionTimestamp": {
+    "description": "Prior resolution timestamp label"
+  },
+  "executedBy": "Executed by {name}",
+  "@executedBy": {
+    "description": "Officer executor attribution",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "progressTracker": "Progress Tracker",
+  "@progressTracker": {
+    "description": "Header title for 5-stage progress tracker"
+  },
+  "stage": "Stage",
+  "@stage": {
+    "description": "Stage label for progress tracker"
+  },
+  "ofFive": "of 5",
+  "@ofFive": {
+    "description": "Denominator 5 for stages"
+  },
+  "currentCaps": "CURRENT",
+  "@currentCaps": {
+    "description": "Current stage chip label"
+  },
+  "categoryLabel": "Category",
+  "@categoryLabel": {
+    "description": "Category label"
+  },
+  "departmentLabel": "Department",
+  "@departmentLabel": {
+    "description": "Department label"
+  },
+  "priorityLabel": "Priority",
+  "@priorityLabel": {
+    "description": "Priority label"
+  },
+  "noDescriptionProvided": "No additional description provided.",
+  "@noDescriptionProvided": {
+    "description": "Empty description placeholder"
+  },
+  "landmark": "Landmark",
+  "@landmark": {
+    "description": "Landmark label"
+  },
+  "jurisdiction": "Jurisdiction",
+  "@jurisdiction": {
+    "description": "Jurisdiction label"
+  },
+  "updatesTitle": "Updates",
+  "@updatesTitle": {
+    "description": "Timeline updates section header"
+  },
+  "entry": "entry",
+  "@entry": {
+    "description": "Singular entry noun"
+  },
+  "entries": "entries",
+  "@entries": {
+    "description": "Plural entries noun"
+  },
+  "hazardMapTitle": "Hazard Map",
+  "@hazardMapTitle": {
+    "description": "Hazard map screen app bar title"
+  },
+  "couldNotLoadCivicIssues": "Couldn''t load civic issues.",
+  "@couldNotLoadCivicIssues": {
+    "description": "Error message for hazard map failure"
+  },
+  "checkConnectionRetry": "Please check your connection and try again.",
+  "@checkConnectionRetry": {
+    "description": "Retry connection suggestion"
+  },
+  "loadingHazardMap": "Loading civic hazard map...",
+  "@loadingHazardMap": {
+    "description": "Loading state for hazard map"
+  },
+  "offlineCachedHazardsBanner": "Offline — Showing cached hazards. Basemap tiles require network.",
+  "@offlineCachedHazardsBanner": {
+    "description": "Offline notice on hazard map"
+  },
+  "locationServicesDisabled": "Location services are disabled on your device.",
+  "@locationServicesDisabled": {
+    "description": "Warning when GPS service is turned off"
+  },
+  "locationPermissionRequired": "Location permission is required to center the map.",
+  "@locationPermissionRequired": {
+    "description": "Warning when location permission denied"
+  },
+  "centeredOnLocation": "Centered on your location{wardText}",
+  "@centeredOnLocation": {
+    "description": "Snackbar confirming map recentered",
+    "placeholders": {
+      "wardText": {
+        "type": "String"
+      }
+    }
+  },
+  "unableToDetermineLocation": "Unable to determine your location. Please try again.",
+  "@unableToDetermineLocation": {
+    "description": "GPS determination error"
+  },
+  "gpsTimeoutRetry": "GPS acquisition timed out. Please retry.",
+  "@gpsTimeoutRetry": {
+    "description": "GPS timeout error"
+  },
+  "hideHeatmapLayer": "Hide Heatmap Layer",
+  "@hideHeatmapLayer": {
+    "description": "Tooltip to hide heatmap"
+  },
+  "showHeatmapLayer": "Show Heatmap Layer",
+  "@showHeatmapLayer": {
+    "description": "Tooltip to show heatmap"
+  },
+  "toggleMapLegend": "Toggle Map Legend",
+  "@toggleMapLegend": {
+    "description": "Tooltip to toggle map legend"
+  },
+  "useMyLocation": "Use My Location",
+  "@useMyLocation": {
+    "description": "Button to detect GPS location"
+  },
+  "zoomIn": "Zoom In",
+  "@zoomIn": {
+    "description": "Tooltip for zoom in button"
+  },
+  "zoomOut": "Zoom Out",
+  "@zoomOut": {
+    "description": "Tooltip for zoom out button"
+  },
+  "statusLegend": "Status Legend",
+  "@statusLegend": {
+    "description": "Legend title for complaint status colors"
+  },
+  "civicIssuesNearYou": "civic issues near you",
+  "@civicIssuesNearYou": {
+    "description": "Count pill label for nearby hazards"
+  },
+  "noCivicIssuesFound": "No civic issues found.",
+  "@noCivicIssuesFound": {
+    "description": "Empty search results title on hazard map"
+  },
+  "tryChangingFiltersOrSearch": "Try changing your filters or search.",
+  "@tryChangingFiltersOrSearch": {
+    "description": "Empty search advice on hazard map"
+  },
+  "logoutConfirmationTitle": "Log out?",
+  "@logoutConfirmationTitle": {
+    "description": "Dialog title for logout confirmation"
+  },
+  "logoutConfirmationDesc": "Are you sure you want to log out?",
+  "@logoutConfirmationDesc": {
+    "description": "Dialog description for logout confirmation"
+  },
+  "viewMilestones": "View Milestones",
+  "@viewMilestones": {
+    "description": "Link to view milestones"
+  },
+  "civicAssistantSubtitle": "FAQ, complaint rules & category help",
+  "@civicAssistantSubtitle": {
+    "description": "Civic assistant subtitle"
+  },
+  "accountAndPreferences": "Account & Preferences",
+  "@accountAndPreferences": {
+    "description": "Settings section title for account"
+  },
+  "appearance": "Appearance",
+  "@appearance": {
+    "description": "Settings section title for appearance"
+  },
+  "themeMode": "Theme Mode",
+  "@themeMode": {
+    "description": "Theme selector title"
+  },
+  "systemDefault": "System Default",
+  "@systemDefault": {
+    "description": "Theme option system default"
+  },
+  "lightTheme": "Light Theme",
+  "@lightTheme": {
+    "description": "Theme option light theme"
+  },
+  "darkTheme": "Dark Theme",
+  "@darkTheme": {
+    "description": "Theme option dark theme"
+  },
+  "appVersion": "App Version",
+  "@appVersion": {
+    "description": "App version label"
+  },
+  "actions": "Actions",
+  "@actions": {
+    "description": "Actions section title"
+  },
+  "personalInformation": "Personal Information",
+  "@personalInformation": {
+    "description": "Personal information section header"
+  },
+  "enterFullName": "Enter your full name",
+  "@enterFullName": {
+    "description": "Full name hint text"
+  },
+  "emailCannotBeChanged": "Email cannot be changed for citizen account.",
+  "@emailCannotBeChanged": {
+    "description": "Email helper text on edit profile"
+  },
+  "phoneHelperText": "Used for SMS updates on urgent neighborhood alerts.",
+  "@phoneHelperText": {
+    "description": "Phone helper text on edit profile"
+  },
+  "registeredCitizenAccount": "Registered Citizen Account",
+  "@registeredCitizenAccount": {
+    "description": "Citizen account status card title"
+  },
+  "citizen": "Citizen",
+  "@citizen": {
+    "description": "Citizen role label"
+  },
+  "nameTooShort": "Name must be at least 2 characters long.",
+  "@nameTooShort": {
+    "description": "Name validation minimum length error"
+  },
+  "nameTooLong": "Name cannot exceed 50 characters.",
+  "@nameTooLong": {
+    "description": "Name validation maximum length error"
+  },
+  "phoneInvalid": "Please enter a valid 10-digit phone number.",
+  "@phoneInvalid": {
+    "description": "Phone validation 10 digits error"
+  },
+  "discardReportDesc": "Your entered information will be lost.",
+  "@discardReportDesc": {
+    "description": "Dialog description for discarding report draft"
+  },
+  "filterCivicIssues": "Filter Civic Issues",
+  "@filterCivicIssues": {
+    "description": "Modal title for hazard map filter sheet"
+  },
+  "closeFilter": "Close filter",
+  "@closeFilter": {
+    "description": "Tooltip to close hazard map filter sheet"
+  },
+  "hazardCategory": "Hazard Category",
+  "@hazardCategory": {
+    "description": "Category section header in hazard map filter sheet"
+  },
+  "issueStatus": "Issue Status",
+  "@issueStatus": {
+    "description": "Status section header in hazard map filter sheet"
+  },
+  "reportTimeframe": "Report Timeframe",
+  "@reportTimeframe": {
+    "description": "Timeframe section header in hazard map filter sheet"
+  },
+  "civicStanding": "Civic Standing",
+  "@civicStanding": {
+    "description": "Standing subtitle in civic progress card"
+  },
+  "tierProgress": "Contribution Tier Progress",
+  "@tierProgress": {
+    "description": "Tier progress bar label"
+  },
+  "totalPoints": "Total Points",
+  "@totalPoints": {
+    "description": "Total points stat column label"
+  },
+  "reportsFiled": "Reports Filed",
+  "@reportsFiled": {
+    "description": "Reports filed stat column label"
+  },
+  "resolvedFixes": "Resolved Fixes",
+  "@resolvedFixes": {
+    "description": "Resolved fixes stat column label"
+  },
+  "selectCategorySubtitle": "Select the category that best matches the problem.",
+  "@selectCategorySubtitle": {
+    "description": "Subtitle for selecting category"
+  },
+  "stepInfo": "Information",
+  "@stepInfo": {
+    "description": "Step 1 Information label"
+  },
+  "recentComplaints": "Recent Complaints",
+  "@recentComplaints": {
+    "description": "Header for recent complaints"
+  },
+  "rewards": "Rewards",
+  "@rewards": {
+    "description": "Rewards title"
+  },
+  "resendCodeInSeconds": "Resend code in {seconds}s",
+  "@resendCodeInSeconds": {
+    "description": "Resend cooldown message",
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "immediateSafetyHazardTitle": "Immediate Safety Hazard",
+  "@immediateSafetyHazardTitle": {
+    "description": "Safety hazard toggle title"
+  },
+  "addEvidenceTitle": "Add Evidence",
+  "@addEvidenceTitle": {
+    "description": "Step 2 title"
+  },
+  "aiFallbackReviewTitle": "Under Departmental Review",
+  "@aiFallbackReviewTitle": {
+    "description": "Title when AI is temporarily unavailable and human review is active"
+  },
+  "aiFallbackReviewMessage": "Automated verification is temporarily unavailable. Your grievance has been routed for departmental review. SLA is active and resolution is progressing normally.",
+  "@aiFallbackReviewMessage": {
+    "description": "Citizen safe message during AI outage"
+  },
+  "aiFallbackConfirmedMessage": "Department confirmed via manual review. Auto-routed to Junior Engineer.",
+  "@aiFallbackConfirmedMessage": {
+    "description": "Message when lead confirms department"
+  },
+  "aiFallbackTransferredMessage": "Transferred to another BMC department via manual review.",
+  "@aiFallbackTransferredMessage": {
+    "description": "Message when lead transfers department"
+  },
+  "useDeviceLocation": "Use Device Location",
+  "@useDeviceLocation": {
+    "description": "Action card title to use device GPS"
+  },
+  "selectOnMap": "Select on Map",
+  "@selectOnMap": {
+    "description": "Button to select location on interactive map"
+  },
+  "centerOnGps": "Center on My GPS",
+  "@centerOnGps": {
+    "description": "Tooltip for map recenter on GPS button"
+  },
+  "verifyBeforeSubmitting": "Please verify all information before submitting to your ward.",
+  "@verifyBeforeSubmitting": {
+    "description": "Subtitle on report review screen"
+  },
+  "markedImmediateSafetyHazard": "Marked as Immediate Safety Hazard",
+  "@markedImmediateSafetyHazard": {
+    "description": "Badge indicating report is flagged as safety hazard"
+  },
+  "photoEvidenceCount": "Photo Evidence ({count})",
+  "@photoEvidenceCount": {
+    "description": "Photo evidence heading with count",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "nearLandmark": "Near {landmark}",
+  "@nearLandmark": {
+    "description": "Nearby landmark display",
+    "placeholders": {
+      "landmark": {
+        "type": "String"
+      }
+    }
+  },
+  "landmarkLabel": "Landmark: {landmark}",
+  "@landmarkLabel": {
+    "description": "Landmark field label with value",
+    "placeholders": {
+      "landmark": {
+        "type": "String"
+      }
+    }
+  },
+  "jurisdictionLabel": "Jurisdiction: {ward}",
+  "@jurisdictionLabel": {
+    "description": "Ward jurisdiction display",
+    "placeholders": {
+      "ward": {
+        "type": "String"
+      }
+    }
+  },
+  "issueRoutedTo": "This issue will be routed to {department}.",
+  "@issueRoutedTo": {
+    "description": "Department routing note",
+    "placeholders": {
+      "department": {
+        "type": "String"
+      }
+    }
+  },
+  "categoryRoads": "Roads",
+  "@categoryRoads": {
+    "description": "Roads issue category"
+  },
+  "categoryRoadsDesc": "Road damage, potholes and unsafe road surfaces.",
+  "@categoryRoadsDesc": {
+    "description": "Description for Roads category"
+  },
+  "categoryWater": "Water",
+  "@categoryWater": {
+    "description": "Water issue category"
+  },
+  "categoryWaterDesc": "Water supply issues, leakage or contamination.",
+  "@categoryWaterDesc": {
+    "description": "Description for Water category"
+  },
+  "categorySanitation": "Sanitation",
+  "@categorySanitation": {
+    "description": "Sanitation issue category"
+  },
+  "categorySanitationDesc": "Public hygiene, public toilets and street cleanliness.",
+  "@categorySanitationDesc": {
+    "description": "Description for Sanitation category"
+  },
+  "categoryWaste": "Waste Management",
+  "@categoryWaste": {
+    "description": "Waste management category"
+  },
+  "categoryWasteDesc": "Garbage accumulation and waste collection issues.",
+  "@categoryWasteDesc": {
+    "description": "Description for Waste Management category"
+  },
+  "categoryStreetlights": "Street Lights",
+  "@categoryStreetlights": {
+    "description": "Streetlights category"
+  },
+  "categoryStreetlightsDesc": "Broken or non-functioning street lights.",
+  "@categoryStreetlightsDesc": {
+    "description": "Description for Streetlights category"
+  },
+  "categoryDrainage": "Drainage",
+  "@categoryDrainage": {
+    "description": "Drainage category"
+  },
+  "categoryDrainageDesc": "Blocked drains, water logging, open manholes.",
+  "@categoryDrainageDesc": {
+    "description": "Description for Drainage category"
+  },
+  "categoryInfrastructure": "Public Infrastructure",
+  "@categoryInfrastructure": {
+    "description": "Public infrastructure category"
+  },
+  "categoryInfrastructureDesc": "Damaged footpaths, bridges, bus shelters.",
+  "@categoryInfrastructureDesc": {
+    "description": "Description for Infrastructure category"
+  },
+  "categoryTraffic": "Traffic / Road Safety",
+  "@categoryTraffic": {
+    "description": "Traffic and road safety category"
+  },
+  "categoryTrafficDesc": "Damaged signs, missing signals, hazardous intersections.",
+  "@categoryTrafficDesc": {
+    "description": "Description for Traffic category"
+  },
+  "categoryOther": "Other",
+  "@categoryOther": {
+    "description": "Other issue category"
+  },
+  "categoryOtherDesc": "Other public infrastructure or municipal maintenance issues.",
+  "@categoryOtherDesc": {
+    "description": "Description for Other category"
+  },
+  "categoryPotholes": "Potholes",
+  "@categoryPotholes": {
+    "description": "Potholes category"
+  },
+  "categoryGarbageOverflow": "Garbage Overflow",
+  "@categoryGarbageOverflow": {
+    "description": "Garbage overflow category"
+  },
+  "categoryWaterlogging": "Waterlogging",
+  "@categoryWaterlogging": {
+    "description": "Waterlogging category"
+  },
+  "categoryWaterLeakage": "Water Leakage",
+  "@categoryWaterLeakage": {
+    "description": "Water leakage category"
+  },
+  "categoryDamagedWater": "Damaged Water Infrastructure",
+  "@categoryDamagedWater": {
+    "description": "Damaged water infrastructure category"
+  },
+  "categorySewageOverflow": "Sewage Overflow",
+  "@categorySewageOverflow": {
+    "description": "Sewage overflow category"
+  },
+  "categoryManholes": "Open Manholes",
+  "@categoryManholes": {
+    "description": "Open manholes category"
+  },
+  "categoryFootpaths": "Damaged Footpaths",
+  "@categoryFootpaths": {
+    "description": "Damaged footpaths category"
+  },
+  "categoryTrees": "Fallen / Dangerous Trees",
+  "@categoryTrees": {
+    "description": "Fallen or dangerous trees category"
+  },
+  "priorityLow": "Low",
+  "@priorityLow": {
+    "description": "Low priority label"
+  },
+  "priorityMedium": "Medium",
+  "@priorityMedium": {
+    "description": "Medium priority label"
+  },
+  "priorityHigh": "High",
+  "@priorityHigh": {
+    "description": "High priority label"
+  },
+  "priorityEmergency": "Critical",
+  "@priorityEmergency": {
+    "description": "Critical emergency priority label"
+  },
+  "deptRoadsTraffic": "Roads & Traffic Department",
+  "@deptRoadsTraffic": {
+    "description": "Roads & Traffic Department name"
+  },
+  "deptSolidWaste": "Solid Waste Management",
+  "@deptSolidWaste": {
+    "description": "Solid Waste Department name"
+  },
+  "deptWaterSewerage": "Water Supply & Sewerage",
+  "@deptWaterSewerage": {
+    "description": "Water Supply & Sewerage Department name"
+  },
+  "deptElectricalStreetlights": "Electrical & Street Lighting",
+  "@deptElectricalStreetlights": {
+    "description": "Electrical & Streetlights Department name"
+  },
+  "deptStormDrainage": "Storm Water Drainage",
+  "@deptStormDrainage": {
+    "description": "Storm Water Drainage Department name"
+  },
+  "deptPublicHealth": "Public Health Department",
+  "@deptPublicHealth": {
+    "description": "Public Health Department name"
+  },
+  "deptGardensTrees": "Gardens & Tree Authority",
+  "@deptGardensTrees": {
+    "description": "Gardens & Tree Authority Department name"
+  },
+  "deptBuildingInfrastructure": "Building & Infrastructure",
+  "@deptBuildingInfrastructure": {
+    "description": "Building & Infrastructure Department name"
+  },
+  "deptGeneral": "General Municipal Desk",
+  "@deptGeneral": {
+    "description": "General Municipal Desk name"
+  },
+  "verificationPending": "Verification Pending",
+  "@verificationPending": {
+    "description": "Verification pending state label"
+  },
+  "verificationProcessing": "Analyzing & Verifying...",
+  "@verificationProcessing": {
+    "description": "Verification processing state label"
+  },
+  "verificationPassed": "Verification Passed",
+  "@verificationPassed": {
+    "description": "Verification passed state label"
+  },
+  "verificationFailed": "Verification Failed",
+  "@verificationFailed": {
+    "description": "Verification failed state label"
+  },
+  "verificationDelayed": "Automated Verification Delayed",
+  "@verificationDelayed": {
+    "description": "Verification delayed state label"
+  },
+  "verificationOfficerReview": "Department Officer Review",
+  "@verificationOfficerReview": {
+    "description": "Officer review verification state label"
+  },
+  "verificationCompleted": "Verification Completed",
+  "@verificationCompleted": {
+    "description": "Verification completed state label"
+  },
+  "routingUnassigned": "Unassigned",
+  "@routingUnassigned": {
+    "description": "Unassigned routing state"
+  },
+  "routingAssigned": "Assigned",
+  "@routingAssigned": {
+    "description": "Assigned routing state"
+  },
+  "routingReassignmentRequested": "Reassignment Requested",
+  "@routingReassignmentRequested": {
+    "description": "Reassignment requested routing state"
+  },
+  "routingTransferred": "Transferred",
+  "@routingTransferred": {
+    "description": "Transferred routing state"
+  },
+  "routingInProgress": "In Progress",
+  "@routingInProgress": {
+    "description": "In progress routing state"
+  },
+  "routingResolved": "Resolved",
+  "@routingResolved": {
+    "description": "Resolved routing state"
+  },
+  "assignmentUnassigned": "Unassigned",
+  "@assignmentUnassigned": {
+    "description": "Unassigned assignment state"
+  },
+  "assignmentLeadAssigned": "Assigned to Ward Lead",
+  "@assignmentLeadAssigned": {
+    "description": "Lead assigned state"
+  },
+  "assignmentCrewAssigned": "Assigned to Ground Crew",
+  "@assignmentCrewAssigned": {
+    "description": "Crew assigned state"
+  },
+  "assignmentFieldOfficerAssigned": "Assigned to Field Officer",
+  "@assignmentFieldOfficerAssigned": {
+    "description": "Field officer assigned state"
+  },
+  "syncSynced": "Synced",
+  "@syncSynced": {
+    "description": "Synced status"
+  },
+  "syncPending": "Pending Sync",
+  "@syncPending": {
+    "description": "Pending sync status"
+  },
+  "syncSyncing": "Syncing...",
+  "@syncSyncing": {
+    "description": "Syncing in progress status"
+  },
+  "basemapStyle": "Basemap Style",
+  "@basemapStyle": {
+    "description": "Basemap style title"
+  },
+  "chooseMapViewMode": "Choose map view and imagery mode",
+  "@chooseMapViewMode": {
+    "description": "Subtitle for basemap selector"
+  },
+  "basemapStreets": "Streets",
+  "@basemapStreets": {
+    "description": "Streets basemap label"
+  },
+  "basemapStreetsDesc": "Detailed vector road networks, wards, and civic infrastructure",
+  "@basemapStreetsDesc": {
+    "description": "Streets basemap description"
+  },
+  "basemapSatellite": "Satellite",
+  "@basemapSatellite": {
+    "description": "Satellite basemap label"
+  },
+  "basemapSatelliteDesc": "High-resolution aerial and satellite photographic imagery",
+  "@basemapSatelliteDesc": {
+    "description": "Satellite basemap description"
+  },
+  "basemapHybrid": "Hybrid",
+  "@basemapHybrid": {
+    "description": "Hybrid basemap label"
+  },
+  "basemapHybridDesc": "Satellite imagery overlaid with street names, borders, and locality labels",
+  "@basemapHybridDesc": {
+    "description": "Hybrid basemap description"
+  },
+  "badgeFirstReport": "First Report",
+  "@badgeFirstReport": {
+    "description": "First Report badge title"
+  },
+  "badgeFirstReportDesc": "Submitted your first civic grievance",
+  "@badgeFirstReportDesc": {
+    "description": "First Report badge description"
+  },
+  "badgeActiveCitizen": "Active Citizen",
+  "@badgeActiveCitizen": {
+    "description": "Active Citizen badge title"
+  },
+  "badgeActiveCitizenDesc": "Reported 5 or more civic issues",
+  "@badgeActiveCitizenDesc": {
+    "description": "Active Citizen badge description"
+  },
+  "badgeNeighborhoodHero": "Neighborhood Hero",
+  "@badgeNeighborhoodHero": {
+    "description": "Neighborhood Hero badge title"
+  },
+  "badgeNeighborhoodHeroDesc": "Had 10 issues resolved in your community",
+  "@badgeNeighborhoodHeroDesc": {
+    "description": "Neighborhood Hero badge description"
+  },
+  "badgeSharpEye": "Sharp Eye",
+  "@badgeSharpEye": {
+    "description": "Sharp Eye badge title"
+  },
+  "badgeSharpEyeDesc": "Reported an immediate safety hazard",
+  "@badgeSharpEyeDesc": {
+    "description": "Sharp Eye badge description"
+  },
+  "badgeCommunityPillar": "Community Pillar",
+  "@badgeCommunityPillar": {
+    "description": "Community Pillar badge title"
+  },
+  "badgeCommunityPillarDesc": "Achieved 500+ Civic Points",
+  "@badgeCommunityPillarDesc": {
+    "description": "Community Pillar badge description"
+  },
+  "unlocked": "Unlocked",
+  "@unlocked": {
+    "description": "Unlocked status label"
+  },
+  "locked": "Locked",
+  "@locked": {
+    "description": "Locked status label"
+  },
+  "howToUnlock": "How to Unlock",
+  "@howToUnlock": {
+    "description": "How to unlock label"
+  },
+  "communityPerks": "Community Perks",
+  "@communityPerks": {
+    "description": "Community perks title"
+  },
+  "communityPerksSubtitle": "Redeem your points for local government & partner benefits",
+  "@communityPerksSubtitle": {
+    "description": "Community perks subtitle"
+  },
+  "claimPerk": "Claim",
+  "@claimPerk": {
+    "description": "Button to claim reward perk"
+  },
+  "yourContribution": "Your Contribution",
+  "@yourContribution": {
+    "description": "Heading for citizen contribution summary"
+  },
+  "totalReports": "Total Reports",
+  "@totalReports": {
+    "description": "Total reports metric label"
+  },
+  "resolvedReports": "Resolved Reports",
+  "@resolvedReports": {
+    "description": "Resolved reports metric label"
+  },
+  "pointsEarned": "Points Earned",
+  "@pointsEarned": {
+    "description": "Points earned metric label"
+  },
+  "achievements": "Achievements",
+  "@achievements": {
+    "description": "Achievements section title"
+  },
+  "achievementsSubtitle": "Earn badges for active neighborhood participation",
+  "@achievementsSubtitle": {
+    "description": "Achievements section subtitle"
+  },
+  "loadingRewards": "Loading your civic milestones...",
+  "@loadingRewards": {
+    "description": "Loading state message for rewards"
+  },
+  "allNotificationsMarkedAsRead": "All notifications marked as read.",
+  "@allNotificationsMarkedAsRead": {
+    "description": "Snackbar message on mark all as read"
+  },
+  "filterAll": "All",
+  "@filterAll": {
+    "description": "All filter option"
+  },
+  "filterUnread": "Unread",
+  "@filterUnread": {
+    "description": "Unread filter option"
+  },
+  "filterRead": "Read",
+  "@filterRead": {
+    "description": "Read filter option"
+  },
+  "logOutQuestion": "Log out?",
+  "@logOutQuestion": {
+    "description": "Dialog title for logout confirmation"
+  },
+  "logoutConfirmationMessage": "Are you sure you want to log out?",
+  "@logoutConfirmationMessage": {
+    "description": "Dialog body for logout confirmation"
+  },
+  "clearChat": "Clear Chat",
+  "@clearChat": {
+    "description": "Tooltip/button to clear assistant chat"
+  },
+  "assistantThinking": "Assistant is thinking...",
+  "@assistantThinking": {
+    "description": "Loading indicator in assistant chat"
+  },
+  "assistantMessageHint": "Ask about reporting, tracking, or categories...",
+  "@assistantMessageHint": {
+    "description": "Hint text for assistant input field"
+  },
+  "resolutionWorkVerification": "Resolution & Work Verification",
+  "@resolutionWorkVerification": {
+    "description": "Resolution section title"
+  },
+  "groundInspectionSubtitle": "Ground inspection & completion evidence",
+  "@groundInspectionSubtitle": {
+    "description": "Resolution section subtitle"
+  },
+  "govPortalTitle": "CivicFix Government Portal",
+  "@govPortalTitle": {
+    "description": "Government Portal header branding"
+  },
+  "govLoginTitle": "Government Officer Sign In",
+  "@govLoginTitle": {
+    "description": "Login title for government officers"
+  },
+  "govLoginSubtitle": "Secure administrative access for BMC municipal officers",
+  "@govLoginSubtitle": {
+    "description": "Login subtitle on government portal"
+  },
+  "govEmployeeIdOrEmail": "Employee ID or Official Email",
+  "@govEmployeeIdOrEmail": {
+    "description": "Username field label"
+  },
+  "govPassword": "Password",
+  "@govPassword": {
+    "description": "Password field label"
+  },
+  "govSignInButton": "Sign In to Portal",
+  "@govSignInButton": {
+    "description": "Submit button on government sign in screen"
+  },
+  "govInvalidCredentials": "Invalid employee ID, email, or password.",
+  "@govInvalidCredentials": {
+    "description": "Error message when authentication fails"
+  },
+  "govAccountDisabled": "Account is deactivated. Contact Municipal Administrator.",
+  "@govAccountDisabled": {
+    "description": "Error message for deactivated officer accounts"
+  },
+  "govSessionExpired": "Session has expired. Please sign in again.",
+  "@govSessionExpired": {
+    "description": "Session expired notification"
+  },
+  "govAccessDenied": "Access Denied",
+  "@govAccessDenied": {
+    "description": "Access denied title"
+  },
+  "govAccessDeniedDesc": "You do not have administrative privileges to access this area.",
+  "@govAccessDeniedDesc": {
+    "description": "Access denied description"
+  },
+  "govReturnToDashboard": "Return to Dashboard",
+  "@govReturnToDashboard": {
+    "description": "Button to return to default landing screen"
+  },
+  "govAuthenticating": "Verifying administrative credentials...",
+  "@govAuthenticating": {
+    "description": "Loading state during government sign in"
+  },
+  "govForgotPassword": "Forgot Password",
+  "@govForgotPassword": {
+    "description": "Forgot password title"
+  },
+  "govResetPasswordInstruction": "Enter your registered official email to receive password reset instructions.",
+  "@govResetPasswordInstruction": {
+    "description": "Instructions for password reset"
+  },
+  "govSendResetLink": "Send Reset Link",
+  "@govSendResetLink": {
+    "description": "Button to trigger password reset email"
+  },
+  "govNavDashboard": "Dashboard",
+  "@govNavDashboard": {
+    "description": "Navigation item: Dashboard"
+  },
+  "govNavComplaints": "Complaints",
+  "@govNavComplaints": {
+    "description": "Navigation item: Complaints"
+  },
+  "govNavHazardMap": "Hazard Map",
+  "@govNavHazardMap": {
+    "description": "Navigation item: Hazard Map"
+  },
+  "govNavAnalytics": "Analytics",
+  "@govNavAnalytics": {
+    "description": "Navigation item: Analytics"
+  },
+  "govNavProfile": "Profile",
+  "@govNavProfile": {
+    "description": "Navigation item: Profile"
+  },
+  "govNavMyWork": "My Work",
+  "@govNavMyWork": {
+    "description": "Navigation item: My Work"
+  },
+  "govNavOperations": "Operations",
+  "@govNavOperations": {
+    "description": "Navigation item: Operations"
+  },
+  "govNavSla": "SLA Monitor",
+  "@govNavSla": {
+    "description": "Navigation item: SLA"
+  },
+  "govNavHistory": "Audit History",
+  "@govNavHistory": {
+    "description": "Navigation item: Audit History"
+  },
+  "govNavVerification": "Verification Queue",
+  "@govNavVerification": {
+    "description": "Navigation item: Verification"
+  },
+  "govNavAssignments": "Assignments",
+  "@govNavAssignments": {
+    "description": "Navigation item: Assignments"
+  },
+  "govExecutiveDashboard": "Executive Dashboard",
+  "@govExecutiveDashboard": {
+    "description": "Title for executive command dashboard"
+  },
+  "govGrievanceManagement": "Grievance Management",
+  "@govGrievanceManagement": {
+    "description": "Title for complaint management screen"
+  },
+  "govLiveHazardGisMap": "Live Hazard GIS Map",
+  "@govLiveHazardGisMap": {
+    "description": "Title for GIS map screen"
+  },
+  "govOperationalAnalytics": "Operational Analytics",
+  "@govOperationalAnalytics": {
+    "description": "Title for analytics screen"
+  },
+  "govOfficerProfileSettings": "Officer Profile & Settings",
+  "@govOfficerProfileSettings": {
+    "description": "Title for officer profile and settings"
+  },
+  "govCollapseSidebar": "Collapse sidebar",
+  "@govCollapseSidebar": {
+    "description": "Tooltip to collapse sidebar"
+  },
+  "govExpandSidebar": "Expand sidebar",
+  "@govExpandSidebar": {
+    "description": "Tooltip to expand sidebar"
+  },
+  "govMunicipalCorporation": "Brihanmumbai Municipal Corporation",
+  "@govMunicipalCorporation": {
+    "description": "Municipal corporation full title"
+  },
+  "govRoleSuperAdmin": "Municipal Commissioner / Super Admin",
+  "@govRoleSuperAdmin": {
+    "description": "Role: Super Admin"
+  },
+  "govRoleZonalDmc": "Zonal Deputy Municipal Commissioner",
+  "@govRoleZonalDmc": {
+    "description": "Role: Zonal DMC"
+  },
+  "govRoleCentralHod": "Central Department Head of Department",
+  "@govRoleCentralHod": {
+    "description": "Role: Central HOD"
+  },
+  "govRoleWardOfficer": "Assistant Municipal Commissioner (Ward Officer)",
+  "@govRoleWardOfficer": {
+    "description": "Role: Ward Officer"
+  },
+  "govRoleWardLead": "Ward Department Lead",
+  "@govRoleWardLead": {
+    "description": "Role: Ward Department Lead"
+  },
+  "govRoleDepartmentCrew": "Junior Engineer / Field Execution Officer",
+  "@govRoleDepartmentCrew": {
+    "description": "Role: Field Officer / Crew"
+  },
+  "govRoleAssistantEngineer": "Assistant Engineer",
+  "@govRoleAssistantEngineer": {
+    "description": "Role designation: Assistant Engineer"
+  },
+  "govRoleExecutiveEngineer": "Executive Engineer",
+  "@govRoleExecutiveEngineer": {
+    "description": "Role designation: Executive Engineer"
+  },
+  "govRoleSubEngineer": "Sub-Engineer",
+  "@govRoleSubEngineer": {
+    "description": "Role designation: Sub-Engineer"
+  },
+  "govRoleMedicalOfficer": "Medical Officer of Health",
+  "@govRoleMedicalOfficer": {
+    "description": "Role designation: Medical Officer of Health"
+  },
+  "govRoleSuperintendent": "Assistant Superintendent",
+  "@govRoleSuperintendent": {
+    "description": "Role designation: Assistant Superintendent"
+  },
+  "deptMaintenanceRoads": "Roads & Maintenance",
+  "@deptMaintenanceRoads": {
+    "description": "Department: Roads & Maintenance"
+  },
+  "deptWaterWorks": "Water Works & Supply",
+  "@deptWaterWorks": {
+    "description": "Department: Water Works & Supply"
+  },
+  "deptSolidWasteManagement": "Solid Waste Management",
+  "@deptSolidWasteManagement": {
+    "description": "Department: Solid Waste Management"
+  },
+  "deptBuildingFactory": "Building & Factory",
+  "@deptBuildingFactory": {
+    "description": "Department: Building & Factory"
+  },
+  "deptGardenTrees": "Gardens & Trees",
+  "@deptGardenTrees": {
+    "description": "Department: Gardens & Trees"
+  },
+  "deptPestControlInsecticide": "Pest Control & Insecticide",
+  "@deptPestControlInsecticide": {
+    "description": "Department: Pest Control & Insecticide"
+  },
+  "deptEncroachment": "Encroachment Removal",
+  "@deptEncroachment": {
+    "description": "Department: Encroachment Removal"
+  },
+  "deptLicence": "Licence Department",
+  "@deptLicence": {
+    "description": "Department: Licence Department"
+  },
+  "deptShopsEstablishments": "Shops & Establishments",
+  "@deptShopsEstablishments": {
+    "description": "Department: Shops & Establishments"
+  },
+  "deptAssessmentCollection": "Assessment & Collection",
+  "@deptAssessmentCollection": {
+    "description": "Department: Assessment & Collection"
+  },
+  "deptEstate": "Estate Department",
+  "@deptEstate": {
+    "description": "Department: Estate Department"
+  },
+  "deptColonySlum": "Colony & Slum Improvement",
+  "@deptColonySlum": {
+    "description": "Department: Colony & Slum Improvement"
+  },
+  "deptEducationSchools": "Education & Municipal Schools",
+  "@deptEducationSchools": {
+    "description": "Department: Education & Municipal Schools"
+  },
+  "deptSecurity": "Security Force",
+  "@deptSecurity": {
+    "description": "Department: Security Force"
+  },
+  "deptLegal": "Legal Department",
+  "@deptLegal": {
+    "description": "Department: Legal Department"
+  },
+  "deptAdministrationEstablishment": "Administration & Establishment",
+  "@deptAdministrationEstablishment": {
+    "description": "Department: Administration & Establishment"
+  },
+  "deptTownPlanning": "Town Planning & Development Plan",
+  "@deptTownPlanning": {
+    "description": "Department: Town Planning & Development Plan"
+  },
+  "govPendingComplaints": "Pending Complaints",
+  "@govPendingComplaints": {
+    "description": "Dashboard card: Pending complaints"
+  },
+  "govAssignedComplaints": "Assigned Complaints",
+  "@govAssignedComplaints": {
+    "description": "Dashboard card: Assigned complaints"
+  },
+  "govInProgressComplaints": "Work In Progress",
+  "@govInProgressComplaints": {
+    "description": "Dashboard card: Work in progress"
+  },
+  "govResolvedComplaints": "Resolved Complaints",
+  "@govResolvedComplaints": {
+    "description": "Dashboard card: Resolved complaints"
+  },
+  "govOverdueComplaints": "Overdue Grievances",
+  "@govOverdueComplaints": {
+    "description": "Dashboard card: Overdue grievances"
+  },
+  "govSlaBreaches": "SLA Breaches",
+  "@govSlaBreaches": {
+    "description": "Dashboard card: SLA breaches"
+  },
+  "govAwaitingVerification": "Awaiting Verification",
+  "@govAwaitingVerification": {
+    "description": "Dashboard card: Awaiting verification"
+  },
+  "govReworkRequired": "Rework Required",
+  "@govReworkRequired": {
+    "description": "Dashboard card: Rework required"
+  },
+  "govTodayTasks": "Today''s Operational Tasks",
+  "@govTodayTasks": {
+    "description": "Dashboard section: Today's tasks"
+  },
+  "govRecentActivity": "Recent Department Activity",
+  "@govRecentActivity": {
+    "description": "Dashboard section: Recent activity"
+  },
+  "govWardSummary": "Ward Performance Summary",
+  "@govWardSummary": {
+    "description": "Dashboard section: Ward summary"
+  },
+  "govDepartmentSummary": "Department Operational Summary",
+  "@govDepartmentSummary": {
+    "description": "Dashboard section: Department summary"
+  },
+  "govResolutionRate": "Resolution Rate",
+  "@govResolutionRate": {
+    "description": "KPI label: Resolution rate"
+  },
+  "govAvgResolutionTime": "Avg. Resolution Time",
+  "@govAvgResolutionTime": {
+    "description": "KPI label: Average resolution time"
+  },
+  "govTotalGrievances": "Total Grievances",
+  "@govTotalGrievances": {
+    "description": "KPI label: Total grievances"
+  },
+  "govCriticalHazards": "Critical Hazards",
+  "@govCriticalHazards": {
+    "description": "Dashboard card: Critical hazards"
+  },
+  "govActiveFieldCrew": "Active Field Crews",
+  "@govActiveFieldCrew": {
+    "description": "Dashboard card: Active field crews"
+  },
+  "govMyWorkTitle": "My Assigned Work",
+  "@govMyWorkTitle": {
+    "description": "Header for field crew / officer work view"
+  },
+  "govStartJob": "Start Work on Site",
+  "@govStartJob": {
+    "description": "Action button to commence site execution"
+  },
+  "govWorkStarted": "Work Commenced",
+  "@govWorkStarted": {
+    "description": "Status text for commenced work"
+  },
+  "govUploadBeforeEvidence": "Upload Before Evidence",
+  "@govUploadBeforeEvidence": {
+    "description": "Button to upload before-repair photographic evidence"
+  },
+  "govUploadAfterEvidence": "Upload After / Completion Evidence",
+  "@govUploadAfterEvidence": {
+    "description": "Button to upload after-repair photographic evidence"
+  },
+  "govAddWorkRemarks": "Add Execution Remarks",
+  "@govAddWorkRemarks": {
+    "description": "Label for work remarks input"
+  },
+  "govMarkBlocked": "Mark Work as Blocked",
+  "@govMarkBlocked": {
+    "description": "Action button when job encounters obstruction"
+  },
+  "govResumeWork": "Resume Work",
+  "@govResumeWork": {
+    "description": "Action button to resume blocked job"
+  },
+  "govSubmitResolution": "Submit for Resolution Review",
+  "@govSubmitResolution": {
+    "description": "Button to submit work for lead verification"
+  },
+  "govBlockedReasonLabel": "Reason for Delay / Blockage",
+  "@govBlockedReasonLabel": {
+    "description": "Label for blockage reason input"
+  },
+  "govWorkInProgressBanner": "Execution in progress on site.",
+  "@govWorkInProgressBanner": {
+    "description": "Status banner on work in progress"
+  },
+  "govWorkCompletedBanner": "Work completed and submitted for audit.",
+  "@govWorkCompletedBanner": {
+    "description": "Status banner on completed work"
+  },
+  "govComplaintDetailsTitle": "Grievance Inspection & Audit",
+  "@govComplaintDetailsTitle": {
+    "description": "Title for complaint detail review"
+  },
+  "govCitizenDetails": "Citizen Information",
+  "@govCitizenDetails": {
+    "description": "Section header: Citizen details"
+  },
+  "govIssueDetails": "Issue Particulars",
+  "@govIssueDetails": {
+    "description": "Section header: Issue particulars"
+  },
+  "govVerificationResult": "Verification State",
+  "@govVerificationResult": {
+    "description": "Label for verification state"
+  },
+  "govAiVerification": "Automated AI Verification",
+  "@govAiVerification": {
+    "description": "Heading for AI verification"
+  },
+  "govManualReviewRequired": "Manual Verification Required",
+  "@govManualReviewRequired": {
+    "description": "Badge / title for manual fallback review"
+  },
+  "govAiCouldNotVerify": "AI could not determine department with high confidence.",
+  "@govAiCouldNotVerify": {
+    "description": "Explanatory text for manual review requirement"
+  },
+  "govApproveAndRoute": "Approve & Route",
+  "@govApproveAndRoute": {
+    "description": "Button to approve grievance verification"
+  },
+  "govRejectGrievance": "Reject Grievance",
+  "@govRejectGrievance": {
+    "description": "Button to reject invalid grievance"
+  },
+  "govOverrideDepartment": "Override Department / Category",
+  "@govOverrideDepartment": {
+    "description": "Action to re-route grievance to correct department"
+  },
+  "govSelectTargetDepartment": "Select Target Department",
+  "@govSelectTargetDepartment": {
+    "description": "Dropdown label to select target department"
+  },
+  "govReviewNotesLabel": "Officer Review Remarks",
+  "@govReviewNotesLabel": {
+    "description": "Input label for review remarks"
+  },
+  "govConfirmDepartment": "Confirm Department Assignment",
+  "@govConfirmDepartment": {
+    "description": "Confirmation button for department review"
+  },
+  "govAuditTimeline": "Grievance Timeline & Audit History",
+  "@govAuditTimeline": {
+    "description": "Timeline heading in review screen"
+  },
+  "govAssignOfficer": "Assign Grievance",
+  "@govAssignOfficer": {
+    "description": "Button / title to assign grievance to officer"
+  },
+  "govAssignedOfficerLabel": "Assigned Field Officer",
+  "@govAssignedOfficerLabel": {
+    "description": "Label displaying currently assigned officer"
+  },
+  "govAssignFieldOfficer": "Assign Field Execution Officer",
+  "@govAssignFieldOfficer": {
+    "description": "Dialog title for field officer assignment"
+  },
+  "govReassignOfficer": "Reassign Grievance",
+  "@govReassignOfficer": {
+    "description": "Button to reassign grievance"
+  },
+  "govAvailableOfficers": "Available Field Officers",
+  "@govAvailableOfficers": {
+    "description": "Header for list of available officers"
+  },
+  "govOfficerWorkload": "Active Workload",
+  "@govOfficerWorkload": {
+    "description": "Workload label next to officer name"
+  },
+  "govConfirmAssignment": "Confirm Assignment",
+  "@govConfirmAssignment": {
+    "description": "Button to confirm assignment"
+  },
+  "govCancelAssignment": "Cancel",
+  "@govCancelAssignment": {
+    "description": "Button to cancel assignment"
+  },
+  "govAssignmentSuccess": "Grievance successfully assigned to {officerName}.",
+  "@govAssignmentSuccess": {
+    "description": "Snackbar message on assignment",
+    "placeholders": {
+      "officerName": {
+        "type": "String"
+      }
+    }
+  },
+  "govAssignmentFailed": "Failed to assign officer. Please try again.",
+  "@govAssignmentFailed": {
+    "description": "Snackbar error on assignment failure"
+  },
+  "govSlaStatus": "SLA Compliance",
+  "@govSlaStatus": {
+    "description": "SLA header label"
+  },
+  "govWithinSla": "Within SLA Target",
+  "@govWithinSla": {
+    "description": "Status badge: Within SLA"
+  },
+  "govApproachingSlaDeadline": "Approaching SLA Deadline",
+  "@govApproachingSlaDeadline": {
+    "description": "Status badge: Approaching SLA"
+  },
+  "govSlaBreached": "SLA Breached",
+  "@govSlaBreached": {
+    "description": "Status badge: SLA Breached"
+  },
+  "govHoursRemaining": "{count, plural, =1{1 hour remaining} other{{count} hours remaining}}",
+  "@govHoursRemaining": {
+    "description": "Parameterized hours remaining for SLA",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "govDaysRemaining": "{count, plural, =1{1 day remaining} other{{count} days remaining}}",
+  "@govDaysRemaining": {
+    "description": "Parameterized days remaining for SLA",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "govDaysOverdue": "{count, plural, =1{1 day overdue} other{{count} days overdue}}",
+  "@govDaysOverdue": {
+    "description": "Parameterized days overdue for SLA",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "govHoursOverdue": "{count, plural, =1{1 hour overdue} other{{count} hours overdue}}",
+  "@govHoursOverdue": {
+    "description": "Parameterized hours overdue for SLA",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "govResolutionReview": "Resolution Quality Audit",
+  "@govResolutionReview": {
+    "description": "Title for resolution review dialog"
+  },
+  "govApproveResolution": "Approve & Close Complaint",
+  "@govApproveResolution": {
+    "description": "Button to approve resolution"
+  },
+  "govSendForRework": "Send for Rework",
+  "@govSendForRework": {
+    "description": "Button to send back for rework"
+  },
+  "govReworkReasonLabel": "Reason for Rework",
+  "@govReworkReasonLabel": {
+    "description": "Input label for rework reason"
+  },
+  "govCloseComplaint": "Close Grievance",
+  "@govCloseComplaint": {
+    "description": "Button to close grievance"
+  },
+  "govReopenComplaint": "Reopen Grievance",
+  "@govReopenComplaint": {
+    "description": "Button to reopen grievance"
+  },
+  "govTableHeaderId": "Ticket Number",
+  "@govTableHeaderId": {
+    "description": "Table column: Ticket Number"
+  },
+  "govTableHeaderCategory": "Category",
+  "@govTableHeaderCategory": {
+    "description": "Table column: Category"
+  },
+  "govTableHeaderWard": "Ward",
+  "@govTableHeaderWard": {
+    "description": "Table column: Ward"
+  },
+  "govTableHeaderDepartment": "Department",
+  "@govTableHeaderDepartment": {
+    "description": "Table column: Department"
+  },
+  "govTableHeaderStatus": "Status",
+  "@govTableHeaderStatus": {
+    "description": "Table column: Status"
+  },
+  "govTableHeaderPriority": "Priority",
+  "@govTableHeaderPriority": {
+    "description": "Table column: Priority"
+  },
+  "govTableHeaderSla": "SLA Remaining",
+  "@govTableHeaderSla": {
+    "description": "Table column: SLA"
+  },
+  "govTableHeaderReported": "Reported On",
+  "@govTableHeaderReported": {
+    "description": "Table column: Reported date"
+  },
+  "govTableHeaderActions": "Actions",
+  "@govTableHeaderActions": {
+    "description": "Table column: Actions"
+  },
+  "govSearchComplaintsHint": "Search by ticket number, citizen name, locality...",
+  "@govSearchComplaintsHint": {
+    "description": "Hint text for government search bar"
+  },
+  "govNoMatchingComplaints": "No matching grievances found.",
+  "@govNoMatchingComplaints": {
+    "description": "Empty state message for table"
+  },
+  "govAllWards": "All Wards",
+  "@govAllWards": {
+    "description": "Filter option: All Wards"
+  },
+  "govAllDepartments": "All Departments",
+  "@govAllDepartments": {
+    "description": "Filter option: All Departments"
+  },
+  "govAllStatuses": "All Statuses",
+  "@govAllStatuses": {
+    "description": "Filter option: All Statuses"
+  },
+  "govRowsPerPage": "Rows per page",
+  "@govRowsPerPage": {
+    "description": "Table pagination label"
+  },
+  "govPreviousPage": "Previous",
+  "@govPreviousPage": {
+    "description": "Pagination button: Previous"
+  },
+  "govNextPage": "Next",
+  "@govNextPage": {
+    "description": "Pagination button: Next"
+  },
+  "govOfficerProfile": "Government Officer Profile",
+  "@govOfficerProfile": {
+    "description": "Profile screen title"
+  },
+  "govOfficerName": "Officer Name",
+  "@govOfficerName": {
+    "description": "Profile field: Name"
+  },
+  "govEmployeeId": "Employee ID",
+  "@govEmployeeId": {
+    "description": "Profile field: Employee ID"
+  },
+  "govOfficialEmail": "Official Email",
+  "@govOfficialEmail": {
+    "description": "Profile field: Official email"
+  },
+  "govDesignation": "Official Designation",
+  "@govDesignation": {
+    "description": "Profile field: Designation"
+  },
+  "govJurisdiction": "Assigned Jurisdiction",
+  "@govJurisdiction": {
+    "description": "Profile field: Jurisdiction"
+  },
+  "govCitywide": "Citywide (All Zones & Wards)",
+  "@govCitywide": {
+    "description": "Jurisdiction label: Citywide"
+  },
+  "govWardJurisdiction": "Ward {wardName}",
+  "@govWardJurisdiction": {
+    "description": "Jurisdiction label for ward",
+    "placeholders": {
+      "wardName": {
+        "type": "String"
+      }
+    }
+  },
+  "govZoneJurisdiction": "Zone {zoneName}",
+  "@govZoneJurisdiction": {
+    "description": "Jurisdiction label for zone",
+    "placeholders": {
+      "zoneName": {
+        "type": "String"
+      }
+    }
+  },
+  "govSignOut": "Sign Out of Government Portal",
+  "@govSignOut": {
+    "description": "Action to sign out of government portal"
+  },
+  "govSignOutConfirm": "Are you sure you want to sign out?",
+  "@govSignOutConfirm": {
+    "description": "Sign out confirmation dialog text"
+  },
+  "govLanguageSettings": "Portal Language",
+  "@govLanguageSettings": {
+    "description": "Settings section: Language"
+  },
+  "govAppearanceSettings": "Theme & Density",
+  "@govAppearanceSettings": {
+    "description": "Settings section: Appearance"
+  },
+  "govPrivacyPrinciples": "Governance & Data Standards",
+  "@govPrivacyPrinciples": {
+    "description": "Settings section: Privacy & Governance"
+  },
+  "govAboutPortal": "About Municipal Portal",
+  "@govAboutPortal": {
+    "description": "Settings section: About"
+  },
+  "govVersionInfo": "CivicFix Governance Suite v1.0.0-gov",
+  "@govVersionInfo": {
+    "description": "Version string for government portal"
+  },
+  "govDashboard": "Municipal Operations Overview",
+  "@govDashboard": {
+    "description": "Government dashboard header title"
+  },
+  "govDashboardSubtitle": "Real-time grievance telemetry & nodal department workload",
+  "@govDashboardSubtitle": {
+    "description": "Government dashboard header subtitle"
+  },
+  "govTotalComplaints": "Total Grievances",
+  "@govTotalComplaints": {
+    "description": "Total grievances KPI card label"
+  },
+  "govReportedComplaints": "Reported / New",
+  "@govReportedComplaints": {
+    "description": "Reported new grievances KPI card label"
+  },
+  "details": "Details",
+  "@details": {
+    "description": "Generic details button label"
+  },
+  "unassignedOfficer": "Unassigned",
+  "@unassignedOfficer": {
+    "description": "Unassigned officer indicator label"
+  },
+  "govInspectAction": "View Details",
+  "@govInspectAction": {
+    "description": "Inspect and view details action label"
+  },
+  "govUpdateStatus": "Update Status",
+  "@govUpdateStatus": {
+    "description": "Update status button label"
+  },
+  "executionNotStarted": "Ready to Start",
+  "@executionNotStarted": {
+    "description": "Field execution not started state"
+  },
+  "executionInProgress": "Execution In Progress",
+  "@executionInProgress": {
+    "description": "Field execution in progress state"
+  },
+  "executionBlocked": "Execution Blocked",
+  "@executionBlocked": {
+    "description": "Field execution blocked state"
+  },
+  "executionAwaitingEvidence": "Awaiting Ground Evidence",
+  "@executionAwaitingEvidence": {
+    "description": "Field execution awaiting evidence state"
+  },
+  "executionCompleted": "Work Completed",
+  "@executionCompleted": {
+    "description": "Field execution completed state"
+  },
+  "resolutionPending": "Resolution Pending",
+  "@resolutionPending": {
+    "description": "Resolution pending state"
+  },
+  "resolutionSubmitted": "Resolution Submitted",
+  "@resolutionSubmitted": {
+    "description": "Resolution submitted state"
+  },
+  "resolutionApproved": "Resolution Approved",
+  "@resolutionApproved": {
+    "description": "Resolution approved state"
+  },
+  "resolutionRejected": "Resolution Rejected",
+  "@resolutionRejected": {
+    "description": "Resolution rejected state"
+  },
+  "resolutionClosed": "Resolution Closed",
+  "@resolutionClosed": {
+    "description": "Resolution closed state"
+  },
+  "reworkNotRequired": "No Rework Required",
+  "@reworkNotRequired": {
+    "description": "Rework not required state"
+  },
+  "reworkRequiredState": "Rework Required",
+  "@reworkRequiredState": {
+    "description": "Rework required state"
+  },
+  "reworkInProgress": "Rework In Progress",
+  "@reworkInProgress": {
+    "description": "Rework in progress state"
+  },
+  "reworkSubmitted": "Rework Submitted",
+  "@reworkSubmitted": {
+    "description": "Rework submitted state"
+  },
+  "reworkApproved": "Rework Approved",
+  "@reworkApproved": {
+    "description": "Rework approved state"
+  },
+  "syncOffline": "Offline Queue",
+  "@syncOffline": {
+    "description": "Offline queue state"
+  },
+  "syncRetrying": "Retrying Sync...",
+  "@syncRetrying": {
+    "description": "Retrying sync state"
+  },
+  "notifComplaintSubmitted": "Complaint Submitted",
+  "@notifComplaintSubmitted": {
+    "description": "Notification type: complaint submitted"
+  },
+  "notifComplaintVerified": "Complaint Verified",
+  "@notifComplaintVerified": {
+    "description": "Notification type: complaint verified"
+  },
+  "notifComplaintAssigned": "Complaint Assigned",
+  "@notifComplaintAssigned": {
+    "description": "Notification type: complaint assigned"
+  },
+  "notifComplaintStatusChanged": "Status Updated",
+  "@notifComplaintStatusChanged": {
+    "description": "Notification type: complaint status changed"
+  },
+  "notifComplaintResolved": "Complaint Resolved",
+  "@notifComplaintResolved": {
+    "description": "Notification type: complaint resolved"
+  },
+  "notifGeneralCivic": "Civic Announcement",
+  "@notifGeneralCivic": {
+    "description": "Notification type: general civic notice"
+  },
+  "notifHazardAlert": "Hazard Warning",
+  "@notifHazardAlert": {
+    "description": "Notification type: hazard alert"
+  },
+  "notifRewardEarned": "Reward Earned",
+  "@notifRewardEarned": {
+    "description": "Notification type: reward earned"
+  },
+  "notifSlaWarning": "SLA Deadline Warning",
+  "@notifSlaWarning": {
+    "description": "Notification type: SLA deadline warning"
+  },
+  "notifReworkRequested": "Rework Requested",
+  "@notifReworkRequested": {
+    "description": "Notification type: rework requested"
+  },
+  "badgeGroundReporter": "Ground Reporter",
+  "@badgeGroundReporter": {
+    "description": "Ground reporter badge title"
+  },
+  "badgeGroundReporterDesc": "Provide accurate coordinates matching the assigned ward on 5 verified complaints.",
+  "@badgeGroundReporterDesc": {
+    "description": "Ground reporter badge description"
+  },
+  "badgeCommunityVoice": "Community Voice",
+  "@badgeCommunityVoice": {
+    "description": "Community voice badge title"
+  },
+  "badgeCommunityVoiceDesc": "Receive support from 10 different citizens on verified complaints.",
+  "@badgeCommunityVoiceDesc": {
+    "description": "Community voice badge description"
+  },
+  "badgeResolutionChampion": "Resolution Champion",
+  "@badgeResolutionChampion": {
+    "description": "Resolution champion badge title"
+  },
+  "badgeResolutionChampionDesc": "Have 5 eligible complaints reach verified resolution.",
+  "@badgeResolutionChampionDesc": {
+    "description": "Resolution champion badge description"
+  },
+  "civicLevelStarter": "Civic Starter",
+  "@civicLevelStarter": {
+    "description": "Civic level 1 title"
+  },
+  "civicLevelContributor": "Civic Contributor",
+  "@civicLevelContributor": {
+    "description": "Civic level 2 title"
+  },
+  "civicLevelChampion": "Civic Champion",
+  "@civicLevelChampion": {
+    "description": "Civic level 3 title"
+  },
+  "civicLevelLeader": "Civic Leader",
+  "@civicLevelLeader": {
+    "description": "Civic level 4 title"
+  },
+  "civicLevelHero": "Civic Hero",
+  "@civicLevelHero": {
+    "description": "Civic level 5 title"
+  },
+  "jurisdictionZone": "Zone Jurisdiction",
+  "@jurisdictionZone": {
+    "description": "Zone jurisdiction type"
+  },
+  "jurisdictionWard": "Ward Jurisdiction",
+  "@jurisdictionWard": {
+    "description": "Ward jurisdiction type"
+  },
+  "jurisdictionDepartment": "Department Jurisdiction",
+  "@jurisdictionDepartment": {
+    "description": "Department jurisdiction type"
+  },
+  "jurisdictionRole": "Role Scope",
+  "@jurisdictionRole": {
+    "description": "Role scope jurisdiction type"
+  },
+  "routingTicketPending": "Pending Ward Officer Review",
+  "@routingTicketPending": {
+    "description": "Routing ticket pending status"
+  },
+  "routingTicketApproved": "Reassignment Approved",
+  "@routingTicketApproved": {
+    "description": "Routing ticket approved status"
+  },
+  "routingTicketRejected": "Reassignment Rejected",
+  "@routingTicketRejected": {
+    "description": "Routing ticket rejected status"
+  },
+  "routingTicketCancelled": "Ticket Cancelled",
+  "@routingTicketCancelled": {
+    "description": "Routing ticket cancelled status"
+  },
+  "translatedFromEnglish": "Translated from English",
+  "@translatedFromEnglish": {
+    "description": "Label indicating translation source is English"
+  },
+  "translatedFromHindi": "Translated from Hindi",
+  "@translatedFromHindi": {
+    "description": "Label indicating translation source is Hindi"
+  },
+  "translatedFromMarathi": "Translated from Marathi",
+  "@translatedFromMarathi": {
+    "description": "Label indicating translation source is Marathi"
+  },
+  "translatedFromLanguage": "Translated from {language}",
+  "@translatedFromLanguage": {
+    "description": "Dynamic label indicating translation source language",
+    "placeholders": {
+      "language": {
+        "type": "String"
+      }
+    }
+  },
+  "originalEnglish": "Original — English",
+  "@originalEnglish": {
+    "description": "Label indicating original source is English"
+  },
+  "originalHindi": "Original — Hindi",
+  "@originalHindi": {
+    "description": "Label indicating original source is Hindi"
+  },
+  "originalMarathi": "Original — Marathi",
+  "@originalMarathi": {
+    "description": "Label indicating original source is Marathi"
+  },
+  "originalLanguage": "Original — {language}",
+  "@originalLanguage": {
+    "description": "Dynamic label indicating original source language",
+    "placeholders": {
+      "language": {
+        "type": "String"
+      }
+    }
+  },
+  "viewOriginal": "View original",
+  "@viewOriginal": {
+    "description": "Button to toggle view to original user text"
+  },
+  "viewTranslation": "View translation",
+  "@viewTranslation": {
+    "description": "Button to toggle view back to translated text"
+  },
+  "translating": "Translating...",
+  "@translating": {
+    "description": "Indicator text when dynamic translation is loading"
+  },
+  "translationUnavailable": "Translation unavailable",
+  "@translationUnavailable": {
+    "description": "Message when translation fails or is unavailable"
+  },
+  "retryTranslation": "Retry",
+  "@retryTranslation": {
+    "description": "Button to retry a failed translation"
+  },
+  "translationUnavailableOffline": "Translation unavailable offline",
+  "@translationUnavailableOffline": {
+    "description": "Message when offline and no translation is cached"
+  },
+  "complaintRejected": "Complaint Rejected",
+  "@complaintRejected": {
+    "description": "Title for complaint rejection dialog and banner"
+  },
+  "complaintRejectedAuthenticityBody": "The evidence uploaded with this complaint did not pass CivicFix''s authenticity verification and was identified as AI-generated or digitally manipulated.\n\nFor civic complaints, please upload a genuine photo of the issue captured from the actual location.",
+  "@complaintRejectedAuthenticityBody": {
+    "description": "Explanatory body for complaint rejected due to AI/manipulated evidence"
+  },
+  "reportAgain": "Report Again",
+  "@reportAgain": {
+    "description": "Action button to submit a new complaint with genuine evidence"
+  },
+  "evidenceVerificationFailed": "Evidence Verification Failed",
+  "@evidenceVerificationFailed": {
+    "description": "Label for failed evidence verification step"
+  },
+  "aiGeneratedEvidenceDetected": "AI-generated or manipulated evidence detected.",
+  "@aiGeneratedEvidenceDetected": {
+    "description": "Subtext warning for detected synthetic evidence"
+  }
+}

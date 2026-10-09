@@ -81,4 +81,13 @@ class PhoneNormalizer {
     if (tenDigit == null) return input;
     return '+91 ${tenDigit.substring(0, 5)} ${tenDigit.substring(5)}';
   }
+
+  /// Masks phone number for safe privacy-preserving logging (e.g. '+9198****10').
+  static String mask(String input) {
+    final cleaned = clean(input);
+    if (cleaned.length < 6) return '***';
+    final prefix = cleaned.substring(0, cleaned.length - 6);
+    final suffix = cleaned.substring(cleaned.length - 2);
+    return '$prefix****$suffix';
+  }
 }

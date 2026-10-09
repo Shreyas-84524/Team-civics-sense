@@ -41,6 +41,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
     bool isGovt = false;
     bool isVerifiedCitizen = false;
+    bool isUnverifiedCitizen = false;
 
     // Check active Citizen / Firebase Auth session and resolve role
     final hasCitizenAuth = await _authService.checkAuthState();
@@ -51,7 +52,11 @@ class _SplashScreenState extends State<SplashScreen> {
       } else {
         final citizen = _authService.currentUser;
         if (citizen != null) {
-          isVerifiedCitizen = true;
+          if (citizen.phoneVerified) {
+            isVerifiedCitizen = true;
+          } else {
+            isUnverifiedCitizen = true;
+          }
         }
       }
     } else {
@@ -86,6 +91,8 @@ class _SplashScreenState extends State<SplashScreen> {
       Navigator.pushReplacementNamed(context, AppRoutes.govtDashboard);
     } else if (isVerifiedCitizen) {
       Navigator.pushReplacementNamed(context, AppRoutes.home);
+    } else if (isUnverifiedCitizen) {
+      Navigator.pushReplacementNamed(context, AppRoutes.verifyPhone);
     } else {
       Navigator.pushReplacementNamed(context, AppRoutes.login);
     }
